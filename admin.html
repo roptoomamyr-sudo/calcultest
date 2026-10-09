@@ -17,7 +17,6 @@
         .result-box { margin-top: 15px; padding: 15px; background: #eef7ee; border: 1px solid #c3e6cb; border-radius: 8px; display: none; }
         .url-text { font-family: monospace; font-size: 13px; word-break: break-all; margin-top: 5px; color: #007bff; font-weight: bold; background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #dcdcdc; }
         
-        /* Таблица трекинга */
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
         th, td { padding: 10px; border: 1px solid #e0e0e0; text-align: left; }
         th { background-color: #f8f9fa; }
@@ -58,7 +57,7 @@
 </div>
 
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-align: center;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
         <h3 style="margin: 0;">📊 Мониторинг всех ссылок</h3>
         <button class="refresh-btn" id="refreshBtn">🔄 Обновить</button>
     </div>
@@ -80,17 +79,15 @@
 
 <script>
     const BIN_ID = "6ac861c6ffd5d160535b0623";
-    const SECRET_KEY = "$2a$10$IMgqPeq6EGMUWkoPpesa5.NXtCKi6SpV9oE.H/hRWRVC9gheuz1WO"; 
-    const BASE_URL = "https://roptoomamyr-sudo.github.io/calcultest/";
+    const SECRET_KEY = "$2a$10$IMgqPeq6EGMUWkoPpesa5.NXtCKi6SpV9oE.H/hRWRVC9gheuz1WO";
+    const BASE_URL = "https://roptoomamyr-sudo.github.io/calcul-test/";
 
-    // Форматирование даты
     function formatDate(time) {
         if (!time) return '—';
         const d = new Date(time);
         return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'});
     }
 
-    // Загрузка статистики
     function loadStats() {
         const tbody = document.getElementById('statsTableBody');
         
@@ -138,7 +135,6 @@
         });
     }
 
-    // Генерация ссылки
     document.getElementById('genBtn').addEventListener('click', function() {
         const clientName = document.getElementById('clientName').value.trim();
         const ttlHours = parseInt(document.getElementById('ttlSelect').value);
@@ -163,7 +159,7 @@
                 client: clientName,
                 used: false,
                 createdAt: now,
-                expiresAt: now + (ttlHours * 60 * 60 * 1000), // 12 часов по умолчанию
+                expiresAt: now + (ttlHours * 60 * 60 * 1000),
                 firstOpenedAt: null,
                 deviceLock: null
             };
@@ -180,7 +176,7 @@
             const fullUrl = ${BASE_URL}?client=${encodeURIComponent(clientName)}&id=${linkId};
             document.getElementById('genUrl').innerText = fullUrl;
             document.getElementById('resultBox').style.display = "block";
-            loadStats(); // Обновить таблицу
+            loadStats();
         })
         .catch(err => {
             btn.disabled = false;
@@ -189,8 +185,6 @@
     });
 
     document.getElementById('refreshBtn').addEventListener('click', loadStats);
-
-    // Автозагрузка таблицы при открытии админки
     loadStats();
 </script>
 
