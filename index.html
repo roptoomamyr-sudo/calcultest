@@ -22,7 +22,7 @@
 
         .result-panel { margin-top: 25px; padding: 20px; background: #eef7ee; border: 1px solid #c3e6cb; border-radius: 10px; }
         .price-title { font-size: 14px; color: #155724; font-weight: bold; text-transform: uppercase; }
-        .price-value { font-size: 32px; color: #28a745; font-weight: 800; margin: 5px 0 15px 0; }
+        .price-value { font-size: 34px; color: #28a745; font-weight: 800; margin: 5px 0 15px 0; }
         .details-list { font-size: 14px; color: #444; line-height: 1.6; border-top: 1px dashed #b1dfbb; padding-top: 10px; margin: 0; list-style: none; }
         .details-list li { display: flex; justify-content: space-between; margin-bottom: 6px; }
     </style>
@@ -76,9 +76,9 @@
             <div class="form-group">
                 <label for="gateType">Размер ворот:</label>
                 <select id="gateType">
-                    <option value="4x4">Ворота распашные 4 х 4 м (700 000 ₸)</option>
-                    <option value="3x3">Ворота распашные 3 х 3 м (600 000 ₸)</option>
-                    <option value="5x5">Ворота распашные 5 х 5 м (800 000 ₸)</option>
+                    <option value="4x4">Ворота распашные 4 х 4 м</option>
+                    <option value="3x3">Ворота распашные 3 х 3 м</option>
+                    <option value="5x5">Ворота распашные 5 х 5 м</option>
                 </select>
             </div>
             <div class="form-group">
@@ -90,11 +90,11 @@
         <!-- 3. ФУНДАМЕНТ -->
         <div class="section-title">3. Фундамент</div>
         <div class="form-group">
-            <label for="fundType">Тип фундамента:</label>
+            <label for="fundType">Вариант фундамента:</label>
             <select id="fundType">
                 <option value="strip">Ленточный + Буроналивные сваи + Отмостка</option>
                 <option value="screw">Винтовые сваи</option>
-                <option value="none">Без фундамента</option>
+                <option value="none">Без фундамента (подготовка Заказчика)</option>
             </select>
         </div>
 
@@ -129,16 +129,15 @@
 
         <!-- ИТОГОВЫЙ РАСЧЕТ -->
         <div class="result-panel">
-            <div class="price-title">Итоговая стоимость под ключ:</div>
+            <div class="price-title">Итоговая стоимость проекта под ключ:</div>
             <div class="price-value" id="totalPrice">0 ₸</div>
             
             <ul class="details-list">
-                <li><span>Площадь ангара:</span> <strong id="areaVal">0 м²</strong></li>
-                <li><span>Стоимость конструкции:</span> <strong id="constPriceVal">0 ₸</strong></li>
-                <li><span>Ворота:</span> <strong id="gatePriceVal">0 ₸</strong></li>
-                <li><span>Фундамент:</span> <strong id="fundPriceVal">0 ₸</strong></li>
-                <li><span>Монтажные работы:</span> <strong id="montagePriceVal">0 ₸</strong></li>
-                <li><span>Доставка:</span> <strong id="deliveryPriceVal">0 ₸</strong></li>
+                <li><span>Площадь застройки:</span> <strong id="areaVal">0 м²</strong></li>
+                <li><span>Ворота:</span> <strong id="gateSummary">0 шт.</strong></li>
+                <li><span>Фундамент:</span> <strong id="fundSummary">—</strong></li>
+                <li><span>Монтаж:</span> <strong id="montageSummary">—</strong></li>
+                <li><span>Доставка:</span> <strong id="deliverySummary">—</strong></li>
             </ul>
         </div>
 
@@ -198,7 +197,7 @@
         const area = w * l;
         if (area <= 0) return;
 
-        // 1. РАСЧЕТ КОНСТРУКЦИИ (без НДС)
+        // 1. РАСЧЕТ КОНСТРУКЦИИ
         let rateNoVat = 0;
         let isProf = false;
 
@@ -216,7 +215,6 @@
             else rateNoVat = 26000;
         }
 
-        // Надбавка за высоту стены (+3% за каждый 1 м выше базовой)
         let heightMultiplier = 1.0;
         if (type === 'straight_arch_pvc' && wallH > 3) {
             heightMultiplier += (wallH - 3) * 0.03;
@@ -227,40 +225,40 @@
         let constPriceNoVat = area * rateNoVat * heightMultiplier;
         let constPriceWithVat = constPriceNoVat * VAT;
 
-        // 2. РАСЧЕТ ВОРОТ (уже с НДС)
+        // 2. РАСЧЕТ ВОРОТ
         let singleGatePrice = 700000;
         let gateWidth = 4;
+        let gateSizeText = "4х4 м";
 
         if (gateType === '3x3') {
-            singleGatePrice = 600000; // на 100 000 ₸ дешевле
+            singleGatePrice = 600000;
             gateWidth = 3;
+            gateSizeText = "3х3 м";
         } else if (gateType === '5x5') {
-            singleGatePrice = 800000; // на 100 000 ₸ дороже
+            singleGatePrice = 800000;
             gateWidth = 5;
+            gateSizeText = "5х5 м";
         }
 
         const totalGatePrice = singleGatePrice * gateCount;
 
         // 3. РАСЧЕТ ФУНДАМЕНТА
         let fundPriceWithVat = 0;
+        let fundText = '';
 
         if (fundType === 'strip') {
-            // Длина ленты с вычетом воротных проемов
             let perimeter = 2 * (w + l);
             let totalGateWidth = gateWidth * gateCount;
             let netPerimeter = Math.max(0, perimeter - totalGateWidth);
 
-            let stripVolume = netPerimeter * fundW * fundH; // Лента
-
-            // Сваи буроналивные
+            let stripVolume = netPerimeter * fundW * fundH;
             let supportsCount = Math.floor(l / 3) * 2 + 8;
             let pilesVolume = supportsCount * 0.25;
-
-            // Отмостка (по полному периметру 1.0м * 0.1м)
             let blindAreaVolume = perimeter * 1.0 * 0.1;
 
             let totalConcreteVolume = stripVolume + pilesVolume + blindAreaVolume;
             fundPriceWithVat = totalConcreteVolume * 135000 * VAT;
+            fundText = 'Ленточный + сваи + отмостка';
 
         } else if (fundType === 'screw') {
             let perimeter = 2 * (w + l);
@@ -273,6 +271,11 @@
             else screwRateNoVat = 30000;
 
             fundPriceWithVat = perimeter * screwRateNoVat * VAT;
+            fundText = 'Винтовые сваи';
+
+        } else {
+            fundPriceWithVat = 0;
+            fundText = 'Подготовка Заказчика';
         }
 
         // 4. МОНТАЖ
@@ -288,14 +291,13 @@
         // ИТОГО
         const totalPrice = Math.round(constPriceWithVat + totalGatePrice + fundPriceWithVat + montagePriceWithVat + deliveryPriceWithVat);
 
-        // Отображение
+        // Отображение только общего итога и кратких характеристик
         document.getElementById('totalPrice').innerText = totalPrice.toLocaleString('ru-RU') + ' ₸';
         document.getElementById('areaVal').innerText = area + ' м²';
-        document.getElementById('constPriceVal').innerText = Math.round(constPriceWithVat).toLocaleString('ru-RU') + ' ₸';
-        document.getElementById('gatePriceVal').innerText = Math.round(totalGatePrice).toLocaleString('ru-RU') + ' ₸';
-        document.getElementById('fundPriceVal').innerText = Math.round(fundPriceWithVat).toLocaleString('ru-RU') + ' ₸';
-        document.getElementById('montagePriceVal').innerText = Math.round(montagePriceWithVat).toLocaleString('ru-RU') + ' ₸';
-        document.getElementById('deliveryPriceVal').innerText = Math.round(deliveryPriceWithVat).toLocaleString('ru-RU') + ' ₸';
+        document.getElementById('gateSummary').innerText = gateCount > 0 ? (gateCount + ' шт. (' + gateSizeText + ')') : 'Без ворот';
+        document.getElementById('fundSummary').innerText = fundText;
+        document.getElementById('montageSummary').innerText = addMontage ? 'Включен в стоимость' : 'Не требуется';
+        document.getElementById('deliverySummary').innerText = distance > 0 ? (distance + ' км от Костаная') : 'Самовывоз / В городе';
     }
 
     // События для перерасчета
