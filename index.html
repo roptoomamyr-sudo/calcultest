@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расчет стоимости (Персональный доступ)</title>
+    <style>
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: #ffffff; width: 100%; max-width: 500px; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; }
+        .block-screen { display: none; padding: 20px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 8px; color: #721c24; }
+        .block-icon { font-size: 48px; margin-bottom: 10px; }
+        .calc-content { display: none; text-align: left; }
+        .loader { font-size: 18px; color: #666; font-weight: 600; }
+        .badge { display: inline-block; padding: 4px 10px; background: #fff3cd; color: #856404; border-radius: 20px; font-size: 13px; font-weight: bold; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <!-- Загрузка -->
+    <div id="loader" class="loader">⏳ Проверка персонального доступа...</div>
+
+    <!-- Экран блокировки -->
+    <div id="blockScreen" class="block-screen">
+        <div class="block-icon">🔒</div>
+        <h3 id="blockTitle" style="margin-top:0;">Доступ ограничен</h3>
+        <p id="blockMessage">Данная ссылка недействительна или уже была использована.</p>
+    </div>
+
+    <!-- Основной калькулятор -->
+    <div id="calcContent" class="calc-content">
+        <div class="badge">⚠️ Одноразовый просмотр</div>
+        <h2>Калькулятор стоимости тентового ангара</h2>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+        
+        <p><strong>Приветствуем, <span id="clientNameHolder"></span>!</strong></p>
+        <p>Здесь располагается ваш персональный расчёт.</p>
+        
+        <div style="background:#fff8e1; padding:15px; border-radius:8px; margin-top:15px; border:1px solid #ffe082; color:#6d4c41; font-size:13px;">
+            <b>Защита активирована:</b> Ссылка привязана к данному устройству и сгорела сразу после открытия. Пересылка третьим лицам или повторный вход заблокированы.
+        </div>
+    </div>
+</div>
+
+<script>
+    const BIN_ID = "6ac861c6ffd5d160535b0623";
+    const SECRET_KEY = "$2a$10$IMgqPeq6EGMUWkoPpesa5.NXtCKi6SpV9oE.H/hRWRVC9gheuz1WO";
+
+    // Получение или создание ID устройства в localStorage
+    function getDeviceId() {
+        let devId = localStorage.getItem('calc_device_id');
+        if (!devId) {
+            devId = 'dev_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+            localStorage.setItem('calc_device_id', devId);
+        }
+        return devId;
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const linkId = urlParams.get('id');
+    const clientName = urlParams.get('client');
+
+    const loader = document.getElementById('loader');
+    const blockScreen = document.getElementById('blockScreen');
+    const blockTitle = document.getElementById('blockTitle');
+    const blockMessage = document.getElementById('blockMessage');
+    const calcContent = document.getElementById('calcContent');
+    const clientNameHolder = document.getElementById('clientNameHolder');
+
+    function showError(title, msg) {
+        loader.style.display = 'none';
+        calcContent.style.display = 'none';
+        blockTitle.innerText = title;
+        blockMessage.innerText = msg;
+        blockScreen.style.display = 'block';
+    }
+
+    function showCalc(name) {
+        loader.style.display = 'none';
+        blockScreen.style.display = 'none';
+        clientNameHolder.innerText = name || 'Клиент';
+        calcContent.style.display = 'block';
+    }
+
+    if (!linkId) {
+        showError("Ошибка доступа", "Для просмотра требуется персональная ссылка.");
+    } else {
+        const currentDeviceId = getDeviceId();
+
+        // 1. Получаем базу
+        fetch(https://api.jsonbin.io/v3/b/${BIN_ID}/latest, {
+            headers: { "X-Master-Key": SECRET_KEY }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Ошибка связи с сервером");
+            return res.json();
+        })
+        .then(data => {
+            let db = data.record || {};
+            const record = db[linkId];
+
+            if (!record) {
+                showError("Ссылка не найдена", "Данная ссылка не существует.");
+                return;
+            }
+
+            // 2. Проверка истечения 12 часов (TTL)
+            if (record.expiresAt && Date.now() > record.expiresAt) {
+                showError("Срок действия истек", "Срок действия этой ссылки (12 часов) закончился.");
+                return;
+            }
+
+            // 3. Если ссылка уже открывалась ранее
+            if (record.used) {
+                if (record.deviceLock && record.deviceLock !== currentDeviceId) {
+                    showError("Пересылка запрещена", "Эта ссылка была открыта на другом устройстве и заблокирована для пересылки.");
+                    return;
+                }
+                showError("Ссылка сгорела", "Вы уже просмотрели этот расчет. Повторный доступ закрыт.");
+                return;
+            }
+
+            // 4. ПЕРВОЕ ОТКРЫТИЕ: привязываем устройство, ставим флаг просмотра и фиксируем время
+            record.deviceLock = currentDeviceId;
+            record.used = true;
+            record.firstOpenedAt = Date.now();
+
+            db[linkId] = record;
+
+            // Сохраняем обновленные данные в JSONBin
+            return fetch(https://api.jsonbin.io/v3/b/${BIN_ID}, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Master-Key": SECRET_KEY
+                },
+                body: JSON.stringify(db)
+            }).then(() => {
+                showCalc(record.client || clientName);
+            });
+        })
+        .catch(err => {
+            showError("Ошибка доступа", "Не удалось проверить статус одноразовой ссылки.");
+        });
+    }
+</script>
+
+</body>
+</html>
