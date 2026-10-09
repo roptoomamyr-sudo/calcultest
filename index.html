@@ -18,17 +18,14 @@
 <body>
 
 <div class="card">
-    <!-- Загрузка -->
     <div id="loader" class="loader">⏳ Проверка персонального доступа...</div>
 
-    <!-- Экран блокировки -->
     <div id="blockScreen" class="block-screen">
         <div class="block-icon">🔒</div>
         <h3 id="blockTitle" style="margin-top:0;">Доступ ограничен</h3>
         <p id="blockMessage">Данная ссылка недействительна или уже была использована.</p>
     </div>
 
-    <!-- Основной калькулятор -->
     <div id="calcContent" class="calc-content">
         <div class="badge">⚠️ Одноразовый просмотр</div>
         <h2>Калькулятор стоимости тентового ангара</h2>
@@ -47,7 +44,6 @@
     const BIN_ID = "6ac861c6ffd5d160535b0623";
     const SECRET_KEY = "$2a$10$IMgqPeq6EGMUWkoPpesa5.NXtCKi6SpV9oE.H/hRWRVC9gheuz1WO";
 
-    // Получение или создание ID устройства в localStorage
     function getDeviceId() {
         let devId = localStorage.getItem('calc_device_id');
         if (!devId) {
@@ -69,18 +65,18 @@
     const clientNameHolder = document.getElementById('clientNameHolder');
 
     function showError(title, msg) {
-        loader.style.display = 'none';
-        calcContent.style.display = 'none';
-        blockTitle.innerText = title;
-        blockMessage.innerText = msg;
-        blockScreen.style.display = 'block';
+        if (loader) loader.style.display = 'none';
+        if (calcContent) calcContent.style.display = 'none';
+        if (blockTitle) blockTitle.innerText = title;
+        if (blockMessage) blockMessage.innerText = msg;
+        if (blockScreen) blockScreen.style.display = 'block';
     }
 
     function showCalc(name) {
-        loader.style.display = 'none';
-        blockScreen.style.display = 'none';
-        clientNameHolder.innerText = name || 'Клиент';
-        calcContent.style.display = 'block';
+        if (loader) loader.style.display = 'none';
+        if (blockScreen) blockScreen.style.display = 'none';
+        if (clientNameHolder) clientNameHolder.innerText = name || 'Клиент';
+        if (calcContent) calcContent.style.display = 'block';
     }
 
     if (!linkId) {
@@ -88,30 +84,36 @@
     } else {
         const currentDeviceId = getDeviceId();
 
-        // 1. Получаем базу
         fetch(https://api.jsonbin.io/v3/b/${BIN_ID}/latest, {
-            headers: { "X-Master-Key": SECRET_KEY }
+            method: 'GET',
+            headers: {
+                "X-Master-Key": SECRET_KEY
+            }
         })
         .then(res => {
-            if (!res.ok) throw new Error("Ошибка связи с сервером");
+            if (!res.ok) {
+                throw new Error(Ошибка сервера JSONBin (код ${res.status}));
+            }
             return res.json();
         })
         .then(data => {
-            let db = data.record || {};
-            const record = db[linkId];
+            let db = data.record;
+            if (Array.isArray(db)) {
+                db = db[0] || {};
+            }
+
+            const record = db ? db[linkId] : null;
 
             if (!record) {
-                showError("Ссылка не найдена", "Данная ссылка не существует.");
+                showError("Ссылка не найдена", "Данная ссылка не зарегистрирована в базе.");
                 return;
             }
 
-            // 2. Проверка истечения 12 часов (TTL)
             if (record.expiresAt && Date.now() > record.expiresAt) {
                 showError("Срок действия истек", "Срок действия этой ссылки (12 часов) закончился.");
                 return;
             }
 
-            // 3. Если ссылка уже открывалась ранее
             if (record.used) {
                 if (record.deviceLock && record.deviceLock !== currentDeviceId) {
                     showError("Пересылка запрещена", "Эта ссылка была открыта на другом устройстве и заблокирована для пересылки.");
@@ -121,14 +123,12 @@
                 return;
             }
 
-            // 4. ПЕРВОЕ ОТКРЫТИЕ: привязываем устройство, ставим флаг просмотра и фиксируем время
             record.deviceLock = currentDeviceId;
             record.used = true;
             record.firstOpenedAt = Date.now();
 
             db[linkId] = record;
 
-            // Сохраняем обновленные данные в JSONBin
             return fetch(https://api.jsonbin.io/v3/b/${BIN_ID}, {
                 method: "PUT",
                 headers: {
@@ -136,12 +136,15 @@
                     "X-Master-Key": SECRET_KEY
                 },
                 body: JSON.stringify(db)
-            }).then(() => {
+            }).then(saveRes => {
+                if (!saveRes.ok) {
+                    throw new Error("Не удалось обновить статус ссылки.");
+                }
                 showCalc(record.client || clientName);
             });
         })
         .catch(err => {
-            showError("Ошибка доступа", "Не удалось проверить статус одноразовой ссылки.");
+            showError("Ошибка выполнения", err.message);
         });
     }
 </script>
