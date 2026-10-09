@@ -18,6 +18,10 @@
         .stat-card h3 { margin: 0 0 5px 0; font-size: 13px; color: #4a5568; text-transform: uppercase; }
         .stat-card .value { font-size: 20px; font-weight: bold; color: #1a365d; }
 
+        .filter-box { background: #f7fafc; padding: 12px 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; border: 1px solid #e2e8f0; }
+        .filter-box label { font-weight: bold; font-size: 14px; color: #2d3748; }
+        .filter-box select { padding: 8px 12px; font-size: 14px; border: 1px solid #cbd5e0; border-radius: 6px; min-width: 300px; background: #fff; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #cbd5e0; padding: 10px 12px; text-align: left; font-size: 14px; }
         th { background: #2b6cb0; color: #fff; font-weight: bold; text-transform: uppercase; font-size: 12px; }
@@ -48,6 +52,13 @@
         </div>
     </div>
 
+    <div class="filter-box">
+        <label for="managerFilter">Фильтр по сотруднику:</label>
+        <select id="managerFilter" onchange="filterAndRender()">
+            <option value="ALL">Все сотрудники (общий итог)</option>
+        </select>
+    </div>
+
     <div id="contentArea">
         <div class="loading">Загрузка данных из системы отслеживания...</div>
     </div>
@@ -56,6 +67,7 @@
 <script>
     var BIN_ID = "6ac861c6ffd5d160535b0623";
     var SECRET_KEY = "$2a$10$IMgqPeq6EGMUWkoPpesa5.NXtCKi6SpV9oE.H/hRWRVC9gheuz1WO";
+    var globalRegistry = [];
 
     function loadRegistry() {
         fetch("https://api.jsonbin.io/v3/b/" + BIN_ID + "/latest", {
@@ -64,52 +76,75 @@
         .then(function(res) { return res.json(); })
         .then(function(db) {
             if (Array.isArray(db)) db = db[0] || {};
-            var registry = db.kpi_registry || [];
+            globalRegistry = db.kpi_registry || [];
 
-            document.getElementById('statCount').innerText = registry.length;
-            
-            var totalSum = 0;
-            registry.forEach(function(item) {
-                totalSum += (item.total || 0);
+            // Заполняем выпадающий список менеджеров динамически на основе базы
+            var managersSet = {};
+            globalRegistry.forEach(function(item) {
+                if (item.manager) managersSet[item.manager] = true;
             });
-            document.getElementById('statTotal').innerText = totalSum.toLocaleString('ru-RU') + " ₸";
 
-            if (registry.length === 0) {
-                document.getElementById('contentArea').innerHTML = '<div style="text-align:center; padding:30px; color:#718096;">Пока не сформировано ни одного коммерческого предложения.</div>';
-                return;
+            var select = document.getElementById('managerFilter');
+            select.innerHTML = '<option value="ALL">Все сотрудники (общий итог)</option>';
+            for (var m in managersSet) {
+                select.innerHTML += '<option value="' + m + '">' + m + '</option>';
             }
 
-            var html = '<table><thead><tr>' +
-                '<th>№ / ID</th>' +
-                '<th>Дата и время</th>' +
-                '<th>Сотрудник</th>' +
-                '<th>Заказчик</th>' +
-                '<th>Контактный тел.</th>' +
-                '<th>WhatsApp</th>' +
-                '<th class="text-center">Площадь (м²)</th>' +
-                '<th class="text-right">Сумма (₸)</th>' +
-            '</tr></thead><tbody>';
-
-            for (var i = registry.length - 1; i >= 0; i--) {
-                var r = registry[i];
-                html += '<tr>' +
-                    '<td><b>' + (r.id || '—') + '</b></td>' +
-                    '<td>' + (r.date || '—') + '</td>' +
-                    '<td>' + (r.manager || '—') + '</td>' +
-                    '<td><b>' + (r.client || '—') + '</b></td>' +
-                    '<td>' + (r.phone || '—') + '</td>' +
-                    '<td>' + (r.whatsapp || '—') + '</td>' +
-                    '<td class="text-center">' + (r.area || 0) + ' м²</td>' +
-                    '<td class="text-right" style="font-weight:bold; color:#2b6cb0;">' + (r.total ? r.total.toLocaleString('ru-RU') : 0) + ' ₸</td>' +
-                '</tr>';
-            }
-
-            html += '</tbody></table>';
-            document.getElementById('contentArea').innerHTML = html;
+            filterAndRender();
         })
         .catch(function(err) {
             document.getElementById('contentArea').innerHTML = '<div style="color:red; text-align:center; padding:20px;">Ошибка загрузки данных: ' + err.message + '</div>';
         });
+    }
+
+    function filterAndRender() {
+        var selectedManager = document.getElementById('managerFilter').value;
+        
+        var filtered = globalRegistry.filter(function(item) {
+            if (selectedManager === 'ALL') return true;
+            return item.manager === selectedManager;
+        });
+
+        document.getElementById('statCount').innerText = filtered.length;
+        
+        var totalSum = 0;
+        filtered.forEach(function(item) {
+            totalSum += (item.total || 0);
+        });
+        document.getElementById('statTotal').innerText = totalSum.toLocaleString('ru-RU') + " ₸";
+
+        if (filtered.length === 0) {
+            document.getElementById('contentArea').innerHTML = '<div style="text-align:center; padding:30px; color:#718096;">По данному сотруднику пока не сформировано ни одного коммерческого предложения.</div>';
+            return;
+        }
+
+        var html = '<table><thead><tr>' +
+            '<th>№ / ID</th>' +
+            '<th>Дата и время</th>' +
+            '<th>Сотрудник</th>' +
+            '<th>Заказчик</th>' +
+            '<th>Контактный тел.</th>' +
+            '<th>WhatsApp</th>' +
+            '<th class="text-center">Площадь (м²)</th>' +
+            '<th class="text-right">Сумма (₸)</th>' +
+        '</tr></thead><tbody>';
+
+        for (var i = filtered.length - 1; i >= 0; i--) {
+            var r = filtered[i];
+            html += '<tr>' +
+                '<td><b>' + (r.id || '—') + '</b></td>' +
+                '<td>' + (r.date || '—') + '</td>' +
+                '<td>' + (r.manager || '—') + '</td>' +
+                '<td><b>' + (r.client || '—') + '</b></td>' +
+                '<td>' + (r.phone || '—') + '</td>' +
+                '<td>' + (r.whatsapp || '—') + '</td>' +
+                '<td class="text-center">' + (r.area || 0) + ' м²</td>' +
+                '<td class="text-right" style="font-weight:bold; color:#2b6cb0;">' + (r.total ? r.total.toLocaleString('ru-RU') : 0) + ' ₸</td>' +
+            '</tr>';
+        }
+
+        html += '</tbody></table>';
+        document.getElementById('contentArea').innerHTML = html;
     }
 
     loadRegistry();
