@@ -7,7 +7,7 @@
     <style>
         * { box-sizing: border-box; font-family: 'Calibri', 'Arial', sans-serif; }
         body { background-color: #eaeff5; margin: 0; padding: 20px; color: #333; }
-        .main-container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .main-container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2b6cb0; padding-bottom: 12px; margin-bottom: 20px; }
         .header h1 { font-size: 20px; color: #1a365d; margin: 0; }
         .nav-links a { text-decoration: none; background: #2b6cb0; color: #fff; padding: 8px 14px; border-radius: 6px; font-size: 14px; font-weight: bold; }
@@ -33,7 +33,7 @@
     <div class="header">
         <h1>Реестр Коммерческих Предложений и KPI</h1>
         <div class="nav-links">
-            <a href="manager.html">← Назад к генератору КП</a>
+            <a href="manager.html" target="_blank">Открыть генератор КП ↗️</a>
         </div>
     </div>
 
@@ -84,11 +84,12 @@
                 '<th>Дата и время</th>' +
                 '<th>Сотрудник</th>' +
                 '<th>Заказчик</th>' +
+                '<th>Контактный тел.</th>' +
+                '<th>WhatsApp</th>' +
                 '<th class="text-center">Площадь (м²)</th>' +
                 '<th class="text-right">Сумма (₸)</th>' +
             '</tr></thead><tbody>';
 
-            // Выводим от новых к старым (с конца)
             for (var i = registry.length - 1; i >= 0; i--) {
                 var r = registry[i];
                 html += '<tr>' +
@@ -96,6 +97,8 @@
                     '<td>' + (r.date || '—') + '</td>' +
                     '<td>' + (r.manager || '—') + '</td>' +
                     '<td><b>' + (r.client || '—') + '</b></td>' +
+                    '<td>' + (r.phone || '—') + '</td>' +
+                    '<td>' + (r.whatsapp || '—') + '</td>' +
                     '<td class="text-center">' + (r.area || 0) + ' м²</td>' +
                     '<td class="text-right" style="font-weight:bold; color:#2b6cb0;">' + (r.total ? r.total.toLocaleString('ru-RU') : 0) + ' ₸</td>' +
                 '</tr>';
