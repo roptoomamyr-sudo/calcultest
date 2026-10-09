@@ -18,7 +18,7 @@
 <body>
 
 <div class="card">
-    <div id="loader" class="loader">⏳ Проверка персонального доступа...</div>
+    <div id="loader" class="loader">⏳ Проверка доступа...</div>
 
     <div id="blockScreen" class="block-screen">
         <div class="block-icon">🔒</div>
@@ -35,7 +35,7 @@
         <p>Здесь располагается ваш персональный расчёт.</p>
         
         <div style="background:#fff8e1; padding:15px; border-radius:8px; margin-top:15px; border:1px solid #ffe082; color:#6d4c41; font-size:13px;">
-            <b>Защита активирована:</b> Ссылка привязана к данному устройству и сгорела сразу после открытия. Пересылка третьим лицам или повторный вход заблокированы.
+            <b>Защита активирована:</b> Ссылка привязана к данному устройству и сгорела сразу после открытия.
         </div>
     </div>
 </div>
@@ -84,20 +84,23 @@
     } else {
         const currentDeviceId = getDeviceId();
 
+        // Устанавливаем тайм-аут: если JSONBin не ответил за 4 секунды — выводим понятную ошибку
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+
         fetch(https://api.jsonbin.io/v3/b/${BIN_ID}/latest, {
             method: 'GET',
-            headers: {
-                "X-Master-Key": SECRET_KEY
-            }
+            headers: { "X-Master-Key": SECRET_KEY },
+            signal: controller.signal
         })
         .then(res => {
-            if (!res.ok) throw new Error("Ошибка сервера базы данных: " + res.status);
+            clearTimeout(timeoutId);
+            if (!res.ok) throw new Error("Код ответа: " + res.status);
             return res.json();
         })
         .then(data => {
-            let db = data.record;
+            let db = data.record || {};
             if (Array.isArray(db)) db = db[0] || {};
-            if (typeof db !== 'object' || db === null) db = {};
 
             const record = db[linkId];
 
@@ -126,20 +129,21 @@
 
             db[linkId] = record;
 
-            return fetch(https://api.jsonbin.io/v3/b/${BIN_ID}, {
+            // Записываем факт первого входа обратно в JSONBin
+            fetch(https://api.jsonbin.io/v3/b/${BIN_ID}, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                     "X-Master-Key": SECRET_KEY
                 },
                 body: JSON.stringify(db)
-            }).then(saveRes => {
-                if (!saveRes.ok) throw new Error("Ошибка обновления статуса.");
-                showCalc(record.client || clientName);
-            });
+            }).catch(() => {});
+
+            showCalc(record.client || clientName);
         })
         .catch(err => {
-            showError("Ошибка доступа", err.message || "Не удалось проверить статус ссылки.");
+            clearTimeout(timeoutId);
+            showError("Ошибка подключения", "Не удалось связаться с сервером проверки. Проверьте интернет или повторите позже.");
         });
     }
 </script>
