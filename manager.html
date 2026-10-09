@@ -387,7 +387,7 @@
 
             document.getElementById('pdfKpNum').innerText = "КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ № " + kpNum;
             document.getElementById('pdfObjectTitle').innerText = "Быстровозводимый " + (isProf ? "металлический" : "металлотентовый") + " ангар " + w.toFixed(1) + " х " + l.toFixed(1) + " х " + (type.indexOf('straight') !== -1 ? wallH.toFixed(1) : (w*0.35).toFixed(1)) + " м (" + area + " м²)";
-            document.getElementByI('pdfPurpose').innerText = purpose;
+            document.getElementById('pdfPurpose').innerText = purpose;
 
             var rows = "<tr>" +
                 "<td><b>Комплект сборно-разборной стальной конструкции ангара.</b><br>Размер: " + w.toFixed(1) + " х " + l.toFixed(1) + " м.<br>Тип: " + (type.indexOf('straight') !== -1 ? "Прямостенный" : "Арочный") + ".<br>Соединение: Болтовое.<br>Покрытие: " + coverDesc + "</td>" +
