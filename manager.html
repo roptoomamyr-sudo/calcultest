@@ -6,37 +6,49 @@
     <title>Генератор КП — ТОО «Мамыр»</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        * { box-sizing: border-box; font-family: 'Arial', sans-serif; }
+        * { box-sizing: border-box; font-family: 'Calibri', 'Arial', sans-serif; }
         body { background-color: #eaeff5; margin: 0; padding: 20px; color: #333; }
         .main-app { max-width: 850px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .user-header { border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; }
-        .user-header h1 { font-size: 18px; color: #1a365d; margin: 0; }
-        .section-title { font-size: 13px; font-weight: bold; color: #2b6cb0; margin: 18px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .user-header h1 { font-size: 18px; color: #1a365d; margin: 0; font-family: 'Arial', sans-serif; }
+        .section-title { font-size: 13px; font-weight: bold; color: #2b6cb0; margin: 18px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Arial', sans-serif; }
         .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 12px; }
         .form-group { flex: 1; min-width: 180px; }
-        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4a5568; }
-        input, select { width: 100%; padding: 9px 11px; font-size: 14px; border: 1px solid #cbd5e0; border-radius: 6px; }
-        .btn-generate { width: 100%; padding: 14px; background: #2b6cb0; color: #fff; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; transition: 0.2s; }
+        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4a5568; font-family: 'Arial', sans-serif; }
+        input, select { width: 100%; padding: 9px 11px; font-size: 14px; border: 1px solid #cbd5e0; border-radius: 6px; font-family: 'Arial', sans-serif; }
+        .btn-generate { width: 100%; padding: 14px; background: #2b6cb0; color: #fff; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; transition: 0.2s; font-family: 'Arial', sans-serif; }
         .btn-generate:hover { background: #2c5282; }
         .btn-generate:disabled { background: #a0aec0; cursor: not-allowed; }
+        
         #pdfTemplateWrapper { position: absolute; left: -9999px; top: 0; width: 210mm; }
-        .pdf-page { width: 210mm; height: 295mm; padding: 12mm 15mm; background: #fff; font-size: 11px; color: #000; box-sizing: border-box; position: relative; font-family: 'Arial', sans-serif; overflow: hidden; page-break-after: always; }
-        .pdf-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b8860b; padding-bottom: 8px; margin-bottom: 10px; }
-        .pdf-header-text { font-size: 8.5px; line-height: 1.2; }
-        .kp-title { font-size: 15px; font-weight: bold; color: #b8860b; text-align: center; margin: 8px 0; text-transform: uppercase; }
-        .kp-meta { font-size: 10px; margin-bottom: 10px; line-height: 1.4; }
-        .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .kp-table th, .kp-table td { border: 1px solid #000; padding: 5px 6px; font-size: 9.5px; vertical-align: top; }
-        .kp-table th { background: #000; color: #fff; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 9px; }
-        .total-row { background: #b8860b; color: #fff; font-weight: bold; font-size: 10.5px; }
-        .total-row-discount { background: #8b6508; color: #fff; font-weight: bold; font-size: 10.5px; }
-        .conditions-box { font-size: 9.5px; line-height: 1.4; margin-top: 10px; }
-        .conditions-box h4 { margin: 4px 0; font-size: 10px; text-decoration: underline; }
-        .footer-line { position: absolute; bottom: 8mm; left: 15mm; right: 15mm; font-size: 7.5px; border-top: 1px solid #ccc; padding-top: 4px; text-align: center; color: #444; }
-        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 8px 10px; margin-bottom: 10px; font-size: 9.5px; }
-        .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 2px; }
-        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .photo-card { width: 100%; height: 130px; background: #f0f4f8; border: 1px solid #cbd5e0; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 11px; font-weight: bold; text-align: center; }
+        .pdf-page { width: 210mm; height: 295mm; padding: 12mm 15mm; background: #fff; font-size: 12pt; color: #000; box-sizing: border-box; position: relative; font-family: 'Calibri', 'Arial', sans-serif; overflow: hidden; page-break-after: always; }
+        
+        /* КРУПНАЯ ШАПКА */
+        .pdf-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b8860b; padding-bottom: 8px; margin-bottom: 12px; }
+        .pdf-header-text { font-size: 10pt; line-height: 1.3; }
+        
+        .kp-title { font-size: 16pt; font-weight: bold; color: #b8860b; text-align: center; margin: 10px 0; text-transform: uppercase; font-family: 'Calibri', 'Arial', sans-serif; }
+        .kp-meta { font-size: 12pt; margin-bottom: 12px; line-height: 1.5; }
+        
+        /* ТАБЛИЦА С ШРИФТОМ 12pt CALIBRI */
+        .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-family: 'Calibri', 'Arial', sans-serif; }
+        .kp-table th, .kp-table td { border: 1px solid #000; padding: 8px 10px; font-size: 12pt; vertical-align: top; line-height: 1.35; }
+        .kp-table th { background: #000; color: #fff; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 11pt; }
+        
+        .total-row { background: #b8860b; color: #fff; font-weight: bold; font-size: 12pt; }
+        .total-row-discount { background: #8b6508; color: #fff; font-weight: bold; font-size: 12pt; }
+
+        .conditions-box { font-size: 11pt; line-height: 1.5; margin-top: 14px; }
+        .conditions-box h4 { margin: 6px 0 3px 0; font-size: 12pt; text-decoration: underline; }
+
+        /* ИСПРАВЛЕННЫЙ И УВЕЛИЧЕННЫЙ КОЛОНТИКУЛ */
+        .footer-line { position: absolute; bottom: 10mm; left: 15mm; right: 15mm; font-size: 9.5pt; border-top: 1px solid #ccc; padding-top: 6px; text-align: center; color: #222; line-height: 1.35; }
+
+        /* ВТОРАЯ СТРАНИЦА */
+        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 10px 12px; margin-bottom: 12px; font-size: 11.5pt; line-height: 1.4; }
+        .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 3px; font-size: 12pt; }
+        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+        .photo-card { width: 100%; height: 130px; background: #f0f4f8; border: 1px solid #cbd5e0; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 11.5pt; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
@@ -151,16 +163,17 @@
 
 <div id="pdfTemplateWrapper">
     <div id="pdfContent">
+        <!-- СТРАНИЦА 1 -->
         <div class="pdf-page">
             <div class="pdf-header">
                 <div class="pdf-header-text">
                     <b>ЖАУАПКЕРШІЛІГІ ШЕКТЕУЛІ СЕРІКТЕСТІГІ «Мамыр»</b><br>
                     Қазақстан Республикасы 110000, Қостанай облысы, Қостанай қаласы, Узкоколейная көш. 9<br>
-                    Тел: +77710547766 | E-mail: too.mamyr@mail.ru
+                    Тел: +7 771 054 77 66 | E-mail: too.mamyr@mail.ru
                 </div>
                 <div style="text-align:right;">
-                    <strong style="font-size:18px; color:#b8860b; font-family:'Arial Black';">M-CONSTRUCTION</strong><br>
-                    <span style="font-size:7.5px; color:#555;">ТОВАРИЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «Мамыр»</span>
+                    <strong style="font-size:20px; color:#b8860b; font-family:'Arial Black';">M-CONSTRUCTION</strong><br>
+                    <span style="font-size:9.5pt; color:#555; font-weight:bold;">ТОВАРИЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «Мамыр»</span>
                 </div>
             </div>
 
@@ -174,9 +187,9 @@
             <table class="kp-table">
                 <thead>
                     <tr>
-                        <th style="width: 50%;">Наименование и подробное описание</th>
+                        <th style="width: 48%;">Наименование и подробное описание</th>
                         <th style="width: 12%;">Кол-во</th>
-                        <th style="width: 18%;">Сумма (₸)</th>
+                        <th style="width: 20%;">Сумма (₸)</th>
                         <th style="width: 20%;">Примечание</th>
                     </tr>
                 </thead>
@@ -196,12 +209,14 @@
                 - Монтажные работы: 30 дней
             </div>
 
+            <!-- ТОЧНЫЙ КОЛОНТИКУЛ ТОО "МАМЫР" -->
             <div class="footer-line">
-                ТОО «Мамыр-РК» г. Костанай ул. Узкоколейная 9 БИН 011240003418 E-mail: too.mamyr@mail.ru<br>
-                Лицензия СМР II категория ГС-2-No 03293 от 15.10.2020
+                <b>ТОО «Мамыр»</b> | Республика Казахстан, 110000, г. Костанай, ул. Узкоколейная, д. 9 | БИН 011240003418<br>
+                Лицензия СМР II категория ГС-2 № 03293 от 15.10.2020 г. | Тел: +7 771 054 77 66 | E-mail: too.mamyr@mail.ru
             </div>
         </div>
 
+        <!-- СТРАНИЦА 2 -->
         <div class="pdf-page">
             <div class="pdf-header">
                 <div class="pdf-header-text">
@@ -209,11 +224,11 @@
                     Қазақстан Республикасы 110000, Қостанай қаласы, Узкоколейная көш. 9
                 </div>
                 <div style="text-align:right;">
-                    <strong style="font-size:16px; color:#b8860b;">M-CONSTRUCTION</strong>
+                    <strong style="font-size:18px; color:#b8860b;">M-CONSTRUCTION</strong>
                 </div>
             </div>
 
-            <div class="kp-title" style="margin-bottom:15px;">ТЕХНИЧЕСКИЕ РЕШЕНИЯ И ПРЕИМУЩЕСТВА «MCONSTRUCTION»</div>
+            <div class="kp-title" style="margin-bottom:18px;">ТЕХНИЧЕСКИЕ РЕШЕНИЯ И ПРЕИМУЩЕСТВА «M-CONSTRUCTION»</div>
 
             <div class="feature-box">
                 <div class="feature-title">Строительство под ключ</div>
@@ -237,14 +252,14 @@
                 <div class="photo-card">Объект M-CONSTRUCTION<br>(Готовый объект)</div>
             </div>
 
-            <div style="margin-top: 35px; font-size: 10px; font-weight: bold;">
+            <div style="margin-top: 40px; font-size: 12pt; font-weight: bold; line-height: 1.6;">
                 С уважением,<br>
                 <span id="pdfSignManager">Менеджер отдела продаж: Лемперт Александр</span>
             </div>
 
             <div class="footer-line">
-                ТОО «Мамыр-РК» г. Костанай ул. Узкоколейная 9 БИН 011240003418 E-mail: too.mamyr@mail.ru<br>
-                Лицензия СМР II категория ГС-2-No 03293 от 15.10.2020
+                <b>ТОО «Мамыр»</b> | Республика Казахстан, 110000, г. Костанай, ул. Узкоколейная, д. 9 | БИН 011240003418<br>
+                Лицензия СМР II категория ГС-2 № 03293 от 15.10.2020 г. | Тел: +7 771 054 77 66 | E-mail: too.mamyr@mail.ru
             </div>
         </div>
     </div>
@@ -372,7 +387,7 @@
 
             document.getElementById('pdfKpNum').innerText = "КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ № " + kpNum;
             document.getElementById('pdfObjectTitle').innerText = "Быстровозводимый " + (isProf ? "металлический" : "металлотентовый") + " ангар " + w.toFixed(1) + " х " + l.toFixed(1) + " х " + (type.indexOf('straight') !== -1 ? wallH.toFixed(1) : (w*0.35).toFixed(1)) + " м (" + area + " м²)";
-            document.getElementById('pdfPurpose').innerText = purpose;
+            document.getElementByI('pdfPurpose').innerText = purpose;
 
             var rows = "<tr>" +
                 "<td><b>Комплект сборно-разборной стальной конструкции ангара.</b><br>Размер: " + w.toFixed(1) + " х " + l.toFixed(1) + " м.<br>Тип: " + (type.indexOf('straight') !== -1 ? "Прямостенный" : "Арочный") + ".<br>Соединение: Болтовое.<br>Покрытие: " + coverDesc + "</td>" +
