@@ -91,18 +91,15 @@
             }
         })
         .then(res => {
-            if (!res.ok) {
-                throw new Error(Ошибка сервера JSONBin (код ${res.status}));
-            }
+            if (!res.ok) throw new Error("Ошибка сервера базы данных: " + res.status);
             return res.json();
         })
         .then(data => {
             let db = data.record;
-            if (Array.isArray(db)) {
-                db = db[0] || {};
-            }
+            if (Array.isArray(db)) db = db[0] || {};
+            if (typeof db !== 'object' || db === null) db = {};
 
-            const record = db ? db[linkId] : null;
+            const record = db[linkId];
 
             if (!record) {
                 showError("Ссылка не найдена", "Данная ссылка не зарегистрирована в базе.");
@@ -116,7 +113,7 @@
 
             if (record.used) {
                 if (record.deviceLock && record.deviceLock !== currentDeviceId) {
-                    showError("Пересылка запрещена", "Эта ссылка была открыта на другом устройстве и заблокирована для пересылки.");
+                    showError("Пересылка запрещена", "Эта ссылка была открыта на другом устройстве.");
                     return;
                 }
                 showError("Ссылка сгорела", "Вы уже просмотрели этот расчет. Повторный доступ закрыт.");
@@ -137,14 +134,12 @@
                 },
                 body: JSON.stringify(db)
             }).then(saveRes => {
-                if (!saveRes.ok) {
-                    throw new Error("Не удалось обновить статус ссылки.");
-                }
+                if (!saveRes.ok) throw new Error("Ошибка обновления статуса.");
                 showCalc(record.client || clientName);
             });
         })
         .catch(err => {
-            showError("Ошибка выполнения", err.message);
+            showError("Ошибка доступа", err.message || "Не удалось проверить статус ссылки.");
         });
     }
 </script>
