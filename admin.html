@@ -91,31 +91,31 @@
         const tbody = document.getElementById('statsTableBody');
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Загрузка...</td></tr>';
         
-        fetch(https://api.jsonbin.io/v3/b/${BIN_ID}/latest, {
-            method: 'GET',
+        fetch("https://api.jsonbin.io/v3/b/" + BIN_ID + "/latest", {
+            method: "GET",
             headers: { 
                 "X-Master-Key": SECRET_KEY,
                 "X-Bin-Meta": "false"
             }
         })
-        .then(res => res.json())
-        .then(db => {
+        .then(function(res) { return res.json(); })
+        .then(function(db) {
             if (Array.isArray(db)) db = db[0] || {};
 
             tbody.innerHTML = '';
-            const keys = Object.keys(db).filter(k => k.startsWith('id_')).reverse();
+            var keys = Object.keys(db).filter(function(k) { return k.indexOf('id_') === 0; }).reverse();
 
             if (keys.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Ссылок пока нет</td></tr>';
                 return;
             }
 
-            const now = Date.now();
-            keys.forEach(key => {
-                const item = db[key];
+            var now = Date.now();
+            keys.forEach(function(key) {
+                var item = db[key];
                 if (!item) return;
 
-                let statusBadge = '';
+                var statusBadge = '';
                 if (item.used) {
                     statusBadge = '<span class="badge badge-used">🔴 Просмотрено</span>';
                 } else if (item.expiresAt && now > item.expiresAt) {
@@ -124,48 +124,46 @@
                     statusBadge = '<span class="badge badge-new">🟢 Не открыта</span>';
                 }
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><b>${item.client || 'Без имени'}</b></td>
-                    <td>${statusBadge}</td>
-                    <td>${formatDate(item.createdAt)}</td>
-                    <td>${formatDate(item.firstOpenedAt)}</td>
-                `;
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td><b>' + (item.client || 'Без имени') + '</b></td>' +
+                               '<td>' + statusBadge + '</td>' +
+                               '<td>' + formatDate(item.createdAt) + '</td>' +
+                               '<td>' + formatDate(item.firstOpenedAt) + '</td>';
                 tbody.appendChild(tr);
             });
         })
-        .catch(err => {
+        .catch(function(err) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Ошибка связи с базой. Нажмите «Обновить» повторно.</td></tr>';
         });
     }
 
-    document.getElementById('genBtn').onclick = function() {
-        const clientName = document.getElementById('clientName').value.trim();
-        const ttlHours = parseInt(document.getElementById('ttlSelect').value);
+    document.getElementById('genBtn').addEventListener('click', function() {
+        var clientName = document.getElementById('clientName').value.trim();
+        var ttlHours = parseInt(document.getElementById('ttlSelect').value);
 
         if (!clientName) {
             alert("Пожалуйста, введите имя клиента!");
             return;
         }
 
-        const linkId = "id_" + Date.now();
-        const now = Date.now();
-        const fullUrl = BASE_URL + "?client=" + encodeURIComponent(clientName) + "&id=" + linkId;
+        var linkId = "id_" + Date.now();
+        var now = Date.now();
+        var fullUrl = BASE_URL + "?client=" + encodeURIComponent(clientName) + "&id=" + linkId;
 
-        // Мгновенно отображаем ссылку клиенту
+        // Показываем сгенерированную ссылку мгновенно
         document.getElementById('genUrl').innerText = fullUrl;
         document.getElementById('resultBox').style.display = "block";
 
-        // Сохраняем в JSONBin
-        fetch(https://api.jsonbin.io/v3/b/${BIN_ID}/latest, {
-            method: 'GET',
+        // Сохраняем новую ссылку в JSONBin
+        fetch("https://api.jsonbin.io/v3/b/" + BIN_ID + "/latest", {
+            method: "GET",
             headers: { 
                 "X-Master-Key": SECRET_KEY,
                 "X-Bin-Meta": "false"
             }
         })
-        .then(res => res.json())
-        .then(db => {
+        .then(function(res) { return res.json(); })
+        .then(function(db) {
             if (Array.isArray(db)) db = db[0] || {};
 
             db[linkId] = {
@@ -177,7 +175,7 @@
                 deviceLock: null
             };
 
-            return fetch(https://api.jsonbin.io/v3/b/${BIN_ID}, {
+            return fetch("https://api.jsonbin.io/v3/b/" + BIN_ID, {
                 method: "PUT",
                 headers: { 
                     "Content-Type": "application/json", 
@@ -186,11 +184,11 @@
                 body: JSON.stringify(db)
             });
         })
-        .then(() => loadStats())
-        .catch(e => console.log(e));
-    };
+        .then(function() { loadStats(); })
+        .catch(function(e) { console.log(e); });
+    });
 
-    document.getElementById('refreshBtn').onclick = loadStats;
+    document.getElementById('refreshBtn').addEventListener('click', loadStats);
 </script>
 
 </body>
