@@ -21,14 +21,34 @@
         
         .btn-generate { width: 100%; padding: 14px; background: #2b6cb0; color: #fff; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; transition: 0.2s; }
         .btn-generate:hover { background: #2c5282; }
+        .btn-generate:disabled { background: #a0aec0; cursor: not-allowed; }
 
-        /* ШАБЛОН ДЛЯ ПЕЧАТИ В PDF */
-        #pdfTemplateWrapper { display: none; }
-        .pdf-page { width: 210mm; min-height: 296mm; padding: 12mm 15mm; background: #fff; font-size: 11px; color: #000; box-sizing: border-box; position: relative; font-family: 'Arial', sans-serif; }
+        /* СКРЫТЫЙ КОНТЕЙНЕР ШАБЛОНА ДЛЯ PDF */
+        #pdfTemplateWrapper { 
+            position: absolute; 
+            left: -9999px; 
+            top: 0; 
+            width: 210mm; 
+        }
+
+        .pdf-page { 
+            width: 210mm; 
+            height: 295mm; 
+            padding: 12mm 15mm; 
+            background: #fff; 
+            font-size: 11px; 
+            color: #000; 
+            box-sizing: border-box; 
+            position: relative; 
+            font-family: 'Arial', sans-serif; 
+            overflow: hidden;
+            page-break-after: always;
+        }
+
         .pdf-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b8860b; padding-bottom: 8px; margin-bottom: 10px; }
-        .pdf-header-text { font-size: 8px; line-height: 1.2; }
+        .pdf-header-text { font-size: 8.5px; line-height: 1.2; }
         
-        .kp-title { font-size: 15px; font-weight: bold; color: #b8860b; text-align: center; margin: 10px 0 6px 0; text-transform: uppercase; }
+        .kp-title { font-size: 15px; font-weight: bold; color: #b8860b; text-align: center; margin: 8px 0; text-transform: uppercase; }
         .kp-meta { font-size: 10px; margin-bottom: 10px; line-height: 1.4; }
         
         .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
@@ -41,12 +61,12 @@
         .conditions-box { font-size: 9.5px; line-height: 1.4; margin-top: 10px; }
         .conditions-box h4 { margin: 4px 0; font-size: 10px; text-decoration: underline; }
 
-        .footer-line { position: absolute; bottom: 10mm; left: 15mm; right: 15mm; font-size: 7.5px; border-top: 1px solid #ccc; padding-top: 4px; text-align: center; color: #444; }
+        .footer-line { position: absolute; bottom: 8mm; left: 15mm; right: 15mm; font-size: 7.5px; border-top: 1px solid #ccc; padding-top: 4px; text-align: center; color: #444; }
 
-        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 6px 10px; margin-bottom: 8px; font-size: 9.5px; }
+        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 8px 10px; margin-bottom: 10px; font-size: 9.5px; }
         .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 2px; }
         .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .photo-grid img { width: 100%; height: 130px; object-fit: cover; border: 1px solid #ddd; }
+        .photo-card { width: 100%; height: 130px; background: #f0f4f8; border: 1px solid #cbd5e0; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 11px; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
@@ -160,10 +180,10 @@
         </div>
     </div>
 
-    <button class="btn-generate" onclick="generateAndSaveKP()">📄 Сформировать и скачать КП (PDF)</button>
+    <button class="btn-generate" id="btnGen" onclick="generateAndSaveKP()">📄 Сформировать и скачать КП (PDF)</button>
 </div>
 
-<!-- ШАБЛОН PDF -->
+<!-- ШАБЛОН PDF ПЕЧАТИ -->
 <div id="pdfTemplateWrapper">
     <div id="pdfContent">
         <!-- СТРАНИЦА 1 -->
@@ -176,7 +196,7 @@
                 </div>
                 <div style="text-align:right;">
                     <strong style="font-size:18px; color:#b8860b; font-family:'Arial Black';">M-CONSTRUCTION</strong><br>
-                    <span style="font-size:8px; color:#555;">ТОВАРИЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «Мамыр»</span>
+                    <span style="font-size:7.5px; color:#555;">ТОВАРИЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «Мамыр»</span>
                 </div>
             </div>
 
@@ -219,7 +239,7 @@
         </div>
 
         <!-- СТРАНИЦА 2 -->
-        <div class="pdf-page" style="page-break-before: always;">
+        <div class="pdf-page">
             <div class="pdf-header">
                 <div class="pdf-header-text">
                     <b>ЖАУАПКЕРШІЛІГІ ШЕКТЕУЛІ СЕРІКТЕСТІГІ «Мамыр»</b><br>
@@ -234,20 +254,25 @@
 
             <div class="feature-box">
                 <div class="feature-title">Строительство под ключ</div>
-                Мы осуществляем полный цикл реализации проекта: проектирование, заводское производство, устройство фундамента и монтаж.
+                Мы осуществляем полный цикл реализации проекта: проектирование, заводское производство, устройство фундамента и монтаж. Клиент получает готовый к эксплуатации объект от одного подрядчика.
             </div>
 
             <div class="feature-box">
                 <div class="feature-title">Болтовые соединения и точность монтажа</div>
-                Все несущие конструкции собираются исключительно на болтовых соединениях без применения сварки на объекте.
+                Все несущие конструкции собираются исключительно на болтовых соединениях. Это исключает необходимость сварки на объекте, гарантирует точность геометрии и позволяет проводить работы при любых погодных условиях.
             </div>
 
             <div class="feature-box">
                 <div class="feature-title">Расчет нагрузок и региональные стандарты</div>
-                Проектирование ведется с учетом снеговых и ветровых нагрузок по СНиП конкретного региона.
+                Проектирование ведется с учетом индивидуальных условий эксплуатации. Ветровые и снеговые нагрузки рассчитываются согласно строительным нормам (СНиП) конкретного региона.
             </div>
 
-            <div class="photo-grid" id="pdfPhotoGrid"></div>
+            <div class="photo-grid" id="pdfPhotoGrid">
+                <div class="photo-card">Объект M-CONSTRUCTION<br>(Вид снаружи)</div>
+                <div class="photo-card">Объект M-CONSTRUCTION<br>(Конструктив МК)</div>
+                <div class="photo-card">Объект M-CONSTRUCTION<br>(Внутреннее пространство)</div>
+                <div class="photo-card">Объект M-CONSTRUCTION<br>(Готовый объект)</div>
+            </div>
 
             <div style="margin-top: 35px; font-size: 10px; font-weight: bold;">
                 С уважением,<br>
@@ -267,20 +292,6 @@
     const SECRET_KEY = "$2a$10$IMgqPeq6EGMUWkoPpesa5.NXtCKi6SpV9oE.H/hRWRVC9gheuz1WO";
     const VAT = 1.16;
 
-    const tentPhotos = [
-        "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80",
-        "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=600&q=80",
-        "https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=600&q=80",
-        "https://images.unsplash.com/photo-1513828583688-c52646db42da?auto=format&fit=crop&w=600&q=80"
-    ];
-
-    const profPhotos = [
-        "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=600&q=80",
-        "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=600&q=80",
-        "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
-        "https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=600&q=80"
-    ];
-
     document.getElementById('buildingType').addEventListener('change', function() {
         document.getElementById('wallHBox').style.display = (this.value.includes('straight')) ? 'block' : 'none';
     });
@@ -288,201 +299,207 @@
         document.getElementById('stripParamsBox').style.display = (this.value === 'strip') ? 'block' : 'none';
     });
 
+    function getNum(id, fallback = 0) {
+        let el = document.getElementById(id);
+        if (!el) return fallback;
+        let v = parseFloat(el.value);
+        return isNaN(v) ? fallback : v;
+    }
+
     function generateAndSaveKP() {
-        const manager = document.getElementById('managerSelect').value;
-        const client = document.getElementById('clientName').value || 'Заказчик';
-        const purpose = document.getElementById('purpose').value || 'Ангар';
-        
-        const type = document.getElementById('buildingType').value;
-        const w = parseFloat(document.getElementById('width').value) || 0;
-        const l = parseFloat(document.getElementById('length').value) || 0;
-        const wallH = parseFloat(document.getElementById('wallH').value) || 3;
-        const area = w * l;
+        const btn = document.getElementById('btnGen');
+        btn.disabled = true;
+        btn.innerText = "⏳ Формирование PDF...";
 
-        const gateSize = document.getElementById('gateSize').value;
-        const gateCount = parseInt(document.getElementById('gateCount').value) || 0;
-        const ventCount = parseInt(document.getElementById('ventCount').value) || 0;
-
-        const montageType = document.getElementById('montageType').value;
-        const fundType = document.getElementById('fundType').value;
-        const fundW = parseFloat(document.getElementById('fundW').value) || 0.4;
-        const fundH = parseFloat(document.getElementById('fundH').value) || 1.2;
-
-        const distance = parseFloat(document.getElementById('distance').value) || 0;
-        const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
-
-        let rateNoVat = 0;
-        let isProf = false;
-        let coverDesc = "";
-
-        if (type === 'arch_pvc') {
-            if (w <= 13) rateNoVat = 17000;
-            else if (w <= 16) rateNoVat = 19000;
-            else rateNoVat = 22000;
-            coverDesc = "Тент ПВХ 900 гр/м² не поддерживающий горения";
-        } else if (type === 'straight_arch_pvc') {
-            rateNoVat = (w <= 13) ? 19000 : 25000;
-            coverDesc = "Тент ПВХ 900 гр/м² не поддерживающий горения";
-        } else {
-            isProf = true;
-            rateNoVat = (w <= 13) ? 23000 : 26000;
-            coverDesc = "Кровельное: Профнастил Н-44 0.7 мм оцинкованный.<br>Стеновое: Профнастил Н-44 0.7 мм оцинкованный.";
-        }
-
-        let heightMult = 1.0;
-        if (type === 'straight_arch_pvc' && wallH > 3) heightMult += (wallH - 3) * 0.03;
-        if (type === 'straight_gable_prof' && wallH > 4) heightMult += (wallH - 4) * 0.03;
-
-        const constPrice = Math.round(area * rateNoVat * heightMult * VAT);
-
-        let singleGate = 700000;
-        let gateW = 4;
-        if (gateSize === '3x3') { singleGate = 600000; gateW = 3; }
-        if (gateSize === '5x5') { singleGate = 800000; gateW = 5; }
-        const gatePrice = singleGate * gateCount;
-
-        const ventPrice = ventCount * 58000 * VAT;
-
-        let fundPrice = 0;
-        let fundDesc = "";
-        let fundNote = "";
-
-        if (fundType === 'strip') {
-            let P = 2 * (w + l);
-            let netP = Math.max(0, P - (gateW * gateCount));
-            let stripVol = netP * fundW * fundH;
-            let pilesVol = (Math.floor(l / 3) * 2 + 8) * 0.25;
-            let blindVol = P * 1.0 * 0.1;
-            let totalVol = Math.round(stripVol + pilesVol + blindVol);
+        try {
+            const manager = document.getElementById('managerSelect').value;
+            const client = document.getElementById('clientName').value || 'Заказчик';
+            const purpose = document.getElementById('purpose').value || 'Ангар';
             
-            fundPrice = Math.round(totalVol * 135000 * VAT);
-            fundDesc = Фундамент железобетонный монолитный Н-${fundH}м, В-${fundW}м.<br>Буроналивные сваи Ø300, L-2.0м (${Math.floor(l / 3) * 2 + 8}шт).<br>Отмостка: 0,1х1,0м (${P}м).;
-            fundNote = ${totalVol} м³;
-        } else if (fundType === 'screw') {
-            let P = 2 * (w + l);
-            let screwRate = (w <= 13) ? 22000 : (w <= 17) ? 26000 : (w <= 22) ? 30000 : 34000;
-            fundPrice = Math.round(P * screwRate * VAT);
-            fundDesc = "Свайно-винтовой фундамент по периметру здания";
-            fundNote = ${P} п.м.;
-        } else {
-            fundDesc = "Подготовка фундамента Заказчиком";
-            fundPrice = 0;
-            fundNote = "—";
-        }
+            const type = document.getElementById('buildingType').value;
+            const w = getNum('width', 18);
+            const l = getNum('length', 36);
+            const wallH = getNum('wallH', 3);
+            const area = w * l;
 
-        // Монтаж
-        let montagePrice = 0;
-        if (montageType === 'include') {
-            const montagePercent = isProf ? 0.23 : 0.18;
-            montagePrice = Math.round(constPrice * montagePercent);
-        }
+            const gateSize = document.getElementById('gateSize').value;
+            const gateCount = getNum('gateCount', 0);
+            const ventCount = getNum('ventCount', 0);
 
-        const deliveryPrice = Math.round(distance * 1000 * VAT);
+            const montageType = document.getElementById('montageType').value;
+            const fundType = document.getElementById('fundType').value;
+            const fundW = getNum('fundW', 0.4);
+            const fundH = getNum('fundH', 1.2);
 
-        const totalBase = constPrice + gatePrice + ventPrice + fundPrice + montagePrice + deliveryPrice;
-        const discountAmount = Math.round(totalBase * (discountPercent / 100));
-        const totalFinal = totalBase - discountAmount;
+            const distance = getNum('distance', 0);
+            const discountPercent = getNum('discountPercent', 0);
 
-        const kpNum = Math.floor(100 + Math.random() * 900);
+            let rateNoVat = 0;
+            let isProf = false;
+            let coverDesc = "";
 
-        document.getElementById('pdfKpNum').innerText = КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ № ${kpNum};
-        document.getElementById('pdfObjectTitle').innerText = Быстровозводимый ${isProf ? 'металлический' : 'металлотентовый'} ангар ${w.toFixed(1)} х ${l.toFixed(1)} х ${type.includes('straight') ? wallH.toFixed(1) : (w*0.35).toFixed(1)} м (${area} м²);
-        document.getElementById('pdfPurpose').innerText = purpose;
+            if (type === 'arch_pvc') {
+                if (w <= 13) rateNoVat = 17000;
+                else if (w <= 16) rateNoVat = 19000;
+                else rateNoVat = 22000;
+                coverDesc = "Тент ПВХ 900 гр/м² не поддерживающий горения";
+            } else if (type === 'straight_arch_pvc') {
+                rateNoVat = (w <= 13) ? 19000 : 25000;
+                coverDesc = "Тент ПВХ 900 гр/м² не поддерживающий горения";
+            } else {
+                isProf = true;
+                rateNoVat = (w <= 13) ? 23000 : 26000;
+                coverDesc = "Кровельное: Профнастил Н-44 0.7 мм оцинкованный.<br>Стеновое: Профнастил Н-44 0.7 мм оцинкованный.";
+            }
 
-        let rows = `
-            <tr>
-                <td><b>Комплект сборно-разборной стальной конструкции ангара.</b><br>Размер: ${w.toFixed(1)} х ${l.toFixed(1)} м.<br>Тип: ${type.includes('straight') ? 'Прямостенный' : 'Арочный'}.<br>Соединение: Болтовое.<br>Покрытие: ${coverDesc}</td>
-                <td style="text-align:center;">1 к-т</td>
-                <td style="text-align:right;">${constPrice.toLocaleString('ru-RU')}</td>
-                <td>Заводское изготовление</td>
-            </tr>
-        `;
+            let heightMult = 1.0;
+            if (type === 'straight_arch_pvc' && wallH > 3) heightMult += (wallH - 3) * 0.03;
+            if (type === 'straight_gable_prof' && wallH > 4) heightMult += (wallH - 4) * 0.03;
 
-        if (gateCount > 0) {
-            rows += `
+            const constPrice = Math.round(area * rateNoVat * heightMult * VAT);
+
+            let singleGate = 700000;
+            let gateW = 4;
+            if (gateSize === '3x3') { singleGate = 600000; gateW = 3; }
+            if (gateSize === '5x5') { singleGate = 800000; gateW = 5; }
+            const gatePrice = singleGate * gateCount;
+
+            const ventPrice = ventCount * 58000 * VAT;
+
+            let fundPrice = 0;
+            let fundDesc = "";
+            let fundNote = "";
+
+            if (fundType === 'strip') {
+                let P = 2 * (w + l);
+                let netP = Math.max(0, P - (gateW * gateCount));
+                let stripVol = netP * fundW * fundH;
+                let pilesVol = (Math.floor(l / 3) * 2 + 8) * 0.25;
+                let blindVol = P * 1.0 * 0.1;
+                let totalVol = Math.round(stripVol + pilesVol + blindVol);
+                
+                fundPrice = Math.round(totalVol * 135000 * VAT);
+                fundDesc = Фундамент железобетонный монолитный Н-${fundH}м, В-${fundW}м.<br>Буроналивные сваи Ø300, L-2.0м (${Math.floor(l / 3) * 2 + 8}шт).<br>Отмостка: 0,1х1,0м (${P}м).;
+                fundNote = ${totalVol} м³;
+            } else if (fundType === 'screw') {
+                let P = 2 * (w + l);
+                let screwRate = (w <= 13) ? 22000 : (w <= 17) ? 26000 : (w <= 22) ? 30000 : 34000;
+                fundPrice = Math.round(P * screwRate * VAT);
+                fundDesc = "Свайно-винтовой фундамент по периметру здания";
+                fundNote = ${P} п.м.;
+            } else {
+                fundDesc = "Подготовка фундамента Заказчиком";
+                fundPrice = 0;
+                fundNote = "—";
+            }
+
+            let montagePrice = 0;
+            if (montageType === 'include') {
+                const montagePercent = isProf ? 0.23 : 0.18;
+                montagePrice = Math.round(constPrice * montagePercent);
+            }
+
+            const deliveryPrice = Math.round(distance * 1000 * VAT);
+
+            const totalBase = constPrice + gatePrice + ventPrice + fundPrice + montagePrice + deliveryPrice;
+            const discountAmount = Math.round(totalBase * (discountPercent / 100));
+            const totalFinal = totalBase - discountAmount;
+
+            const kpNum = Math.floor(100 + Math.random() * 900);
+
+            document.getElementById('pdfKpNum').innerText = КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ № ${kpNum};
+            document.getElementById('pdfObjectTitle').innerText = Быстровозводимый ${isProf ? 'металлический' : 'металлотентовый'} ангар ${w.toFixed(1)} х ${l.toFixed(1)} х ${type.includes('straight') ? wallH.toFixed(1) : (w*0.35).toFixed(1)} м (${area} м²);
+            document.getElementById('pdfPurpose').innerText = purpose;
+
+            let rows = `
                 <tr>
-                    <td><b>Ворота металлические, распашные [${gateW}.0 х ${gateW}.0 м].</b><br>Комплектация: Встроенная дверь (2.0 х 1.0 м), засовы, упоры, навесы.</td>
-                    <td style="text-align:center;">${gateCount} к-та</td>
-                    <td style="text-align:right;">${gatePrice.toLocaleString('ru-RU')}</td>
-                    <td>—</td>
+                    <td><b>Комплект сборно-разборной стальной конструкции ангара.</b><br>Размер: ${w.toFixed(1)} х ${l.toFixed(1)} м.<br>Тип: ${type.includes('straight') ? 'Прямостенный' : 'Арочный'}.<br>Соединение: Болтовое.<br>Покрытие: ${coverDesc}</td>
+                    <td style="text-align:center;">1 к-т</td>
+                    <td style="text-align:right;">${constPrice.toLocaleString('ru-RU')}</td>
+                    <td>Заводское изготовление</td>
                 </tr>
             `;
-        }
 
-        if (ventCount > 0) {
+            if (gateCount > 0) {
+                rows += `
+                    <tr>
+                        <td><b>Ворота металлические, распашные [${gateW}.0 х ${gateW}.0 м].</b><br>Комплектация: Встроенная дверь (2.0 х 1.0 м), засовы, упоры, навесы.</td>
+                        <td style="text-align:center;">${gateCount} к-та</td>
+                        <td style="text-align:right;">${gatePrice.toLocaleString('ru-RU')}</td>
+                        <td>—</td>
+                    </tr>
+                `;
+            }
+
+            if (ventCount > 0) {
+                rows += `
+                    <tr>
+                        <td><b>Вентиляционная решетка по торцам</b></td>
+                        <td style="text-align:center;">${ventCount} к-та</td>
+                        <td style="text-align:right;">${ventPrice.toLocaleString('ru-RU')}</td>
+                        <td>—</td>
+                    </tr>
+                `;
+            }
+
             rows += `
                 <tr>
-                    <td><b>Вентиляционная решетка по торцам</b></td>
-                    <td style="text-align:center;">${ventCount} к-та</td>
-                    <td style="text-align:right;">${ventPrice.toLocaleString('ru-RU')}</td>
-                    <td>—</td>
+                    <td><b>${fundDesc}</b></td>
+                    <td style="text-align:center;">—</td>
+                    <td style="text-align:right;">${fundPrice.toLocaleString('ru-RU')}</td>
+                    <td>${fundNote}</td>
                 </tr>
-            `;
-        }
-
-        rows += `
-            <tr>
-                <td><b>${fundDesc}</b></td>
-                <td style="text-align:center;">—</td>
-                <td style="text-align:right;">${fundPrice.toLocaleString('ru-RU')}</td>
-                <td>${fundNote}</td>
-            </tr>
-            <tr>
-                <td><b>Монтажные работы строительной бригады</b></td>
-                <td style="text-align:center;">работа</td>
-                <td style="text-align:right;">${montagePrice > 0 ? montagePrice.toLocaleString('ru-RU') : '0'}</td>
-                <td>${montagePrice > 0 ? 'Спецтехника включена' : 'Шеф-монтаж / своими силами'}</td>
-            </tr>
-            <tr>
-                <td><b>Транспортные расходы и логистика (1000 тг/км от г. Костанай)</b></td>
-                <td style="text-align:center;">${distance} км</td>
-                <td style="text-align:right;">${deliveryPrice.toLocaleString('ru-RU')}</td>
-                <td>Возможен самовывоз</td>
-            </tr>
-            <tr class="total-row">
-                <td colspan="2">ИТОГО С УЧЕТОМ НДС 16%:</td>
-                <td style="text-align:right;">${totalBase.toLocaleString('ru-RU')}</td>
-                <td>₸</td>
-            </tr>
-        `;
-
-        if (discountPercent > 0) {
-            rows += `
-                <tr class="total-row-discount">
-                    <td colspan="2">ИТОГО С УЧЕТОМ СКИДКИ (${discountPercent}%):</td>
-                    <td style="text-align:right;">${totalFinal.toLocaleString('ru-RU')}</td>
+                <tr>
+                    <td><b>Монтажные работы строительной бригады</b></td>
+                    <td style="text-align:center;">работа</td>
+                    <td style="text-align:right;">${montagePrice > 0 ? montagePrice.toLocaleString('ru-RU') : '0'}</td>
+                    <td>${montagePrice > 0 ? 'Спецтехника включена' : 'Шеф-монтаж / своими силами'}</td>
+                </tr>
+                <tr>
+                    <td><b>Транспортные расходы и логистика (1000 тг/км от г. Костанай)</b></td>
+                    <td style="text-align:center;">${distance} км</td>
+                    <td style="text-align:right;">${deliveryPrice.toLocaleString('ru-RU')}</td>
+                    <td>Возможен самовывоз</td>
+                </tr>
+                <tr class="total-row">
+                    <td colspan="2">ИТОГО С УЧЕТОМ НДС 16%:</td>
+                    <td style="text-align:right;">${totalBase.toLocaleString('ru-RU')}</td>
                     <td>₸</td>
                 </tr>
             `;
-        }
 
-        document.getElementById('pdfTableBody').innerHTML = rows;
+            if (discountPercent > 0) {
+                rows += `
+                    <tr class="total-row-discount">
+                        <td colspan="2">ИТОГО С УЧЕТОМ СКИДКИ (${discountPercent}%):</td>
+                        <td style="text-align:right;">${totalFinal.toLocaleString('ru-RU')}</td>
+                        <td>₸</td>
+                    </tr>
+                `;
+            }
 
-        const currentPhotos = isProf ? profPhotos : tentPhotos;
-        document.getElementById('pdfPhotoGrid').innerHTML = currentPhotos.map(p => <img src="${p}">).join('');
-        document.getElementById('pdfSignManager').innerText = Менеджер отдела продаж: ${manager};
+            document.getElementById('pdfTableBody').innerHTML = rows;
+            document.getElementById('pdfSignManager').innerText = Менеджер отдела продаж: ${manager};
 
-        // 1. Скачивание PDF
-        const element = document.getElementById('pdfContent');
-        const opt = {
-            margin:       0,
-            filename:     КП_№${kpNum}_${client}.pdf,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
+            const element = document.getElementById('pdfContent');
+            const opt = {
+                margin:       0,
+                filename:     КП_№${kpNum}_${client}.pdf,
+                image:        { type: 'jpeg', quality: 0.95 },
+                html2canvas:  { scale: 2, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
 
-        document.getElementById('pdfTemplateWrapper').style.display = 'block';
-        
-        html2pdf().set(opt).from(element).save().then(() => {
-            document.getElementById('pdfTemplateWrapper').style.display = 'none';
-        }).catch(err => {
-            console.error("Ошибка PDF:", err);
-            document.getElementById('pdfTemplateWrapper').style.display = 'none';
-        });
+            html2pdf().set(opt).from(element).save().then(() => {
+                btn.disabled = false;
+                btn.innerText = "📄 Сформировать и скачать КП (PDF)";
+            }).catch(err => {
+                alert("Ошибка создания PDF: " + err.message);
+                btn.disabled = false;
+                btn.innerText = "📄 Сформировать и скачать КП (PDF)";
+            });
 
-        // 2. Отправка в реестр
-        try {
+            // Фоновая запись в базу
             fetch("https://api.jsonbin.io/v3/b/" + BIN_ID + "/latest", {
                 headers: { "X-Master-Key": SECRET_KEY, "X-Bin-Meta": "false" }
             })
@@ -505,8 +522,13 @@
                     headers: { "Content-Type": "application/json", "X-Master-Key": SECRET_KEY },
                     body: JSON.stringify(db)
                 });
-            }).catch(e => console.log("Ошибка записи в реестр:", e));
-        } catch(e) {}
+            }).catch(e => console.log(e));
+
+        } catch (e) {
+            alert("Ошибка выполнения: " + e.message);
+            btn.disabled = false;
+            btn.innerText = "📄 Сформировать и скачать КП (PDF)";
+        }
     }
 </script>
 
