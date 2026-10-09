@@ -21,34 +21,34 @@
         .btn-generate:disabled { background: #a0aec0; cursor: not-allowed; }
         
         #pdfTemplateWrapper { position: absolute; left: -9999px; top: 0; width: 210mm; }
-        .pdf-page { width: 210mm; height: 295mm; padding: 12mm 15mm; background: #fff; font-size: 12pt; color: #000; box-sizing: border-box; position: relative; font-family: 'Calibri', 'Arial', sans-serif; overflow: hidden; page-break-after: always; }
+        .pdf-page { width: 210mm; height: 295mm; padding: 12mm 15mm; background: #fff; font-size: 11pt; color: #000; box-sizing: border-box; position: relative; font-family: 'Calibri', 'Arial', sans-serif; overflow: hidden; page-break-after: always; }
         
-        /* КРУПНАЯ ШАПКА */
-        .pdf-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b8860b; padding-bottom: 8px; margin-bottom: 12px; }
-        .pdf-header-text { font-size: 10pt; line-height: 1.3; }
+        /* ШАПКА */
+        .pdf-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b8860b; padding-bottom: 6px; margin-bottom: 10px; }
+        .pdf-header-text { font-size: 9.5pt; line-height: 1.2; }
         
-        .kp-title { font-size: 16pt; font-weight: bold; color: #b8860b; text-align: center; margin: 10px 0; text-transform: uppercase; font-family: 'Calibri', 'Arial', sans-serif; }
-        .kp-meta { font-size: 12pt; margin-bottom: 12px; line-height: 1.5; }
+        .kp-title { font-size: 15pt; font-weight: bold; color: #b8860b; text-align: center; margin: 8px 0; text-transform: uppercase; font-family: 'Calibri', 'Arial', sans-serif; }
+        .kp-meta { font-size: 11pt; margin-bottom: 10px; line-height: 1.3; }
         
-        /* ТАБЛИЦА С ШРИФТОМ 12pt CALIBRI */
-        .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-family: 'Calibri', 'Arial', sans-serif; }
-        .kp-table th, .kp-table td { border: 1px solid #000; padding: 8px 10px; font-size: 12pt; vertical-align: top; line-height: 1.35; }
-        .kp-table th { background: #000; color: #fff; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 11pt; }
+        /* ТАБЛИЦА С КОМПАКТНЫМ МЕЖСТРОЧНЫМ ИНТЕРВАЛОМ */
+        .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-family: 'Calibri', 'Arial', sans-serif; }
+        .kp-table th, .kp-table td { border: 1px solid #000; padding: 5px 8px; font-size: 11pt; vertical-align: top; line-height: 1.15; }
+        .kp-table th { background: #000; color: #fff; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 10pt; }
         
-        .total-row { background: #b8860b; color: #fff; font-weight: bold; font-size: 12pt; }
-        .total-row-discount { background: #8b6508; color: #fff; font-weight: bold; font-size: 12pt; }
+        .total-row { background: #b8860b; color: #fff; font-weight: bold; font-size: 11.5pt; }
+        .total-row-discount { background: #8b6508; color: #fff; font-weight: bold; font-size: 11.5pt; }
 
-        .conditions-box { font-size: 11pt; line-height: 1.5; margin-top: 14px; }
-        .conditions-box h4 { margin: 6px 0 3px 0; font-size: 12pt; text-decoration: underline; }
+        .conditions-box { font-size: 10pt; line-height: 1.2; margin-top: 8px; }
+        .conditions-box h4 { margin: 4px 0 2px 0; font-size: 10.5pt; text-decoration: underline; }
 
-        /* ИСПРАВЛЕННЫЙ И УВЕЛИЧЕННЫЙ КОЛОНТИКУЛ */
-        .footer-line { position: absolute; bottom: 10mm; left: 15mm; right: 15mm; font-size: 9.5pt; border-top: 1px solid #ccc; padding-top: 6px; text-align: center; color: #222; line-height: 1.35; }
+        /* КОЛОНТИКУЛ */
+        .footer-line { position: absolute; bottom: 8mm; left: 15mm; right: 15mm; font-size: 9pt; border-top: 1px solid #ccc; padding-top: 4px; text-align: center; color: #222; line-height: 1.2; }
 
-        /* ВТОРАЯ СТРАНИЦА */
-        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 10px 12px; margin-bottom: 12px; font-size: 11.5pt; line-height: 1.4; }
-        .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 3px; font-size: 12pt; }
-        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
-        .photo-card { width: 100%; height: 130px; background: #f0f4f8; border: 1px solid #cbd5e0; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 11.5pt; font-weight: bold; text-align: center; }
+        /* ВТОРАЯ СТРАНИЦА И СЕТКА ФОТО */
+        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 8px 10px; margin-bottom: 8px; font-size: 10.5pt; line-height: 1.25; }
+        .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 2px; font-size: 11pt; }
+        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+        .photo-card { width: 100%; height: 135px; background: #f0f4f8; border: 1px solid #cbd5e0; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 10.5pt; font-weight: bold; text-align: center; overflow: hidden; position: relative; }
     </style>
 </head>
 <body>
@@ -158,6 +158,29 @@
         </div>
     </div>
 
+    <!-- 5. ФОТОГРАФИИ ОБЪЕКТА -->
+    <div class="section-title">5. Фотографии объекта (для 2-й страницы)</div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Фото 1 (Вид снаружи):</label>
+            <input type="file" id="imgInput1" accept="image/*" onchange="previewImage(this, 'pdfImg1')">
+        </div>
+        <div class="form-group">
+            <label>Фото 2 (Конструктив):</label>
+            <input type="file" id="imgInput2" accept="image/*" onchange="previewImage(this, 'pdfImg2')">
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Фото 3 (Интерьер):</label>
+            <input type="file" id="imgInput3" accept="image/*" onchange="previewImage(this, 'pdfImg3')">
+        </div>
+        <div class="form-group">
+            <label>Фото 4 (Готовый объект):</label>
+            <input type="file" id="imgInput4" accept="image/*" onchange="previewImage(this, 'pdfImg4')">
+        </div>
+    </div>
+
     <button class="btn-generate" id="btnGen" onclick="generateAndSaveKP()">📄 Сформировать и скачать КП (PDF)</button>
 </div>
 
@@ -172,12 +195,12 @@
                     Тел: +7 771 054 77 66 | E-mail: too.mamyr@mail.ru
                 </div>
                 <div style="text-align:right;">
-                    <strong style="font-size:20px; color:#b8860b; font-family:'Arial Black';">M-CONSTRUCTION</strong><br>
-                    <span style="font-size:9.5pt; color:#555; font-weight:bold;">ТОВАРИЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «Мамыр»</span>
+                    <strong style="font-size:18px; color:#b8860b; font-family:'Arial Black';">M-CONSTRUCTION</strong><br>
+                    <span style="font-size:8.5pt; color:#555; font-weight:bold;">ТОВАРИЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «Мамыр»</span>
                 </div>
             </div>
 
-            <div class="kp-title" id="pdfKpNum">КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ № 321</div>
+            <div class="kp-title" id="pdfKpNum">КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ</div>
             
             <div class="kp-meta">
                 <b>Объект:</b> <span id="pdfObjectTitle">Быстровозводимый ангар</span><br>
@@ -204,12 +227,9 @@
                 - 25% после подписания АВР и накладной.
 
                 <h4>Сроки реализации:</h4>
-                - Изготовление МК: 30 дней<br>
-                - Фундаментные работы: 20 дней<br>
-                - Монтажные работы: 30 дней
+                - Изготовление МК: 30 дней | Фундаментные работы: 20 дней | Монтажные работы: 30 дней
             </div>
 
-            <!-- ТОЧНЫЙ КОЛОНТИКУЛ ТОО "МАМЫР" -->
             <div class="footer-line">
                 <b>ТОО «Мамыр»</b> | Республика Казахстан, 110000, г. Костанай, ул. Узкоколейная, д. 9 | БИН 011240003418<br>
                 Лицензия СМР II категория ГС-2 № 03293 от 15.10.2020 г. | Тел: +7 771 054 77 66 | E-mail: too.mamyr@mail.ru
@@ -224,11 +244,11 @@
                     Қазақстан Республикасы 110000, Қостанай қаласы, Узкоколейная көш. 9
                 </div>
                 <div style="text-align:right;">
-                    <strong style="font-size:18px; color:#b8860b;">M-CONSTRUCTION</strong>
+                    <strong style="font-size:16px; color:#b8860b;">M-CONSTRUCTION</strong>
                 </div>
             </div>
 
-            <div class="kp-title" style="margin-bottom:18px;">ТЕХНИЧЕСКИЕ РЕШЕНИЯ И ПРЕИМУЩЕСТВА «M-CONSTRUCTION»</div>
+            <div class="kp-title" style="margin-bottom:12px;">ТЕХНИЧЕСКИЕ РЕШЕНИЯ И ПРЕИМУЩЕСТВА «M-CONSTRUCTION»</div>
 
             <div class="feature-box">
                 <div class="feature-title">Строительство под ключ</div>
@@ -245,14 +265,15 @@
                 Проектирование ведется с учетом индивидуальных условий эксплуатации. Ветровые и снеговые нагрузки рассчитываются согласно строительным нормам (СНиП) конкретного региона.
             </div>
 
+            <!-- ГРИД ФОТОГРАФИЙ -->
             <div class="photo-grid">
-                <div class="photo-card">Объект M-CONSTRUCTION<br>(Вид снаружи)</div>
-                <div class="photo-card">Объект M-CONSTRUCTION<br>(Конструктив МК)</div>
-                <div class="photo-card">Объект M-CONSTRUCTION<br>(Внутреннее пространство)</div>
-                <div class="photo-card">Объект M-CONSTRUCTION<br>(Готовый объект)</div>
+                <div class="photo-card" id="pdfImg1Box"><img id="pdfImg1" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Объект M-CONSTRUCTION<br>(Вид снаружи)</span></div>
+                <div class="photo-card" id="pdfImg2Box"><img id="pdfImg2" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Объект M-CONSTRUCTION<br>(Конструктив МК)</span></div>
+                <div class="photo-card" id="pdfImg3Box"><img id="pdfImg3" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Объект M-CONSTRUCTION<br>(Внутреннее пространство)</span></div>
+                <div class="photo-card" id="pdfImg4Box"><img id="pdfImg4" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Объект M-CONSTRUCTION<br>(Готовый объект)</span></div>
             </div>
 
-            <div style="margin-top: 40px; font-size: 12pt; font-weight: bold; line-height: 1.6;">
+            <div style="margin-top: 25px; font-size: 11pt; font-weight: bold; line-height: 1.4;">
                 С уважением,<br>
                 <span id="pdfSignManager">Менеджер отдела продаж: Лемперт Александр</span>
             </div>
@@ -276,6 +297,19 @@
     document.getElementById('fundType').addEventListener('change', function() {
         document.getElementById('stripParamsBox').style.display = (this.value === 'strip') ? 'block' : 'none';
     });
+
+    function previewImage(input, targetImgId) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var img = document.getElementById(targetImgId);
+                img.src = e.target.result;
+                img.style.display = 'block';
+                if (img.nextElementSibling) img.nextElementSibling.style.display = 'none';
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
 
     function getNum(id, fallback) {
         var el = document.getElementById(id);
@@ -385,7 +419,8 @@
 
             var kpNum = Math.floor(100 + Math.random() * 900);
 
-            document.getElementById('pdfKpNum').innerText = "КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ № " + kpNum;
+            // ИЗМЕНЕННЫЙ ЗАГОЛОВОК С НАЗВАНИЕМ ЗАКАЗЧИКА
+            document.getElementById('pdfKpNum').innerText = "КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ: " + client.toUpperCase();
             document.getElementById('pdfObjectTitle').innerText = "Быстровозводимый " + (isProf ? "металлический" : "металлотентовый") + " ангар " + w.toFixed(1) + " х " + l.toFixed(1) + " х " + (type.indexOf('straight') !== -1 ? wallH.toFixed(1) : (w*0.35).toFixed(1)) + " м (" + area + " м²)";
             document.getElementById('pdfPurpose').innerText = purpose;
 
@@ -452,7 +487,7 @@
             var element = document.getElementById('pdfContent');
             var opt = {
                 margin:       0,
-                filename:     'КП_№' + kpNum + '_' + client + '.pdf',
+                filename:     'КП_' + client + '.pdf',
                 image:        { type: 'jpeg', quality: 0.95 },
                 html2canvas:  { scale: 2, logging: false },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
