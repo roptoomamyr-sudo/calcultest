@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель (Тестовый калькулятор)</title>
+    <style>
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: #ffffff; width: 100%; max-width: 480px; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h2 { margin-top: 0; font-size: 20px; color: #333; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #444; }
+        input, select { width: 100%; padding: 11px 13px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; outline: none; transition: 0.2s; }
+        input:focus, select:focus { border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.15); }
+        button { width: 100%; padding: 12px; font-size: 16px; font-weight: bold; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #a5cbe6; cursor: not-allowed; }
+        .result-box { margin-top: 20px; padding: 15px; background: #eef7ee; border: 1px solid #c3e6cb; border-radius: 8px; display: none; }
+        .result-box label { color: #155724; font-size: 13px; }
+        .url-text { font-family: monospace; font-size: 13px; word-break: break-all; margin-top: 5px; color: #007bff; font-weight: bold; background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #dcdcdc; }
+        .status { margin-top: 12px; font-size: 14px; text-align: center; font-weight: 600; }
+        .error { color: #dc3545; }
+        .success { color: #28a745; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🧪 Генератор одноразовых ссылок (Тест)</h2>
+
+    <div class="form-group">
+        <label for="clientName">Имя клиента / Организация:</label>
+        <input type="text" id="clientName" placeholder="Например: Иван (ООО Вектор)">
+    </div>
+
+    <div class="form-group">
+        <label for="ttlSelect">Срок действия ссылки:</label>
+        <select id="ttlSelect">
+            <option value="1">1 час</option>
+            <option value="12">12 часов</option>
+            <option value="24" selected>24 часа</option>
+            <option value="48">48 часов</option>
+            <option value="168">7 дней</option>
+        </select>
+    </div>
+
+    <button id="genBtn">Сформировать ссылку</button>
+
+    <div id="status" class="status"></div>
+
+    <div class="result-box" id="resultBox">
+        <label>Готовая защищенная ссылка для клиента:</label>
+        <div class="url-text" id="genUrl"></div>
+    </div>
+</div>
+
+<script>
+    
+    const BIN_ID = "6ac861c6ffd5d160535b0623";
+    const SECRET_KEY = "$2a$10$IMgqPeq6EGMUWkoPpesa5.NXtCKi6SpV9oE.H/hRWRVC9gheuz1WO";
+    
+    // Ссылка на ваш новый тестовый репозиторий
+    const BASE_URL = "https://roptoomamyr-sudo.github.io/calcul-test/";
+
+    document.getElementById('genBtn').addEventListener('click', function() {
+        const clientName = document.getElementById('clientName').value.trim();
+        const ttlHours = parseInt(document.getElementById('ttlSelect').value);
+
+        const status = document.getElementById('status');
+        const resultBox = document.getElementById('resultBox');
+        const genUrl = document.getElementById('genUrl');
+        const btn = this;
+
+        status.className = "status";
+        status.innerText = "";
+        resultBox.style.display = "none";
+
+        if (!clientName) {
+            status.className = "status error";
+            status.innerText = "Пожалуйста, введите имя клиента!";
+            return;
+        }
+
+        btn.disabled = true;
+        status.innerText = "Загрузка базы...";
+
+        // 1. Получаем текущую базу
+        fetch(https://api.jsonbin.io/v3/b/${BIN_ID}/latest, {
+            headers: { "X-Master-Key": SECRET_KEY }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Ошибка чтения базы: " + res.status);
+            return res.json();
+        })
+        .then(data => {
+            let db = data.record;
+            if (!db || typeof db !== 'object' || Array.isArray(db)) {
+                db = {};
+            }
+
+            const linkId = "id_" + Date.now();
+            const expiresAt = Date.now() + (ttlHours * 60 * 60 * 1000);
+
+            // Создаем запись для клиента
+            db[linkId] = {
+                client: clientName,
+                used: false,
+                expiresAt: expiresAt,
+                firstOpenedAt: null,
+                deviceLock: null
+            };
+
+            status.innerText = "Сохранение ссылки...";
+
+            // 2. Записываем обновленную базу обратно
+            return fetch(https://api.jsonbin.io/v3/b/${BIN_ID}, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Master-Key": SECRET_KEY
+                },
+                body: JSON.stringify(db)
+            }).then(res => {
+                if (!res.ok) throw new Error("Ошибка записи: " + res.status);
+                return linkId;
+            });
+        })
+        .then(linkId => {
+            btn.disabled = false;
+            status.className = "status success";
+            status.innerText = "Ссылка успешно создана!";
+
+            const fullUrl = ${BASE_URL}?client=${encodeURIComponent(clientName)}&id=${linkId};
+            genUrl.innerText = fullUrl;
+            resultBox.style.display = "block";
+        })
+        .catch(err => {
+            btn.disabled = false;
+            status.className = "status error";
+            status.innerText = err.message;
+        });
+    });
+</script>
+
+</body>
+</html>
