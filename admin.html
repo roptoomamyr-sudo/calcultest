@@ -24,7 +24,8 @@
         .badge-new { background: #d4edda; color: #155724; }
         .badge-used { background: #f8d7da; color: #721c24; }
         .badge-expired { background: #fff3cd; color: #856404; }
-        .refresh-btn { background: #6c757d; margin-bottom: 10px; width: auto; padding: 8px 15px; font-size: 14px; }
+        .refresh-btn { background: #6c757d; width: auto; padding: 8px 15px; font-size: 14px; }
+        .reset-btn { background: #dc3545; width: auto; padding: 8px 15px; font-size: 14px; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -57,9 +58,12 @@
 </div>
 
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <h3 style="margin: 0;">📊 Мониторинг всех ссылок</h3>
-        <button class="refresh-btn" id="refreshBtn">🔄 Обновить</button>
+        <div>
+            <button class="refresh-btn" id="refreshBtn">🔄 Обновить</button>
+            <button class="reset-btn" id="resetBtn">🗑️ Инициализировать базу</button>
+        </div>
     </div>
 
     <table>
@@ -80,7 +84,7 @@
 <script>
     const BIN_ID = "6ac861c6ffd5d160535b0623";
     const SECRET_KEY = "$2a$10$IMgqPeq6EGMUWkoPpesa5.NXtCKi6SpV9oE.H/hRWRVC9gheuz1WO";
-    const BASE_URL = "https://roptoomamyr-sudo.github.io/calcul-test/";
+    const BASE_URL = "https://roptoomamyr-sudo.github.io/calcultest/";
 
     function formatDate(time) {
         if (!time) return '—';
@@ -96,7 +100,10 @@
         })
         .then(res => res.json())
         .then(data => {
-            const db = data.record || {};
+            let db = data.record;
+            if (Array.isArray(db)) db = db[0] || {};
+            if (typeof db !== 'object' || db === null) db = {};
+
             tbody.innerHTML = '';
 
             const keys = Object.keys(db).filter(k => k.startsWith('id_')).reverse();
@@ -110,6 +117,8 @@
 
             keys.forEach(key => {
                 const item = db[key];
+                if (!item) return;
+
                 let statusBadge = '';
 
                 if (item.used) {
@@ -131,7 +140,7 @@
             });
         })
         .catch(err => {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Ошибка загрузки</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Ошибка загрузки данных</td></tr>';
         });
     }
 
@@ -151,7 +160,10 @@
         })
         .then(res => res.json())
         .then(data => {
-            let db = data.record || {};
+            let db = data.record;
+            if (Array.isArray(db)) db = db[0] || {};
+            if (typeof db !== 'object' || db === null) db = {};
+
             const linkId = "id_" + Date.now();
             const now = Date.now();
 
@@ -181,6 +193,20 @@
         .catch(err => {
             btn.disabled = false;
             status.innerText = "Ошибка: " + err.message;
+        });
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function() {
+        if (!confirm("Вы уверены, что хотите очистить и инициализировать базу заново?")) return;
+        
+        fetch(https://api.jsonbin.io/v3/b/${BIN_ID}, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", "X-Master-Key": SECRET_KEY },
+            body: JSON.stringify({ init: true })
+        })
+        .then(() => {
+            alert("База данных успешно очищена!");
+            loadStats();
         });
     });
 
