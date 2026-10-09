@@ -62,7 +62,7 @@
         <h3 style="margin: 0;">📊 Мониторинг всех ссылок</h3>
         <div>
             <button class="refresh-btn" id="refreshBtn">🔄 Обновить</button>
-            <button class="reset-btn" id="resetBtn">🗑️ Инициализировать базу</button>
+            <button class="reset-btn" id="resetBtn">🗑️ Очистить базу</button>
         </div>
     </div>
 
@@ -100,9 +100,8 @@
         })
         .then(res => res.json())
         .then(data => {
-            let db = data.record;
+            let db = data.record || {};
             if (Array.isArray(db)) db = db[0] || {};
-            if (typeof db !== 'object' || db === null) db = {};
 
             tbody.innerHTML = '';
 
@@ -160,9 +159,8 @@
         })
         .then(res => res.json())
         .then(data => {
-            let db = data.record;
+            let db = data.record || {};
             if (Array.isArray(db)) db = db[0] || {};
-            if (typeof db !== 'object' || db === null) db = {};
 
             const linkId = "id_" + Date.now();
             const now = Date.now();
@@ -197,15 +195,15 @@
     });
 
     document.getElementById('resetBtn').addEventListener('click', function() {
-        if (!confirm("Вы уверены, что хотите очистить и инициализировать базу заново?")) return;
+        if (!confirm("Вы уверены, что хотите очистить всю базу?")) return;
         
         fetch(https://api.jsonbin.io/v3/b/${BIN_ID}, {
             method: "PUT",
             headers: { "Content-Type": "application/json", "X-Master-Key": SECRET_KEY },
-            body: JSON.stringify({ init: true })
+            body: JSON.stringify({})
         })
         .then(() => {
-            alert("База данных успешно очищена!");
+            alert("База сброшена!");
             loadStats();
         });
     });
