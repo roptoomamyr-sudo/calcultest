@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Реестр КП и KPI — ТОО «Мамыр»</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Calibri', 'Arial', sans-serif; }
+        body { background-color: #eaeff5; margin: 0; padding: 20px; color: #333; }
+        .main-container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2b6cb0; padding-bottom: 12px; margin-bottom: 20px; }
+        .header h1 { font-size: 20px; color: #1a365d; margin: 0; }
+        .nav-links a { text-decoration: none; background: #2b6cb0; color: #fff; padding: 8px 14px; border-radius: 6px; font-size: 14px; font-weight: bold; }
+        .nav-links a:hover { background: #2c5282; }
+        
+        .stats-row { display: flex; gap: 15px; margin-bottom: 20px; }
+        .stat-card { flex: 1; background: #f0f4f8; padding: 15px; border-radius: 8px; border-left: 4px solid #2b6cb0; }
+        .stat-card h3 { margin: 0 0 5px 0; font-size: 13px; color: #4a5568; text-transform: uppercase; }
+        .stat-card .value { font-size: 20px; font-weight: bold; color: #1a365d; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #cbd5e0; padding: 10px 12px; text-align: left; font-size: 14px; }
+        th { background: #2b6cb0; color: #fff; font-weight: bold; text-transform: uppercase; font-size: 12px; }
+        tr:nth-child(even) { background: #f7fafc; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .loading { text-align: center; padding: 30px; font-size: 16px; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <div class="header">
+        <h1>Реестр Коммерческих Предложений и KPI</h1>
+        <div class="nav-links">
+            <a href="manager.html">← Назад к генератору КП</a>
+        </div>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <h3>Всего КП выписано</h3>
+            <div class="value" id="statCount">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>Общая сумма по КП</h3>
+            <div class="value" id="statTotal">0 ₸</div>
+        </div>
+    </div>
+
+    <div id="contentArea">
+        <div class="loading">Загрузка данных из системы отслеживания...</div>
+    </div>
+</div>
+
+<script>
+    var BIN_ID = "6ac861c6ffd5d160535b0623";
+    var SECRET_KEY = "$2a$10$IMgqPeq6EGMUWkoPpesa5.NXtCKi6SpV9oE.H/hRWRVC9gheuz1WO";
+
+    function loadRegistry() {
+        fetch("https://api.jsonbin.io/v3/b/" + BIN_ID + "/latest", {
+            headers: { "X-Master-Key": SECRET_KEY, "X-Bin-Meta": "false" }
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(db) {
+            if (Array.isArray(db)) db = db[0] || {};
+            var registry = db.kpi_registry || [];
+
+            document.getElementById('statCount').innerText = registry.length;
+            
+            var totalSum = 0;
+            registry.forEach(function(item) {
+                totalSum += (item.total || 0);
+            });
+            document.getElementById('statTotal').innerText = totalSum.toLocaleString('ru-RU') + " ₸";
+
+            if (registry.length === 0) {
+                document.getElementById('contentArea').innerHTML = '<div style="text-align:center; padding:30px; color:#718096;">Пока не сформировано ни одного коммерческого предложения.</div>';
+                return;
+            }
+
+            var html = '<table><thead><tr>' +
+                '<th>№ / ID</th>' +
+                '<th>Дата и время</th>' +
+                '<th>Сотрудник</th>' +
+                '<th>Заказчик</th>' +
+                '<th class="text-center">Площадь (м²)</th>' +
+                '<th class="text-right">Сумма (₸)</th>' +
+            '</tr></thead><tbody>';
+
+            // Выводим от новых к старым (с конца)
+            for (var i = registry.length - 1; i >= 0; i--) {
+                var r = registry[i];
+                html += '<tr>' +
+                    '<td><b>' + (r.id || '—') + '</b></td>' +
+                    '<td>' + (r.date || '—') + '</td>' +
+                    '<td>' + (r.manager || '—') + '</td>' +
+                    '<td><b>' + (r.client || '—') + '</b></td>' +
+                    '<td class="text-center">' + (r.area || 0) + ' м²</td>' +
+                    '<td class="text-right" style="font-weight:bold; color:#2b6cb0;">' + (r.total ? r.total.toLocaleString('ru-RU') : 0) + ' ₸</td>' +
+                '</tr>';
+            }
+
+            html += '</tbody></table>';
+            document.getElementById('contentArea').innerHTML = html;
+        })
+        .catch(function(err) {
+            document.getElementById('contentArea').innerHTML = '<div style="color:red; text-align:center; padding:20px;">Ошибка загрузки данных: ' + err.message + '</div>';
+        });
+    }
+
+    loadRegistry();
+</script>
+
+</body>
+</html>
