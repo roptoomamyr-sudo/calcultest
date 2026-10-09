@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои сделки — ТОО «Мамыр»</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Calibri', 'Arial', sans-serif; }
+        body { background-color: #eaeff5; margin: 0; padding: 20px; color: #333; }
+        .main-container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2b6cb0; padding-bottom: 12px; margin-bottom: 20px; }
+        .header h1 { font-size: 20px; color: #1a365d; margin: 0; }
+        .employee-badge { background: #ebf8ff; color: #2b6cb0; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 14px; border: 1px solid #bee3f8; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #cbd5e0; padding: 10px 12px; text-align: left; font-size: 14px; vertical-align: middle; }
+        th { background: #2b6cb0; color: #fff; font-weight: bold; text-transform: uppercase; font-size: 12px; }
+        tr:nth-child(even) { background: #f7fafc; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        
+        .status-select { padding: 6px 10px; font-size: 13px; border-radius: 6px; border: 1px solid #cbd5e0; font-weight: bold; cursor: pointer; }
+        .saved-hint { font-size: 11px; color: #27ae60; margin-top: 3px; display: none; font-weight: bold; }
+        .loading { text-align: center; padding: 30px; font-size: 16px; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <div class="header">
+        <h1>Кабинет управления сделками</h1>
+        <div class="employee-badge" id="employeeBadge">Сотрудник: Загрузка...</div>
+    </div>
+
+    <div id="contentArea">
+        <div class="loading">Загрузка ваших сделок...</div>
+    </div>
+</div>
+
+<script>
+    var BIN_ID = "6ac861c6ffd5d160535b0623";
+    var SECRET_KEY = "$2a$10$IMgqPeq6EGMUWkoPpesa5.NXtCKi6SpV9oE.H/hRWRVC9gheuz1WO";
+    var globalDbData = { kpi_registry: [] };
+
+    // 🔴 УКАЖИТЕ ИМЯ СОТРУДНИКА ДЛЯ ЭТОГО ФАЙЛА:
+    var CURRENT_EMPLOYEE = "Менеджер 2"; 
+
+    var statuses = [
+        "📄 Отправил КП",
+        "⏳ Нет обратной связи",
+        "💸 Дорого",
+        "🤔 Думает пока",
+        "📉 У конкурентов дешевле есть",
+        "📞 Веду переговоры",
+        "🤝 Всё идёт к договору",
+        "✍️ Договор заключил",
+        "💰 Внёс предоплату",
+        "❌ Потерялся"
+    ];
+
+    document.getElementById('employeeBadge').innerText = "Сотрудник: " + CURRENT_EMPLOYEE;
+
+    function loadMyLeads() {
+        fetch("https://api.jsonbin.io/v3/b/" + BIN_ID + "/latest", {
+            headers: { "X-Master-Key": SECRET_KEY, "X-Bin-Meta": "false" }
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(db) {
+            if (Array.isArray(db)) db = db[0] || {};
+            globalDbData = db;
+            if (!globalDbData.kpi_registry) globalDbData.kpi_registry = [];
+
+            var myLeads = globalDbData.kpi_registry.filter(function(item) {
+                return item.manager === CURRENT_EMPLOYEE;
+            });
+
+            if (myLeads.length === 0) {
+                document.getElementById('contentArea').innerHTML = '<div style="text-align:center; padding:30px; color:#718096;">У вас пока нет оформленных коммерческих предложений.</div>';
+                return;
+            }
+
+            var html = '<table><thead><tr>' +
+                '<th>№ КП</th>' +
+                '<th>Дата создания</th>' +
+                '<th>Заказчик</th>' +
+                '<th>Контакты</th>' +
+                '<th class="text-right">Сумма (₸)</th>' +
+                '<th class="text-center">Статус сделки</th>' +
+            '</tr></thead><tbody>';
+
+            for (var i = globalDbData.kpi_registry.length - 1; i >= 0; i--) {
+                var r = globalDbData.kpi_registry[i];
+                if (r.manager !== CURRENT_EMPLOYEE) continue;
+
+                var currentStatus = r.status || "📄 Отправил КП";
+                var statusOptions = "";
+                statuses.forEach(function(s) {
+                    var selected = (s === currentStatus) ? 'selected' : '';
+                    statusOptions += '<option value="' + s + '" ' + selected + '>' + s + '</option>';
+                });
+
+                html += '<tr>' +
+                    '<td><b>' + (r.id || '—') + '</b></td>' +
+                    '<td>' + (r.date || '—') + '</td>' +
+                    '<td><b>' + (r.client || '—') + '</b></td>' +
+                    '<td>Тел: ' + (r.phone || '—') + '<br>WA: ' + (r.whatsapp || '—') + '</td>' +
+                    '<td class="text-right" style="font-weight:bold; color:#2b6cb0;">' + (r.total ? r.total.toLocaleString('ru-RU') : 0) + ' ₸</td>' +
+                    '<td class="text-center">' +
+                        '<select class="status-select" onchange="updateStatus(\'' + r.id + '\', this.value, this)">' + statusOptions + '</select>' +
+                        '<div class="saved-hint" id="hint-' + r.id + '">✓ Сохранено</div>' +
+                    '</td>' +
+                '</tr>';
+            }
+
+            html += '</tbody></table>';
+            document.getElementById('contentArea').innerHTML = html;
+        })
+        .catch(function(err) {
+            document.getElementById('contentArea').innerHTML = '<div style="color:red; text-align:center; padding:20px;">Ошибка загрузки базы: ' + err.message + '</div>';
+        });
+    }
+
+    function updateStatus(kpId, newStatus, selectElement) {
+        for (var i = 0; i < globalDbData.kpi_registry.length; i++) {
+            if (globalDbData.kpi_registry[i].id === kpId) {
+                globalDbData.kpi_registry[i].status = newStatus;
+                break;
+            }
+        }
+
+        selectElement.disabled = true;
+        var hint = document.getElementById('hint-' + kpId);
+        if (hint) hint.style.display = 'block';
+
+        fetch("https://api.jsonbin.io/v3/b/" + BIN_ID, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", "X-Master-Key": SECRET_KEY },
+            body: JSON.stringify(globalDbData)
+        })
+        .then(function(res) { return res.json(); })
+        .then(function() {
+            setTimeout(function() {
+                selectElement.disabled = false;
+                if (hint) hint.style.display = 'none';
+            }, 1000);
+        })
+        .catch(function(err) {
+            alert("Ошибка сохранения статуса: " + err.message);
+            selectElement.disabled = false;
+            if (hint) hint.style.display = 'none';
+        });
+    }
+
+    loadMyLeads();
+</script>
+
+</body>
+</html>
