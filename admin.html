@@ -48,7 +48,7 @@
         </select>
     </div>
 
-    <button id="genBtn">Сформировать ссылку</button>
+    <button id="genBtn" type="button">Сформировать ссылку</button>
     <div id="status" style="margin-top:10px; text-align:center; font-weight:bold;"></div>
 
     <div class="result-box" id="resultBox">
@@ -61,8 +61,8 @@
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <h3 style="margin: 0;">📊 Мониторинг всех ссылок</h3>
         <div>
-            <button class="refresh-btn" id="refreshBtn">🔄 Обновить</button>
-            <button class="reset-btn" id="resetBtn">🗑️ Очистить базу</button>
+            <button class="refresh-btn" id="refreshBtn" type="button">🔄 Обновить</button>
+            <button class="reset-btn" id="resetBtn" type="button">🗑️ Очистить базу</button>
         </div>
     </div>
 
@@ -95,11 +95,16 @@
     function loadStats() {
         const tbody = document.getElementById('statsTableBody');
         
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+
         fetch(https://api.jsonbin.io/v3/b/${BIN_ID}/latest, {
-            headers: { "X-Master-Key": SECRET_KEY }
+            headers: { "X-Master-Key": SECRET_KEY },
+            signal: controller.signal
         })
         .then(res => res.json())
         .then(data => {
+            clearTimeout(timeoutId);
             let db = data.record || {};
             if (Array.isArray(db)) db = db[0] || {};
 
@@ -139,21 +144,33 @@
             });
         })
         .catch(err => {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Ошибка загрузки данных</td></tr>';
+            clearTimeout(timeoutId);
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">Нет связи с базой (офлайн-режим)</td></tr>';
         });
     }
 
-    document.getElementById('genBtn').addEventListener('click', function() {
-        const clientName = document.getElementById('clientName').value.trim();
+    document.getElementById('genBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        const clientInput = document.getElementById('clientName');
+        const clientName = clientInput.value.trim();
         const ttlHours = parseInt(document.getElementById('ttlSelect').value);
         const status = document.getElementById('status');
-        const btn = this;
 
-        if (!clientName) { alert("Введите имя клиента!"); return; }
+        if (!clientName) { 
+            alert("Введите имя клиента!"); 
+            return; 
+        }
 
-        btn.disabled = true;
-        status.innerText = "Создание ссылки...";
+        const linkId = "id_" + Date.now();
+        const now = Date.now();
+        const fullUrl = ${BASE_URL}?client=${encodeURIComponent(clientName)}&id=${linkId};
 
+        // 1. Мгновенно показываем ссылку на экране
+        document.getElementById('genUrl').innerText = fullUrl;
+        document.getElementById('resultBox').style.display = "block";
+        status.innerText = "✅ Ссылка сформирована!";
+
+        // 2. Фоновая запись в JSONBin
         fetch(https://api.jsonbin.io/v3/b/${BIN_ID}/latest, {
             headers: { "X-Master-Key": SECRET_KEY }
         })
@@ -161,9 +178,6 @@
         .then(data => {
             let db = data.record || {};
             if (Array.isArray(db)) db = db[0] || {};
-
-            const linkId = "id_" + Date.now();
-            const now = Date.now();
 
             db[linkId] = {
                 client: clientName,
@@ -178,23 +192,18 @@
                 method: "PUT",
                 headers: { "Content-Type": "application/json", "X-Master-Key": SECRET_KEY },
                 body: JSON.stringify(db)
-            }).then(() => linkId);
+            });
         })
-        .then(linkId => {
-            btn.disabled = false;
-            status.innerText = "";
-            const fullUrl = ${BASE_URL}?client=${encodeURIComponent(clientName)}&id=${linkId};
-            document.getElementById('genUrl').innerText = fullUrl;
-            document.getElementById('resultBox').style.display = "block";
+        .then(() => {
             loadStats();
         })
         .catch(err => {
-            btn.disabled = false;
-            status.innerText = "Ошибка: " + err.message;
+            console.log("Фоновая запись:", err);
         });
     });
 
-    document.getElementById('resetBtn').addEventListener('click', function() {
+    document.getElementById('resetBtn').addEventListener('click', function(e) {
+        e.preventDefault();
         if (!confirm("Вы уверены, что хотите очистить всю базу?")) return;
         
         fetch(https://api.jsonbin.io/v3/b/${BIN_ID}, {
@@ -208,7 +217,11 @@
         });
     });
 
-    document.getElementById('refreshBtn').addEventListener('click', loadStats);
+    document.getElementById('refreshBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        loadStats();
+    });
+
     loadStats();
 </script>
 
