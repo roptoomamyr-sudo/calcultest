@@ -21,34 +21,60 @@
         .btn-generate:disabled { background: #a0aec0; cursor: not-allowed; }
         
         #pdfTemplateWrapper { position: absolute; left: -9999px; top: 0; width: 210mm; }
-        .pdf-page { width: 210mm; height: 295mm; padding: 12mm 15mm; background: #fff; font-size: 11pt; color: #000; box-sizing: border-box; position: relative; font-family: 'Calibri', 'Arial', sans-serif; overflow: hidden; page-break-after: always; }
         
-        /* ШАПКА */
-        .pdf-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b8860b; padding-bottom: 6px; margin-bottom: 10px; }
-        .pdf-header-text { font-size: 9.5pt; line-height: 1.2; }
+        /* СТРОГИЙ РАЗМЕР И ПОЛЯ СТРАНИЦЫ A4 */
+        .pdf-page { 
+            width: 210mm; 
+            height: 296mm; 
+            padding: 8mm 12mm 15mm 12mm; 
+            background: #fff; 
+            font-size: 11pt; 
+            color: #000; 
+            box-sizing: border-box; 
+            position: relative; 
+            font-family: 'Calibri', 'Arial', sans-serif; 
+            overflow: hidden; 
+            page-break-after: always;
+            page-break-inside: avoid;
+        }
         
-        .kp-title { font-size: 15pt; font-weight: bold; color: #b8860b; text-align: center; margin: 8px 0; text-transform: uppercase; font-family: 'Calibri', 'Arial', sans-serif; }
-        .kp-meta { font-size: 11pt; margin-bottom: 10px; line-height: 1.3; }
+        /* ШАПКА В САМОМ ВЕРХУ */
+        .pdf-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #b8860b; padding-bottom: 4px; margin-bottom: 6px; }
+        .pdf-header-text { font-size: 9pt; line-height: 1.15; }
         
-        /* ТАБЛИЦА С КОМПАКТНЫМ МЕЖСТРОЧНЫМ ИНТЕРВАЛОМ */
-        .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-family: 'Calibri', 'Arial', sans-serif; }
-        .kp-table th, .kp-table td { border: 1px solid #000; padding: 5px 8px; font-size: 11pt; vertical-align: top; line-height: 1.15; }
-        .kp-table th { background: #000; color: #fff; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 10pt; }
+        .kp-title { font-size: 14pt; font-weight: bold; color: #b8860b; text-align: center; margin: 4px 0 6px 0; text-transform: uppercase; font-family: 'Calibri', 'Arial', sans-serif; }
+        .kp-meta { font-size: 10.5pt; margin-bottom: 6px; line-height: 1.25; }
         
-        .total-row { background: #b8860b; color: #fff; font-weight: bold; font-size: 11.5pt; }
-        .total-row-discount { background: #8b6508; color: #fff; font-weight: bold; font-size: 11.5pt; }
+        /* КОМПАКТНАЯ ТАБЛИЦА */
+        .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-family: 'Calibri', 'Arial', sans-serif; }
+        .kp-table th, .kp-table td { border: 1px solid #000; padding: 4px 6px; font-size: 10.5pt; vertical-align: top; line-height: 1.15; }
+        .kp-table th { background: #000; color: #fff; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 9.5pt; }
+        
+        .total-row { background: #b8860b; color: #fff; font-weight: bold; font-size: 11pt; }
+        .total-row-discount { background: #8b6508; color: #fff; font-weight: bold; font-size: 11pt; }
 
-        .conditions-box { font-size: 10pt; line-height: 1.2; margin-top: 8px; }
-        .conditions-box h4 { margin: 4px 0 2px 0; font-size: 10.5pt; text-decoration: underline; }
+        .conditions-box { font-size: 9.5pt; line-height: 1.15; margin-top: 6px; }
+        .conditions-box h4 { margin: 3px 0 1px 0; font-size: 10pt; text-decoration: underline; }
 
-        /* КОЛОНТИКУЛ */
-        .footer-line { position: absolute; bottom: 8mm; left: 15mm; right: 15mm; font-size: 9pt; border-top: 1px solid #ccc; padding-top: 4px; text-align: center; color: #222; line-height: 1.2; }
+        /* ИСПРАВЛЕННЫЙ НИЖНИЙ КОЛОНТИКУЛ В САМОМ НИЗУ */
+        .footer-line { 
+            position: absolute; 
+            bottom: 6mm; 
+            left: 12mm; 
+            right: 12mm; 
+            font-size: 8.5pt; 
+            border-top: 1px solid #ccc; 
+            padding-top: 4px; 
+            text-align: center; 
+            color: #222; 
+            line-height: 1.15; 
+        }
 
-        /* ВТОРАЯ СТРАНИЦА И СЕТКА ФОТО */
-        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 8px 10px; margin-bottom: 8px; font-size: 10.5pt; line-height: 1.25; }
-        .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 2px; font-size: 11pt; }
-        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-        .photo-card { width: 100%; height: 135px; background: #f0f4f8; border: 1px solid #cbd5e0; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 10.5pt; font-weight: bold; text-align: center; overflow: hidden; position: relative; }
+        /* ВТОРАЯ СТРАНИЦА */
+        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 6px 8px; margin-bottom: 6px; font-size: 10pt; line-height: 1.2; }
+        .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 1px; font-size: 10.5pt; }
+        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+        .photo-card { width: 100%; height: 125px; background: #f0f4f8; border: 1px solid #cbd5e0; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 10pt; font-weight: bold; text-align: center; overflow: hidden; position: relative; }
     </style>
 </head>
 <body>
@@ -58,14 +84,16 @@
         <h1>Генератор Коммерческих Предложений M-CONSTRUCTION</h1>
     </div>
 
-    <div class="section-title">1. Ответственный менеджер и Заказчик</div>
+    <div class="section-title">1. Ответственный сотрудник и Заказчик</div>
     <div class="form-row">
         <div class="form-group">
-            <label>Менеджер:</label>
+            <label>Сотрудник / Менеджер:</label>
             <select id="managerSelect">
-                <option value="Лемперт Александр (+7 747 689 96 80)">Лемперт Александр (+7 747 689 96 80)</option>
-                <option value="Алексей Смирнов (+7 705 123 45 67)">Алексей Смирнов (+7 705 123 45 67)</option>
-                <option value="Дмитрий Иванов (+7 777 987 65 43)">Дмитрий Иванов (+7 777 987 65 43)</option>
+                <option value="Лемперт Александр Сергеевич (+7 747 689 96 80)">Лемперт Александр Сергеевич (+7 747 689 96 80)</option>
+                <option value="Уралбаев Жанайдар Абишевич (+7 771 054 77 66)">Уралбаев Жанайдар Абишевич (+7 771 054 77 66)</option>
+                <option value="Менеджер 1 (Телефон не указан)">Менеджер 1</option>
+                <option value="Менеджер 2 (Телефон не указан)">Менеджер 2</option>
+                <option value="Менеджер 3 (Телефон не указан)">Менеджер 3</option>
             </select>
         </div>
         <div class="form-group">
@@ -195,8 +223,8 @@
                     Тел: +7 771 054 77 66 | E-mail: too.mamyr@mail.ru
                 </div>
                 <div style="text-align:right;">
-                    <strong style="font-size:18px; color:#b8860b; font-family:'Arial Black';">M-CONSTRUCTION</strong><br>
-                    <span style="font-size:8.5pt; color:#555; font-weight:bold;">ТОВАРИЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «Мамыр»</span>
+                    <strong style="font-size:16px; color:#b8860b; font-family:'Arial Black';">M-CONSTRUCTION</strong><br>
+                    <span style="font-size:8pt; color:#555; font-weight:bold;">ТОВАРИЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «Мамыр»</span>
                 </div>
             </div>
 
@@ -244,11 +272,11 @@
                     Қазақстан Республикасы 110000, Қостанай қаласы, Узкоколейная көш. 9
                 </div>
                 <div style="text-align:right;">
-                    <strong style="font-size:16px; color:#b8860b;">M-CONSTRUCTION</strong>
+                    <strong style="font-size:15px; color:#b8860b;">M-CONSTRUCTION</strong>
                 </div>
             </div>
 
-            <div class="kp-title" style="margin-bottom:12px;">ТЕХНИЧЕСКИЕ РЕШЕНИЯ И ПРЕИМУЩЕСТВА «M-CONSTRUCTION»</div>
+            <div class="kp-title" style="margin-bottom:10px;">ТЕХНИЧЕСКИЕ РЕШЕНИЯ И ПРЕИМУЩЕСТВА «M-CONSTRUCTION»</div>
 
             <div class="feature-box">
                 <div class="feature-title">Строительство под ключ</div>
@@ -273,9 +301,9 @@
                 <div class="photo-card" id="pdfImg4Box"><img id="pdfImg4" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Объект M-CONSTRUCTION<br>(Готовый объект)</span></div>
             </div>
 
-            <div style="margin-top: 25px; font-size: 11pt; font-weight: bold; line-height: 1.4;">
+            <div style="margin-top: 20px; font-size: 10.5pt; font-weight: bold; line-height: 1.35;">
                 С уважением,<br>
-                <span id="pdfSignManager">Менеджер отдела продаж: Лемперт Александр</span>
+                <span id="pdfSignManager">Менеджер отдела продаж: Лемперт Александр Сергеевич</span>
             </div>
 
             <div class="footer-line">
@@ -354,7 +382,7 @@
                 if (w <= 13) rateNoVat = 17000;
                 else if (w <= 16) rateNoVat = 19000;
                 else rateNoVat = 22000;
-                coverDesc = "Тент ПВХ 900 гр/м² не поддерживающий горения";
+coverDesc = "Тент ПВХ 900 гр/м² не поддерживающий горения";
             } else if (type === 'straight_arch_pvc') {
                 rateNoVat = (w <= 13) ? 19000 : 25000;
                 coverDesc = "Тент ПВХ 900 гр/м² не поддерживающий горения";
@@ -419,7 +447,6 @@
 
             var kpNum = Math.floor(100 + Math.random() * 900);
 
-            // ИЗМЕНЕННЫЙ ЗАГОЛОВОК С НАЗВАНИЕМ ЗАКАЗЧИКА
             document.getElementById('pdfKpNum').innerText = "КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ: " + client.toUpperCase();
             document.getElementById('pdfObjectTitle').innerText = "Быстровозводимый " + (isProf ? "металлический" : "металлотентовый") + " ангар " + w.toFixed(1) + " х " + l.toFixed(1) + " х " + (type.indexOf('straight') !== -1 ? wallH.toFixed(1) : (w*0.35).toFixed(1)) + " м (" + area + " м²)";
             document.getElementById('pdfPurpose').innerText = purpose;
@@ -488,8 +515,8 @@
             var opt = {
                 margin:       0,
                 filename:     'КП_' + client + '.pdf',
-                image:        { type: 'jpeg', quality: 0.95 },
-                html2canvas:  { scale: 2, logging: false },
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, logging: false, scrollY: 0 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
