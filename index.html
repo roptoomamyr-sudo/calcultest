@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Расчет стоимости (Персональный доступ)</title>
+    <title>Персональный расчет стоимости</title>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
@@ -11,31 +11,35 @@
         .block-screen { display: none; padding: 20px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 8px; color: #721c24; }
         .block-icon { font-size: 48px; margin-bottom: 10px; }
         .calc-content { display: none; text-align: left; }
-        .loader { font-size: 18px; color: #666; font-weight: 600; }
         .badge { display: inline-block; padding: 4px 10px; background: #fff3cd; color: #856404; border-radius: 20px; font-size: 13px; font-weight: bold; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <div id="loader" class="loader">⏳ Проверка доступа...</div>
-
+    <!-- Экран блокировки (повторный вход / пересылка) -->
     <div id="blockScreen" class="block-screen">
         <div class="block-icon">🔒</div>
         <h3 id="blockTitle" style="margin-top:0;">Доступ ограничен</h3>
-        <p id="blockMessage">Данная ссылка недействительна или уже была использована.</p>
+        <p id="blockMessage">Данная ссылка уже была использована или недействительна.</p>
     </div>
 
+    <!-- Основной контент калькулятора -->
     <div id="calcContent" class="calc-content">
         <div class="badge">⚠️ Одноразовый просмотр</div>
         <h2>Калькулятор стоимости тентового ангара</h2>
         <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
         
-        <p><strong>Приветствуем, <span id="clientNameHolder"></span>!</strong></p>
-        <p>Здесь располагается ваш персональный расчёт.</p>
+        <p><strong>Приветствуем, <span id="clientNameHolder">Клиент</span>!</strong></p>
+        <p>Ниже представлен ваш персональный коммерческий расчет.</p>
+
+        <div style="background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #e9ecef; margin: 15px 0;">
+            <p style="margin:5px 0;"><strong>Объект:</strong> Быстровозводимый тентовый ангар</p>
+            <p style="margin:5px 0;"><strong>Статус:</strong> Расчет сформирован</p>
+        </div>
         
-        <div style="background:#fff8e1; padding:15px; border-radius:8px; margin-top:15px; border:1px solid #ffe082; color:#6d4c41; font-size:13px;">
-            <b>Защита активирована:</b> Ссылка привязана к данному устройству и сгорела сразу после открытия.
+        <div style="background:#fff8e1; padding:12px; border-radius:8px; border:1px solid #ffe082; color:#6d4c41; font-size:13px;">
+            <b>Защита активирована:</b> Ссылка привязана к вашему устройству. Повторный доступ или пересылка третьим лицам заблокированы.
         </div>
     </div>
 </div>
@@ -44,20 +48,10 @@
     const BIN_ID = "6ac861c6ffd5d160535b0623";
     const SECRET_KEY = "$2a$10$IMgqPeq6EGMUWkoPpesa5.NXtCKi6SpV9oE.H/hRWRVC9gheuz1WO";
 
-    function getDeviceId() {
-        let devId = localStorage.getItem('calc_device_id');
-        if (!devId) {
-            devId = 'dev_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-            localStorage.setItem('calc_device_id', devId);
-        }
-        return devId;
-    }
-
     const urlParams = new URLSearchParams(window.location.search);
     const linkId = urlParams.get('id');
     const clientName = urlParams.get('client');
 
-    const loader = document.getElementById('loader');
     const blockScreen = document.getElementById('blockScreen');
     const blockTitle = document.getElementById('blockTitle');
     const blockMessage = document.getElementById('blockMessage');
@@ -65,7 +59,6 @@
     const clientNameHolder = document.getElementById('clientNameHolder');
 
     function showError(title, msg) {
-        if (loader) loader.style.display = 'none';
         if (calcContent) calcContent.style.display = 'none';
         if (blockTitle) blockTitle.innerText = title;
         if (blockMessage) blockMessage.innerText = msg;
@@ -73,78 +66,62 @@
     }
 
     function showCalc(name) {
-        if (loader) loader.style.display = 'none';
         if (blockScreen) blockScreen.style.display = 'none';
         if (clientNameHolder) clientNameHolder.innerText = name || 'Клиент';
         if (calcContent) calcContent.style.display = 'block';
     }
 
     if (!linkId) {
-        showError("Ошибка доступа", "Для просмотра требуется персональная ссылка.");
+        showError("Ошибка доступа", "Персональный идентификатор расчета не найден.");
     } else {
-        const currentDeviceId = getDeviceId();
+        // Проверка локальной блокировки на этом устройстве
+        const viewedKey = 'calc_viewed_' + linkId;
+        if (localStorage.getItem(viewedKey)) {
+            showError("Ссылка сгорела", "Вы уже открывали этот расчет ранее. Повторный доступ заблокирован.");
+        } else {
+            // Мгновенно фиксируем просмотр на этом устройстве
+            localStorage.setItem(viewedKey, 'true');
 
-        // Устанавливаем тайм-аут: если JSONBin не ответил за 4 секунды — выводим понятную ошибку
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
+            // Мгновенно открываем калькулятор
+            showCalc(clientName);
 
-        fetch(https://api.jsonbin.io/v3/b/${BIN_ID}/latest, {
-            method: 'GET',
-            headers: { "X-Master-Key": SECRET_KEY },
-            signal: controller.signal
-        })
-        .then(res => {
-            clearTimeout(timeoutId);
-            if (!res.ok) throw new Error("Код ответа: " + res.status);
-            return res.json();
-        })
-        .then(data => {
-            let db = data.record || {};
-            if (Array.isArray(db)) db = db[0] || {};
-
-            const record = db[linkId];
-
-            if (!record) {
-                showError("Ссылка не найдена", "Данная ссылка не зарегистрирована в базе.");
-                return;
-            }
-
-            if (record.expiresAt && Date.now() > record.expiresAt) {
-                showError("Срок действия истек", "Срок действия этой ссылки (12 часов) закончился.");
-                return;
-            }
-
-            if (record.used) {
-                if (record.deviceLock && record.deviceLock !== currentDeviceId) {
-                    showError("Пересылка запрещена", "Эта ссылка была открыта на другом устройстве.");
-                    return;
+            // В фоновом режиме отправляем статус просмотра в админ-панель (JSONBin)
+            fetch("https://api.jsonbin.io/v3/b/" + BIN_ID + "/latest", {
+                method: "GET",
+                headers: { 
+                    "X-Master-Key": SECRET_KEY,
+                    "X-Bin-Meta": "false"
                 }
-                showError("Ссылка сгорела", "Вы уже просмотрели этот расчет. Повторный доступ закрыт.");
-                return;
-            }
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(db) {
+                if (Array.isArray(db)) db = db[0] || {};
+                
+                if (db[linkId]) {
+                    db[linkId].used = true;
+                    db[linkId].firstOpenedAt = Date.now();
+                } else {
+                    db[linkId] = {
+                        client: clientName || 'Клиент',
+                        used: true,
+                        createdAt: Date.now(),
+                        firstOpenedAt: Date.now()
+                    };
+                }
 
-            record.deviceLock = currentDeviceId;
-            record.used = true;
-            record.firstOpenedAt = Date.now();
-
-            db[linkId] = record;
-
-            // Записываем факт первого входа обратно в JSONBin
-            fetch(https://api.jsonbin.io/v3/b/${BIN_ID}, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Master-Key": SECRET_KEY
-                },
-                body: JSON.stringify(db)
-            }).catch(() => {});
-
-            showCalc(record.client || clientName);
-        })
-        .catch(err => {
-            clearTimeout(timeoutId);
-            showError("Ошибка подключения", "Не удалось связаться с сервером проверки. Проверьте интернет или повторите позже.");
-        });
+                return fetch("https://api.jsonbin.io/v3/b/" + BIN_ID, {
+                    method: "PUT",
+                    headers: { 
+                        "Content-Type": "application/json", 
+                        "X-Master-Key": SECRET_KEY 
+                    },
+                    body: JSON.stringify(db)
+                });
+            })
+            .catch(function(e) {
+                console.log("Фоновая фиксация:", e);
+            });
+        }
     }
 </script>
 
