@@ -22,7 +22,6 @@
         
         #pdfTemplateWrapper { position: absolute; left: -9999px; top: 0; width: 210mm; }
         
-        /* СТРОГИЙ РАЗМЕР И ПОЛЯ СТРАНИЦЫ A4 */
         .pdf-page { 
             width: 210mm; 
             height: 296mm; 
@@ -38,14 +37,12 @@
             page-break-inside: avoid;
         }
         
-        /* ШАПКА В САМОМ ВЕРХУ */
         .pdf-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #b8860b; padding-bottom: 4px; margin-bottom: 6px; }
         .pdf-header-text { font-size: 9pt; line-height: 1.15; }
         
         .kp-title { font-size: 14pt; font-weight: bold; color: #b8860b; text-align: center; margin: 4px 0 6px 0; text-transform: uppercase; font-family: 'Calibri', 'Arial', sans-serif; }
         .kp-meta { font-size: 10.5pt; margin-bottom: 6px; line-height: 1.25; }
         
-        /* КОМПАКТНАЯ ТАБЛИЦА */
         .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-family: 'Calibri', 'Arial', sans-serif; }
         .kp-table th, .kp-table td { border: 1px solid #000; padding: 4px 6px; font-size: 10.5pt; vertical-align: top; line-height: 1.15; }
         .kp-table th { background: #000; color: #fff; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 9.5pt; }
@@ -56,7 +53,6 @@
         .conditions-box { font-size: 9.5pt; line-height: 1.15; margin-top: 6px; }
         .conditions-box h4 { margin: 3px 0 1px 0; font-size: 10pt; text-decoration: underline; }
 
-        /* ИСПРАВЛЕННЫЙ НИЖНИЙ КОЛОНТИКУЛ В САМОМ НИЗУ */
         .footer-line { 
             position: absolute; 
             bottom: 6mm; 
@@ -70,7 +66,6 @@
             line-height: 1.15; 
         }
 
-        /* ВТОРАЯ СТРАНИЦА */
         .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 6px 8px; margin-bottom: 6px; font-size: 10pt; line-height: 1.2; }
         .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 1px; font-size: 10.5pt; }
         .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
@@ -87,7 +82,7 @@
     <div class="section-title">1. Ответственный сотрудник и Заказчик</div>
     <div class="form-row">
         <div class="form-group">
-            <label>Сотрудник / Менеджер:</label>
+            <label>Ответственное лицо:</label>
             <select id="managerSelect">
                 <option value="Руководитель отдела продаж: Лемперт Александр Сергеевич (+7 747 689 96 80)">Руководитель отдела продаж: Лемперт Александр Сергеевич (+7 747 689 96 80)</option>
                 <option value="Директор: Уралбаев Жанайдар Абишевич (+7 771 054 77 66)">Директор: Уралбаев Жанайдар Абишевич (+7 771 054 77 66)</option>
@@ -99,6 +94,14 @@
         <div class="form-group">
             <label>Заказчик (ТОО / ИП / ФИО):</label>
             <input type="text" id="clientName" placeholder="Например: ТОО «Мамыр»" value="ТОО «Мамыр»">
+        </div>
+        <div class="form-group">
+            <label>Контактный телефон:</label>
+            <input type="text" id="clientPhone" placeholder="+7 700 000 00 00" value="+7 700 000 00 00">
+        </div>
+        <div class="form-group">
+            <label>WhatsApp для отправки КП:</label>
+            <input type="text" id="clientWa" placeholder="+7 700 000 00 00" value="+7 700 000 00 00">
         </div>
         <div class="form-group">
             <label>Назначение объекта:</label>
@@ -186,7 +189,6 @@
         </div>
     </div>
 
-    <!-- 5. ФОТОГРАФИИ ОБЪЕКТА -->
     <div class="section-title">5. Фотографии объекта (для 2-й страницы)</div>
     <div class="form-row">
         <div class="form-group">
@@ -214,7 +216,6 @@
 
 <div id="pdfTemplateWrapper">
     <div id="pdfContent">
-        <!-- СТРАНИЦА 1 -->
         <div class="pdf-page">
             <div class="pdf-header">
                 <div class="pdf-header-text">
@@ -264,7 +265,6 @@
             </div>
         </div>
 
-        <!-- СТРАНИЦА 2 -->
         <div class="pdf-page">
             <div class="pdf-header">
                 <div class="pdf-header-text">
@@ -293,7 +293,6 @@
                 Проектирование ведется с учетом индивидуальных условий эксплуатации. Ветровые и снеговые нагрузки рассчитываются согласно строительным нормам (СНиП) конкретного региона.
             </div>
 
-            <!-- ГРИД ФОТОГРАФИЙ -->
             <div class="photo-grid">
                 <div class="photo-card" id="pdfImg1Box"><img id="pdfImg1" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Объект M-CONSTRUCTION<br>(Вид снаружи)</span></div>
                 <div class="photo-card" id="pdfImg2Box"><img id="pdfImg2" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Объект M-CONSTRUCTION<br>(Конструктив МК)</span></div>
@@ -354,6 +353,8 @@
         try {
             var manager = document.getElementById('managerSelect').value;
             var client = document.getElementById('clientName').value || 'Заказчик';
+            var phone = document.getElementById('clientPhone').value || '—';
+            var whatsapp = document.getElementById('clientWa').value || '—';
             var purpose = document.getElementById('purpose').value || 'Ангар';
             
             var type = document.getElementById('buildingType').value;
@@ -382,7 +383,7 @@
                 if (w <= 13) rateNoVat = 17000;
                 else if (w <= 16) rateNoVat = 19000;
                 else rateNoVat = 22000;
-coverDesc = "Тент ПВХ 900 гр/м² не поддерживающий горения";
+                coverDesc = "Тент ПВХ 900 гр/м² не поддерживающий горения";
             } else if (type === 'straight_arch_pvc') {
                 rateNoVat = (w <= 13) ? 19000 : 25000;
                 coverDesc = "Тент ПВХ 900 гр/м² не поддерживающий горения";
@@ -542,6 +543,8 @@ coverDesc = "Тент ПВХ 900 гр/м² не поддерживающий г�
                     date: new Date().toLocaleDateString('ru-RU') + " " + new Date().toLocaleTimeString('ru-RU'),
                     manager: manager,
                     client: client,
+                    phone: phone,
+                    whatsapp: whatsapp,
                     area: area,
                     total: totalFinal
                 });
