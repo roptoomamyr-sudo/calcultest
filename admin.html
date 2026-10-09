@@ -25,7 +25,6 @@
         .badge-used { background: #f8d7da; color: #721c24; }
         .badge-expired { background: #fff3cd; color: #856404; }
         .refresh-btn { background: #6c757d; width: auto; padding: 8px 15px; font-size: 14px; }
-        .reset-btn { background: #dc3545; width: auto; padding: 8px 15px; font-size: 14px; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -49,7 +48,6 @@
     </div>
 
     <button id="genBtn" type="button">Сформировать ссылку</button>
-    <div id="status" style="margin-top:10px; text-align:center; font-weight:bold;"></div>
 
     <div class="result-box" id="resultBox">
         <label>Готовая защищенная ссылка для клиента:</label>
@@ -60,10 +58,7 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <h3 style="margin: 0;">📊 Мониторинг всех ссылок</h3>
-        <div>
-            <button class="refresh-btn" id="refreshBtn" type="button">🔄 Обновить</button>
-            <button class="reset-btn" id="resetBtn" type="button">🗑️ Очистить базу</button>
-        </div>
+        <button class="refresh-btn" id="refreshBtn" type="button">🔄 Обновить</button>
     </div>
 
     <table>
@@ -76,7 +71,7 @@
             </tr>
         </thead>
         <tbody id="statsTableBody">
-            <tr><td colspan="4" style="text-align:center;">Загрузка данных...</td></tr>
+            <tr><td colspan="4" style="text-align:center;">Нажмите «Обновить» для загрузки</td></tr>
         </tbody>
     </table>
 </div>
@@ -94,22 +89,20 @@
 
     function loadStats() {
         const tbody = document.getElementById('statsTableBody');
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Загрузка...</td></tr>';
         
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
-
         fetch(https://api.jsonbin.io/v3/b/${BIN_ID}/latest, {
-            headers: { "X-Master-Key": SECRET_KEY },
-            signal: controller.signal
+            method: 'GET',
+            headers: { 
+                "X-Master-Key": SECRET_KEY,
+                "X-Bin-Meta": "false"
+            }
         })
         .then(res => res.json())
-        .then(data => {
-            clearTimeout(timeoutId);
-            let db = data.record || {};
+        .then(db => {
             if (Array.isArray(db)) db = db[0] || {};
 
             tbody.innerHTML = '';
-
             const keys = Object.keys(db).filter(k => k.startsWith('id_')).reverse();
 
             if (keys.length === 0) {
@@ -118,13 +111,11 @@
             }
 
             const now = Date.now();
-
             keys.forEach(key => {
                 const item = db[key];
                 if (!item) return;
 
                 let statusBadge = '';
-
                 if (item.used) {
                     statusBadge = '<span class="badge badge-used">🔴 Просмотрено</span>';
                 } else if (item.expiresAt && now > item.expiresAt) {
@@ -144,39 +135,37 @@
             });
         })
         .catch(err => {
-            clearTimeout(timeoutId);
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">Нет связи с базой (офлайн-режим)</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Ошибка связи с базой. Нажмите «Обновить» повторно.</td></tr>';
         });
     }
 
-    document.getElementById('genBtn').addEventListener('click', function(e) {
-        e.preventDefault();
-        const clientInput = document.getElementById('clientName');
-        const clientName = clientInput.value.trim();
+    document.getElementById('genBtn').onclick = function() {
+        const clientName = document.getElementById('clientName').value.trim();
         const ttlHours = parseInt(document.getElementById('ttlSelect').value);
-        const status = document.getElementById('status');
 
-        if (!clientName) { 
-            alert("Введите имя клиента!"); 
-            return; 
+        if (!clientName) {
+            alert("Пожалуйста, введите имя клиента!");
+            return;
         }
 
         const linkId = "id_" + Date.now();
         const now = Date.now();
-        const fullUrl = ${BASE_URL}?client=${encodeURIComponent(clientName)}&id=${linkId};
+        const fullUrl = BASE_URL + "?client=" + encodeURIComponent(clientName) + "&id=" + linkId;
 
-        // 1. Мгновенно показываем ссылку на экране
+        // Мгновенно отображаем ссылку клиенту
         document.getElementById('genUrl').innerText = fullUrl;
         document.getElementById('resultBox').style.display = "block";
-        status.innerText = "✅ Ссылка сформирована!";
 
-        // 2. Фоновая запись в JSONBin
+        // Сохраняем в JSONBin
         fetch(https://api.jsonbin.io/v3/b/${BIN_ID}/latest, {
-            headers: { "X-Master-Key": SECRET_KEY }
+            method: 'GET',
+            headers: { 
+                "X-Master-Key": SECRET_KEY,
+                "X-Bin-Meta": "false"
+            }
         })
         .then(res => res.json())
-        .then(data => {
-            let db = data.record || {};
+        .then(db => {
             if (Array.isArray(db)) db = db[0] || {};
 
             db[linkId] = {
@@ -190,39 +179,18 @@
 
             return fetch(https://api.jsonbin.io/v3/b/${BIN_ID}, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json", "X-Master-Key": SECRET_KEY },
+                headers: { 
+                    "Content-Type": "application/json", 
+                    "X-Master-Key": SECRET_KEY 
+                },
                 body: JSON.stringify(db)
             });
         })
-        .then(() => {
-            loadStats();
-        })
-        .catch(err => {
-            console.log("Фоновая запись:", err);
-        });
-    });
+        .then(() => loadStats())
+        .catch(e => console.log(e));
+    };
 
-    document.getElementById('resetBtn').addEventListener('click', function(e) {
-        e.preventDefault();
-        if (!confirm("Вы уверены, что хотите очистить всю базу?")) return;
-        
-        fetch(https://api.jsonbin.io/v3/b/${BIN_ID}, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json", "X-Master-Key": SECRET_KEY },
-            body: JSON.stringify({})
-        })
-        .then(() => {
-            alert("База сброшена!");
-            loadStats();
-        });
-    });
-
-    document.getElementById('refreshBtn').addEventListener('click', function(e) {
-        e.preventDefault();
-        loadStats();
-    });
-
-    loadStats();
+    document.getElementById('refreshBtn').onclick = loadStats;
 </script>
 
 </body>
