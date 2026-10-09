@@ -3,27 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Расчет стоимости тентового ангара</title>
+    <title>Расчет стоимости ангара</title>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
-        .card { background: #ffffff; width: 100%; max-width: 650px; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .card { background: #ffffff; width: 100%; max-width: 720px; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         .block-screen { display: none; padding: 30px; background: #fff3f3; border: 1px solid #f5c6cb; border-radius: 8px; color: #721c24; text-align: center; }
         .block-icon { font-size: 54px; margin-bottom: 15px; }
         .calc-content { display: none; }
         .badge { display: inline-block; padding: 5px 12px; background: #fff3cd; color: #856404; border-radius: 20px; font-size: 13px; font-weight: bold; margin-bottom: 15px; }
         
+        .section-title { font-size: 16px; font-weight: 700; color: #007bff; margin: 20px 0 10px 0; border-bottom: 2px solid #eef2f5; padding-bottom: 5px; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #333; }
         input, select { width: 100%; padding: 10px 12px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; }
-        .form-row { display: flex; gap: 15px; }
-        .form-row .form-group { flex: 1; }
+        .form-row { display: flex; gap: 15px; flex-wrap: wrap; }
+        .form-row .form-group { flex: 1; min-width: 140px; }
 
         .result-panel { margin-top: 25px; padding: 20px; background: #eef7ee; border: 1px solid #c3e6cb; border-radius: 10px; }
         .price-title { font-size: 14px; color: #155724; font-weight: bold; text-transform: uppercase; }
-        .price-value { font-size: 28px; color: #28a745; font-weight: 800; margin: 5px 0 15px 0; }
+        .price-value { font-size: 32px; color: #28a745; font-weight: 800; margin: 5px 0 15px 0; }
         .details-list { font-size: 14px; color: #444; line-height: 1.6; border-top: 1px dashed #b1dfbb; padding-top: 10px; margin: 0; list-style: none; }
-        .details-list li { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .details-list li { display: flex; justify-content: space-between; margin-bottom: 6px; }
     </style>
 </head>
 <body>
@@ -36,60 +37,113 @@
         <p id="blockMessage">Данная ссылка уже была использована или недействительна.</p>
     </div>
 
-    <!-- Полный калькулятор -->
+    <!-- Основной калькулятор -->
     <div id="calcContent" class="calc-content">
-        <div class="badge">⚠️ Персональный одноразовый расчет</div>
-        <h2 style="margin-top:0;">Калькулятор стоимости тентового ангара</h2>
-        <p><strong>Клиент:</strong> <span id="clientNameHolder" style="color:#007bff;">—</span></p>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <div class="badge">⚠️ Персональный коммерческий расчет</div>
+        <h2 style="margin-top:0; color:#222;">Калькулятор строительства ангаров</h2>
+        <p><strong>Заказчик:</strong> <span id="clientNameHolder" style="color:#007bff;">—</span></p>
+
+        <!-- 1. ПАРАМЕТРЫ КОНСТРУКЦИИ -->
+        <div class="section-title">1. Основные параметры и тип ангара</div>
+        
+        <div class="form-group">
+            <label for="typeSelect">Тип конструкции и покрытия:</label>
+            <select id="typeSelect">
+                <option value="arch_pvc">Арочный холодный (Тент ПВХ)</option>
+                <option value="straight_arch_pvc">Прямостенный арочный холодный (Тент ПВХ)</option>
+                <option value="straight_gable_prof">Прямостенный двускатный холодный (Профлист)</option>
+            </select>
+        </div>
 
         <div class="form-row">
             <div class="form-group">
-                <label for="width">Ширина (м):</label>
-                <input type="number" id="width" value="18" min="6" max="40">
+                <label for="width">Ширина, м:</label>
+                <input type="number" id="width" value="18" min="10" max="30">
             </div>
             <div class="form-group">
-                <label for="length">Длина (м):</label>
+                <label for="length">Длина, м:</label>
                 <input type="number" id="length" value="40" min="10" max="150">
             </div>
-            <div class="form-group">
-                <label for="height">Высота по стенке (м):</label>
-                <input type="number" id="height" value="4" min="3" max="8">
+            <div class="form-group" id="wallHeightBox" style="display:none;">
+                <label for="wallHeight">Высота стены, м:</label>
+                <input type="number" id="wallHeight" value="3" min="3" max="10">
             </div>
         </div>
 
+        <!-- 2. ВОРОТА -->
+        <div class="section-title">2. Ворота</div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="gateType">Размер ворот:</label>
+                <select id="gateType">
+                    <option value="4x4">Ворота распашные 4 х 4 м (700 000 ₸)</option>
+                    <option value="3x3">Ворота распашные 3 х 3 м (600 000 ₸)</option>
+                    <option value="5x5">Ворота распашные 5 х 5 м (800 000 ₸)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="gateCount">Количество ворот, шт:</label>
+                <input type="number" id="gateCount" value="2" min="0" max="10">
+            </div>
+        </div>
+
+        <!-- 3. ФУНДАМЕНТ -->
+        <div class="section-title">3. Фундамент</div>
         <div class="form-group">
-            <label for="snowRegion">Снеговой район:</label>
-            <select id="snowRegion">
-                <option value="1.0">I район (до 80 кг/м²)</option>
-                <option value="1.2">II район (до 120 кг/м²)</option>
-                <option value="1.4" selected>III район (до 180 кг/м² — Костанай/Север КЗ)</option>
-                <option value="1.7">IV район (до 240 кг/м²)</option>
+            <label for="fundType">Тип фундамента:</label>
+            <select id="fundType">
+                <option value="strip">Ленточный + Буроналивные сваи + Отмостка</option>
+                <option value="screw">Винтовые сваи</option>
+                <option value="none">Без фундамента</option>
             </select>
         </div>
 
-        <div class="form-group">
-            <label for="pvcType">Плотность тентового покрытия:</label>
-            <select id="pvcType">
-                <option value="1.0">Однослойный Тент PVC 650–900 г/м² (1200 dtex)</option>
-                <option value="1.25" selected>Усиленный Тент PVC 900 г/м² (2200 dtex)</option>
-                <option value="1.6">Утепленный двухслойный тент (с утеплителем)</option>
-            </select>
+        <div id="stripFundBox">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="fundW">Ширина ленты, м:</label>
+                    <input type="number" id="fundW" value="0.4" step="0.05" min="0.2">
+                </div>
+                <div class="form-group">
+                    <label for="fundH">Высота ленты (всего), м:</label>
+                    <input type="number" id="fundH" value="0.6" step="0.05" min="0.3">
+                </div>
+            </div>
         </div>
 
+        <!-- 4. МОНТАЖ И ДОСТАВКА -->
+        <div class="section-title">4. Монтаж и доставка</div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="addMontage">Монтаж бригадой:</label>
+                <select id="addMontage">
+                    <option value="yes">Требуется</option>
+                    <option value="no">Без монтажа</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="distance">Расстояние доставки от Костаная, км:</label>
+                <input type="number" id="distance" value="0" min="0">
+            </div>
+        </div>
+
+        <!-- ИТОГОВЫЙ РАСЧЕТ -->
         <div class="result-panel">
-            <div class="price-title">Ориентировочная стоимость:</div>
+            <div class="price-title">Итоговая стоимость под ключ:</div>
             <div class="price-value" id="totalPrice">0 ₸</div>
             
             <ul class="details-list">
-                <li><span>Площадь застройки:</span> <strong id="areaVal">0 м²</strong></li>
-                <li><span>Металлоемкость конструкции:</span> <strong id="metalVal">0 т</strong></li>
-                <li><span>Тип соединения каркаса:</span> <strong>Болтовое (ферменное)</strong></li>
+                <li><span>Площадь ангара:</span> <strong id="areaVal">0 м²</strong></li>
+                <li><span>Стоимость конструкции:</span> <strong id="constPriceVal">0 ₸</strong></li>
+                <li><span>Ворота:</span> <strong id="gatePriceVal">0 ₸</strong></li>
+                <li><span>Фундамент:</span> <strong id="fundPriceVal">0 ₸</strong></li>
+                <li><span>Монтажные работы:</span> <strong id="montagePriceVal">0 ₸</strong></li>
+                <li><span>Доставка:</span> <strong id="deliveryPriceVal">0 ₸</strong></li>
             </ul>
         </div>
 
         <div style="background:#fff8e1; padding:12px; border-radius:8px; border:1px solid #ffe082; color:#6d4c41; font-size:13px; margin-top:20px;">
-            <b>Защита коммерческого предложения:</b> Ссылка привязана к вашему устройству. Повторный переход или пересылка третьим лицам заблокированы.
+            <b>Защита коммерческого предложения:</b> Ссылка привязана к вашему устройству. Повторный доступ или пересылка третьим лицам заблокированы.
         </div>
     </div>
 </div>
@@ -97,6 +151,7 @@
 <script>
     const BIN_ID = "6ac861c6ffd5d160535b0623";
     const SECRET_KEY = "$2a$10$IMgqPeq6EGMUWkoPpesa5.NXtCKi6SpV9oE.H/hRWRVC9gheuz1WO";
+    const VAT = 1.16; // НДС 16%
 
     const urlParams = new URLSearchParams(window.location.search);
     const linkId = urlParams.get('id');
@@ -108,34 +163,144 @@
     const calcContent = document.getElementById('calcContent');
     const clientNameHolder = document.getElementById('clientNameHolder');
 
-    // Логика расчета стоимости
     function calculate() {
+        const type = document.getElementById('typeSelect').value;
         const w = parseFloat(document.getElementById('width').value) || 0;
         const l = parseFloat(document.getElementById('length').value) || 0;
-        const h = parseFloat(document.getElementById('height').value) || 0;
-        const snowCoeff = parseFloat(document.getElementById('snowRegion').value) || 1;
-        const pvcCoeff = parseFloat(document.getElementById('pvcType').value) || 1;
+        const wallH = parseFloat(document.getElementById('wallHeight').value) || 3;
+        
+        const gateType = document.getElementById('gateType').value;
+        const gateCount = parseInt(document.getElementById('gateCount').value) || 0;
+        
+        const fundType = document.getElementById('fundType').value;
+        const fundW = parseFloat(document.getElementById('fundW').value) || 0.4;
+        const fundH = parseFloat(document.getElementById('fundH').value) || 0.6;
+
+        const addMontage = document.getElementById('addMontage').value === 'yes';
+        const distance = parseFloat(document.getElementById('distance').value) || 0;
+
+        // Показ/скрытие поля высоты стены
+        const wallBox = document.getElementById('wallHeightBox');
+        if (type === 'straight_arch_pvc' || type === 'straight_gable_prof') {
+            wallBox.style.display = 'block';
+        } else {
+            wallBox.style.display = 'none';
+        }
+
+        // Показ/скрытие настроек ленточного фундамента
+        const stripBox = document.getElementById('stripFundBox');
+        if (fundType === 'strip') {
+            stripBox.style.display = 'block';
+        } else {
+            stripBox.style.display = 'none';
+        }
 
         const area = w * l;
         if (area <= 0) return;
 
-        // Базовая ставка за м2 металлоконструкции + тента
-        let baseRate = 22000; // в ₸/м²
-        
-        // Поправки на габариты и высоту
-        if (w > 20) baseRate += 3000;
-        if (h > 4) baseRate += (h - 4) * 800;
+        // 1. РАСЧЕТ КОНСТРУКЦИИ (без НДС)
+        let rateNoVat = 0;
+        let isProf = false;
 
-        const total = Math.round(area * baseRate * snowCoeff * pvcCoeff);
-        const approxMetal = (area * 0.022 * snowCoeff).toFixed(1);
+        if (type === 'arch_pvc') {
+            if (w >= 10 && w <= 13) rateNoVat = 17000;
+            else if (w >= 14 && w <= 16) rateNoVat = 19000;
+            else if (w >= 17 && w <= 27) rateNoVat = 22000;
+            else rateNoVat = 22000;
+        } else if (type === 'straight_arch_pvc') {
+            if (w >= 10 && w <= 13) rateNoVat = 19000;
+            else rateNoVat = 25000;
+        } else if (type === 'straight_gable_prof') {
+            isProf = true;
+            if (w >= 10 && w <= 13) rateNoVat = 23000;
+            else rateNoVat = 26000;
+        }
 
-        document.getElementById('totalPrice').innerText = total.toLocaleString('ru-RU') + ' ₸';
+        // Надбавка за высоту стены (+3% за каждый 1 м выше базовой)
+        let heightMultiplier = 1.0;
+        if (type === 'straight_arch_pvc' && wallH > 3) {
+            heightMultiplier += (wallH - 3) * 0.03;
+        } else if (type === 'straight_gable_prof' && wallH > 4) {
+            heightMultiplier += (wallH - 4) * 0.03;
+        }
+
+        let constPriceNoVat = area * rateNoVat * heightMultiplier;
+        let constPriceWithVat = constPriceNoVat * VAT;
+
+        // 2. РАСЧЕТ ВОРОТ (уже с НДС)
+        let singleGatePrice = 700000;
+        let gateWidth = 4;
+
+        if (gateType === '3x3') {
+            singleGatePrice = 600000; // на 100 000 ₸ дешевле
+            gateWidth = 3;
+        } else if (gateType === '5x5') {
+            singleGatePrice = 800000; // на 100 000 ₸ дороже
+            gateWidth = 5;
+        }
+
+        const totalGatePrice = singleGatePrice * gateCount;
+
+        // 3. РАСЧЕТ ФУНДАМЕНТА
+        let fundPriceWithVat = 0;
+
+        if (fundType === 'strip') {
+            // Длина ленты с вычетом воротных проемов
+            let perimeter = 2 * (w + l);
+            let totalGateWidth = gateWidth * gateCount;
+            let netPerimeter = Math.max(0, perimeter - totalGateWidth);
+
+            let stripVolume = netPerimeter * fundW * fundH; // Лента
+
+            // Сваи буроналивные
+            let supportsCount = Math.floor(l / 3) * 2 + 8;
+            let pilesVolume = supportsCount * 0.25;
+
+            // Отмостка (по полному периметру 1.0м * 0.1м)
+            let blindAreaVolume = perimeter * 1.0 * 0.1;
+
+            let totalConcreteVolume = stripVolume + pilesVolume + blindAreaVolume;
+            fundPriceWithVat = totalConcreteVolume * 135000 * VAT;
+
+        } else if (fundType === 'screw') {
+            let perimeter = 2 * (w + l);
+            let screwRateNoVat = 0;
+
+            if (w >= 11 && w <= 13) screwRateNoVat = 22000;
+            else if (w >= 14 && w <= 17) screwRateNoVat = 26000;
+            else if (w >= 18 && w <= 22) screwRateNoVat = 30000;
+            else if (w >= 23 && w <= 26) screwRateNoVat = 34000;
+            else screwRateNoVat = 30000;
+
+            fundPriceWithVat = perimeter * screwRateNoVat * VAT;
+        }
+
+        // 4. МОНТАЖ
+        let montagePriceWithVat = 0;
+        if (addMontage) {
+            let montagePercent = isProf ? 0.23 : 0.18;
+            montagePriceWithVat = constPriceWithVat * montagePercent;
+        }
+
+        // 5. ДОСТАВКА
+        let deliveryPriceWithVat = distance * 1000 * VAT;
+
+        // ИТОГО
+        const totalPrice = Math.round(constPriceWithVat + totalGatePrice + fundPriceWithVat + montagePriceWithVat + deliveryPriceWithVat);
+
+        // Отображение
+        document.getElementById('totalPrice').innerText = totalPrice.toLocaleString('ru-RU') + ' ₸';
         document.getElementById('areaVal').innerText = area + ' м²';
-        document.getElementById('metalVal').innerText = approxMetal + ' т';
+        document.getElementById('constPriceVal').innerText = Math.round(constPriceWithVat).toLocaleString('ru-RU') + ' ₸';
+        document.getElementById('gatePriceVal').innerText = Math.round(totalGatePrice).toLocaleString('ru-RU') + ' ₸';
+        document.getElementById('fundPriceVal').innerText = Math.round(fundPriceWithVat).toLocaleString('ru-RU') + ' ₸';
+        document.getElementById('montagePriceVal').innerText = Math.round(montagePriceWithVat).toLocaleString('ru-RU') + ' ₸';
+        document.getElementById('deliveryPriceVal').innerText = Math.round(deliveryPriceWithVat).toLocaleString('ru-RU') + ' ₸';
     }
 
-    // Привязка событий перерасчета
-    ['width', 'length', 'height', 'snowRegion', 'pvcType'].forEach(id => {
+    // События для перерасчета
+    const inputs = ['typeSelect', 'width', 'length', 'wallHeight', 'gateType', 'gateCount', 'fundType', 'fundW', 'fundH', 'addMontage', 'distance'];
+    inputs.forEach(id => {
         document.getElementById(id).addEventListener('input', calculate);
         document.getElementById(id).addEventListener('change', calculate);
     });
@@ -155,9 +320,8 @@
     }
 
     if (!linkId) {
-        showError("Ошибка доступа", "Персональная ссылка не распознана.");
+        showError("Ошибка доступа", "Персональная ссылка не найдена.");
     } else {
-        // Одноразовая блокировка по localStorage
         const viewedKey = 'calc_viewed_' + linkId;
         if (localStorage.getItem(viewedKey)) {
             showError("Ссылка сгорела", "Вы уже открывали этот расчет ранее. Повторный доступ заблокирован.");
@@ -165,7 +329,7 @@
             localStorage.setItem(viewedKey, 'true');
             showCalc(clientName);
 
-            // Фоновое обновление статуса на JSONBin для админки
+            // Фоновая запись
             fetch("https://api.jsonbin.io/v3/b/" + BIN_ID + "/latest", {
                 method: "GET",
                 headers: { 
@@ -198,7 +362,7 @@
                     body: JSON.stringify(db)
                 });
             })
-            .catch(e => console.log("Фоновый статус:", e));
+            .catch(e => console.log(e));
         }
     }
 </script>
