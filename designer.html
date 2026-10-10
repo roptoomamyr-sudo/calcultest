@@ -19,7 +19,7 @@
 
         .section-title { font-size: 18px; color: #2b6cb0; margin-top: 30px; margin-bottom: 15px; font-weight: bold; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
         
-        .scheme-box { background: #fff; border: 2px dashed #cbd5e0; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 20px; }
+        .scheme-box { background: #fff; border: 1px solid #cbd5e0; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 20px; }
         canvas { max-width: 100%; height: auto; background: #fafbfc; border: 1px solid #e2e8f0; border-radius: 4px; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }
@@ -38,14 +38,14 @@
 <body>
 
 <div class="container">
-    <h1>АРМ Проектировщика: Расчет КМ и Спецификация каркаса (Ширина 12 м[span_3](start_span)[span_3](end_span))</h1>
+    <h1>АРМ Проектировщика КМ: Ангар 12 м (Болтовое соединение)</h1>
 
     <div class="panel">
         <div class="control-group">
             <label for="hangarType">Тип ангара:</label>
             <select id="hangarType" onchange="calculateKM()">
-                <option value="arch">Чисто арочный (Высота 5.5 м)[span_4](start_span)[span_4](end_span)</option>
-                <option value="straight">Прямостенный арочный (Стена 3м, Общ. 6.8м)[span_5](start_span)[span_5](end_span)</option>
+                <option value="arch">Чисто арочный (Высота 5.5 м)</option>
+                <option value="straight">Прямостенный арочный (Стена 3м, Общ. 6.8м)</option>
             </select>
         </div>
         <div class="control-group">
@@ -63,16 +63,16 @@
         <button class="btn" onclick="calculateKM()">Пересчитать КМ и спецификацию</button>
     </div>
 
-    <div class="section-title">1. Схема каркаса и раскладка арок (Шаг 3 метра[span_6](start_span)[span_6](end_span))</div>
+    <div class="section-title">1. Схема каркаса и раскладка арок (Шаг 3.0 м)</div>
     <div class="scheme-box">
-        <canvas id="schemeCanvas" width="900" height="300"></canvas>
-        <div style="font-size: 12px; color: #666; margin-top: 8px;">* Схема отображает вид сбоку: расстановку арок, шаг 3 м[span_7](start_span)[span_7](end_span) и торцевые рамы.</div>
+        <canvas id="schemeCanvas" width="900" height="260"></canvas>
+        <div style="font-size: 12px; color: #666; margin-top: 8px;">* Схема отображает вид каркаса в осях, расстановку арок с шагом 3 метра и торцевые рамы.</div>
     </div>
 
     <div class="section-title">2. Спецификация металлопроката на весь ангар</div>
     <div id="metalTableContainer"></div>
 
-    <div class="section-title">3. Ведомость метизов (Болтовые соединения[span_8](start_span)[span_8](end_span))</div>
+    <div class="section-title">3. Ведомость метизов (Болтовые соединения)</div>
     <div id="boltsTableContainer"></div>
 
     <div class="summary-box">
@@ -88,77 +88,72 @@
 </div>
 
 <script>
-    // Теоретический вес погонного метра труб (конструкционная сталь)
-    // 60x60x3 ~ 5.22 кг/м
-    // 60x40x3 ~ 4.25 кг/м
-    var W_60_60_3 = 5.22;
-    var W_60_40_3 = 4.25;
+    // Вес погонного метра труб (конструкционная сталь)
+    var W_60_60_3 = 5.22; // кг/м
+    var W_60_40_3 = 4.25; // кг/м
 
     function calculateKM() {
         var type = document.getElementById('hangarType').value;
         var length = parseFloat(document.getElementById('hangarLength').value) || 30;
         var gate = document.getElementById('gateSize').value;
 
-        var step = 3; // Шаг каркаса 3 метра[span_9](start_span)[span_9](end_span)
+        var step = 3.0; // Шаг каркаса 3 метра
         var bays = Math.round(length / step);
         var archesCount = bays + 1; // Количество основных арок
 
-        // Геометрия дуг для Ширины 12 м[span_10](start_span)[span_10](end_span)
-        // Внешняя дуга 60x60x3[span_11](start_span)[span_11](end_span), внутренняя 60x40x3[span_12](start_span)[span_12](end_span) (расстояние 20 см[span_13](start_span)[span_13](end_span))
-        var arcOuterLen = (type === 'arch') ? 18.8 : 21.4; // ориентировочная длина дуги в м
+        // Геометрия
+        var arcOuterLen = (type === 'arch') ? 18.8 : 21.4; 
         var arcInnerLen = arcOuterLen - 0.8; 
 
-        // Расчет материалов на 1 арку
-        var pipe6060_per_arch = arcOuterLen + (type === 'straight' ? 6.0 : 0); // с учетом колонн
+        // Расход на 1 арку
+        var pipe6060_per_arch = arcOuterLen + (type === 'straight' ? 6.0 : 0); 
         var pipe6040_per_arch = arcInnerLen;
-        var connectors_per_arch = 15.0; // перемычки между дугами
+        var connectors_per_arch = 15.0; // перемычки между дугами (20 см расстояние)
 
         // Суммарно по аркам
         var totalArch6060 = pipe6060_per_arch * archesCount;
         var totalArch6040 = pipe6040_per_arch * archesCount;
         var totalArchConnectors = connectors_per_arch * archesCount;
 
-        // Прогоны продольные (по длине ангара, соединяют арки)
-        // На фото видно около 6-8 ниток прогонов из трубы 60x60x3[span_14](start_span)[span_14](end_span)
+        // Прогоны продольные (труба 60x60x3)
         var stringerLines = 8;
         var totalStringers = length * stringerLines;
 
-        // Торцевые стенки (стойки 60x60x3[span_15](start_span)[span_15](end_span) + обвязка под ворота)
+        // Торцевые стенки (стойки 60x60x3 + обвязка ворот)
         var endWallPipes = (gate !== 'none') ? 45.0 : 30.0;
 
         // Итого метраж труб
         var sum6060 = totalArch6060 + totalStringers + endWallPipes + totalArchConnectors;
         var sum6040 = totalArch6040;
 
-        // Вес
+        // Вес в кг
         var weight6060 = sum6060 * W_60_60_3;
         var weight6040 = sum6040 * W_60_40_3;
         var totalWeightKg = Math.round(weight6060 + weight6040);
 
-        // Метизы (болты высокопрочные для полностью болтового соединения[span_16](start_span)[span_16](end_span))
-        // Примерный расчет: ~14 болтов на узел соединения арки с прогонами и стыками
+        // Болты (класс 8.8)
         var totalBolts = archesCount * 35; 
 
-        // Отрисовка чертежа-схемы на Canvas
+        // Отрисовка аккуратной схемы
         drawScheme(bays, length);
 
-        // Вывод таблицы металла
+        // Таблица металла
         var metalHtml = '<table><thead><tr>' +
-            '<th>№</th><th>Наименование элемента</th><th>Профиль / Сечение</th><th>Количество</th><th>Ед. изм.</th><th>Метраж / Вес</th>' +
+            '<th>№</th><th>Наименование элемента</th><th>Профиль / Сечение</th><th>Количество</th><th>Ед. изм.</th><th>Метраж</th>' +
             '</tr></thead><tbody>' +
-            '<tr><td>1</td><td><b>Дуги внешние (арки)</b></td><td>Труба 60×60×3[span_17](start_span)[span_17](end_span)</td><td>' + archesCount + '</td><td>шт.</td><td>' + Math.round(totalArch6060) + ' м</td></tr>' +
-            '<tr><td>2</td><td><b>Дуги внутренние</b></td><td>Труба 60×40×3[span_18](start_span)[span_18](end_span)</td><td>' + archesCount + '</td><td>шт.</td><td>' + Math.round(totalArch4040 = totalArch6040) + ' м</td></tr>' +
-            '<tr><td>3</td><td><b>Прогоны продольные</b></td><td>Труба 60×60×3[span_19](start_span)[span_19](end_span)</td><td>' + stringerLines + ' линий</td><td>п.м.</td><td>' + Math.round(totalStringers) + ' м</td></tr>' +
-            '<tr><td>4</td><td><b>Торцевые стойки и обвязка ворот</b></td><td>Труба 60×60×3[span_20](start_span)[span_20](end_span)</td><td>Комплект</td><td>шт.</td><td>' + Math.round(endWallPipes) + ' м</td></tr>' +
-            '<tr><td>5</td><td><b>Перемычки каркаса (между дугами)</b></td><td>Труба 60×40×3 / 60×60×3[span_21](start_span)[span_21](end_span)</td><td>Комплект</td><td>компл.</td><td>' + Math.round(totalArchConnectors) + ' м</td></tr>' +
+            '<tr><td>1</td><td><b>Дуги внешние (арки)</b></td><td>Труба 60×60×3</td><td>' + archesCount + '</td><td>шт.</td><td>' + Math.round(totalArch6060) + ' м</td></tr>' +
+            '<tr><td>2</td><td><b>Дуги внутренние</b></td><td>Труба 60×40×3</td><td>' + archesCount + '</td><td>шт.</td><td>' + Math.round(totalArch6040) + ' м</td></tr>' +
+            '<tr><td>3</td><td><b>Прогоны продольные</b></td><td>Труба 60×60×3</td><td>' + stringerLines + ' линий</td><td>п.м.</td><td>' + Math.round(totalStringers) + ' м</td></tr>' +
+            '<tr><td>4</td><td><b>Торцевые стойки и обвязка ворот</b></td><td>Труба 60×60×3</td><td>Комплект</td><td>компл.</td><td>' + Math.round(endWallPipes) + ' м</td></tr>' +
+            '<tr><td>5</td><td><b>Перемычки каркаса (между дугами)</b></td><td>Труба 60×40×3 / 60×60×3</td><td>Комплект</td><td>компл.</td><td>' + Math.round(totalArchConnectors) + ' м</td></tr>' +
             '</tbody></table>';
         document.getElementById('metalTableContainer').innerHTML = metalHtml;
 
-        // Вывод таблицы метизов
+        // Таблица метизов
         var boltsHtml = '<table><thead><tr>' +
             '<th>Наименование метиза</th><th>Класс прочности</th><th>Количество</th><th>Ед. изм.</th>' +
             '</tr></thead><tbody>' +
-            '<tr><td>Болт оцинкованный (с гайкой и шайбами)</td><td>8.8[span_22](start_span)[span_22](end_span)</td><td>' + totalBolts + '</td><td>шт.</td></tr>' +
+            '<tr><td>Болт оцинкованный (с гайкой и шайбами)</td><td>8.8</td><td>' + totalBolts + '</td><td>шт.</td></tr>' +
             '<tr><td>Анкерные болты крепления базы к фундаменту</td><td>8.8</td><td>' + (archesCount * 4) + '</td><td>шт.</td></tr>' +
             '</tbody></table>';
         document.getElementById('boltsTableContainer').innerHTML = boltsHtml;
@@ -173,56 +168,78 @@
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Чертим схему ангара в плане (вид сбоку)
-        var startX = 60;
-        var startY = 150;
-        var drawWidth = 780;
+        var startX = 50;
+        var startY = 140;
+        var drawWidth = 800;
         var bayWidthPx = drawWidth / bays;
 
-        ctx.strokeStyle = "#2b6cb0";
-        ctx.lineWidth = 3;
+        // Сетка и оси
+        ctx.strokeStyle = "#e2e8f0";
+        ctx.lineWidth = 1;
+        for (var i = 0; i <= bays; i++) {
+            var x = startX + (i * bayWidthPx);
+            ctx.beginPath();
+            ctx.moveTo(x, 20);
+            ctx.lineTo(x, startY + 20);
+            ctx.stroke();
+        }
 
-        // Основание (фундамент / земля)
+        // Базовая линия (уровень земли)
+        ctx.strokeStyle = "#1a365d";
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(startX, startY + 40);
-        ctx.lineTo(startX + drawWidth, startY + 40);
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(startX + drawWidth, startY);
         ctx.stroke();
 
-        // Рисуем арки с шагом 3м[span_23](start_span)[span_23](end_span)
+        // Отрисовка ферм схематично (арок)
         for (var i = 0; i <= bays; i++) {
             var x = startX + (i * bayWidthPx);
             
-            // Стойка/арка
+            // Стойка
+            ctx.strokeStyle = "#2b6cb0";
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(x, startY + 40);
-            ctx.lineTo(x, startY - 60);
+            ctx.moveTo(x, startY);
+            ctx.lineTo(x, startY - 70);
             ctx.stroke();
 
-            // Верхняя дуга арки схематично
+            // Полукруг арки
             ctx.beginPath();
-            ctx.arc(x, startY - 60, 25, Math.PI, 0, false);
+            ctx.arc(x, startY - 70, 20, Math.PI, 0, false);
             ctx.stroke();
 
-            // Подпись арки
+            // Обозначение оси
             ctx.fillStyle = "#1a365d";
-            ctx.font = "11px Arial";
-            ctx.fillText("Арка " + (i + 1), x - 15, startY + 60);
+            ctx.font = "10px Arial";
+            ctx.fillText("Ось " + (i + 1), x - 12, startY + 18);
         }
 
-        // Размерная линия длины
+        // Продольные связи (прогоны)
+        ctx.strokeStyle = "#e53e3e";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(startX, startY - 50);
+        ctx.lineTo(startX + drawWidth, startY - 50);
+        ctx.moveTo(startX, startY - 80);
+        ctx.lineTo(startX + drawWidth, startY - 80);
+        ctx.stroke();
+        ctx.setLineDash([]); // сброс пунктира
+
+        // Размерная линия общей длины
         ctx.strokeStyle = "#4a5568";
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(startX, startY + 80);
-        ctx.lineTo(startX + drawWidth, startY + 80);
+        ctx.moveTo(startX, startY + 35);
+        ctx.lineTo(startX + drawWidth, startY + 35);
         ctx.stroke();
 
         ctx.fillStyle = "#2d3748";
-        ctx.font = "bold 13px Arial";
-        ctx.fillText("Общая длина ангара: " + length + " м (Шаг каркаса 3.0 м[span_24](start_span)[span_24](end_span), пролетов: " + bays + ")", startX + 220, startY + 105);
+        ctx.font = "bold 12px Arial";
+        ctx.fillText("Общая длина ангара: " + length + " м (Шаг 3.0 м, пролетов: " + bays + ")", startX + 250, startY + 55);
     }
 
-    // Запускаем первично при загрузке
     calculateKM();
 </script>
 
