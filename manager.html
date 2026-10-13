@@ -2,584 +2,231 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Генератор КП — ТОО «Мамыр»</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <title>Калькулятор и генератор КП — ТОО «Мамыр»</title>
     <style>
         * { box-sizing: border-box; font-family: 'Calibri', 'Arial', sans-serif; }
-        body { background-color: #eaeff5; margin: 0; padding: 20px; color: #333; }
-        .main-app { max-width: 850px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .user-header { border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; }
-        .user-header h1 { font-size: 18px; color: #1a365d; margin: 0; font-family: 'Arial', sans-serif; }
-        .section-title { font-size: 13px; font-weight: bold; color: #2b6cb0; margin: 18px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Arial', sans-serif; }
-        .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 12px; }
-        .form-group { flex: 1; min-width: 180px; }
-        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4a5568; font-family: 'Arial', sans-serif; }
-        input, select { width: 100%; padding: 9px 11px; font-size: 14px; border: 1px solid #cbd5e0; border-radius: 6px; font-family: 'Arial', sans-serif; }
-        .btn-generate { width: 100%; padding: 14px; background: #2b6cb0; color: #fff; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; transition: 0.2s; font-family: 'Arial', sans-serif; }
-        .btn-generate:hover { background: #2c5282; }
-        .btn-generate:disabled { background: #a0aec0; cursor: not-allowed; }
+        body { background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1 { color: #1a365d; font-size: 24px; border-bottom: 2px solid #2b6cb0; padding-bottom: 10px; margin-top: 0; }
         
-        #pdfTemplateWrapper { position: absolute; left: -9999px; top: 0; width: 210mm; }
+        .form-section { background: #f8fafc; border: 1px solid #cbd5e0; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .form-section h3 { margin-top: 0; color: #2b6cb0; font-size: 16px; margin-bottom: 15px; }
         
-        .pdf-page { 
-            width: 210mm; 
-            height: 296mm; 
-            padding: 8mm 12mm 15mm 12mm; 
-            background: #fff; 
-            font-size: 11pt; 
-            color: #000; 
-            box-sizing: border-box; 
-            position: relative; 
-            font-family: 'Calibri', 'Arial', sans-serif; 
-            overflow: hidden; 
-            page-break-after: always;
-            page-break-inside: avoid;
-        }
-        
-        .pdf-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #b8860b; padding-bottom: 4px; margin-bottom: 6px; }
-        .pdf-header-text { font-size: 9pt; line-height: 1.15; }
-        
-        .kp-title { font-size: 14pt; font-weight: bold; color: #b8860b; text-align: center; margin: 4px 0 6px 0; text-transform: uppercase; font-family: 'Calibri', 'Arial', sans-serif; }
-        .kp-meta { font-size: 10.5pt; margin-bottom: 6px; line-height: 1.25; }
-        
-        .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-family: 'Calibri', 'Arial', sans-serif; }
-        .kp-table th, .kp-table td { border: 1px solid #000; padding: 4px 6px; font-size: 10.5pt; vertical-align: top; line-height: 1.15; }
-        .kp-table th { background: #000; color: #fff; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 9.5pt; }
-        
-        .total-row { background: #b8860b; color: #fff; font-weight: bold; font-size: 11pt; }
-        .total-row-discount { background: #8b6508; color: #fff; font-weight: bold; font-size: 11pt; }
+        .form-row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+        .form-group { flex: 1; min-width: 200px; }
+        .form-group label { display: block; font-weight: bold; font-size: 13px; color: #2d3748; margin-bottom: 5px; }
+        .form-group input, .form-group select { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e0; font-size: 14px; background: #fff; }
 
-        .conditions-box { font-size: 9.5pt; line-height: 1.15; margin-top: 6px; }
-        .conditions-box h4 { margin: 3px 0 1px 0; font-size: 10pt; text-decoration: underline; }
-
-        .footer-line { 
-            position: absolute; 
-            bottom: 6mm; 
-            left: 12mm; 
-            right: 12mm; 
-            font-size: 8.5pt; 
-            border-top: 1px solid #ccc; 
-            padding-top: 4px; 
-            text-align: center; 
-            color: #222; 
-            line-height: 1.15; 
-        }
-
-        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 6px 8px; margin-bottom: 6px; font-size: 10pt; line-height: 1.2; }
-        .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 1px; font-size: 10.5pt; }
-        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-        .photo-card { width: 100%; height: 125px; background: #f0f4f8; border: 1px solid #cbd5e0; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 10pt; font-weight: bold; text-align: center; overflow: hidden; position: relative; }
+        .total-box { background: #edf2f7; padding: 15px 20px; border-radius: 8px; font-size: 18px; font-weight: bold; color: #1a365d; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .btn-submit { background: #276749; color: #fff; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; }
+        .btn-submit:hover { background: #22543d; }
     </style>
 </head>
 <body>
 
-<div class="main-app">
-    <div class="user-header">
-        <h1>Генератор Коммерческих Предложений M-CONSTRUCTION</h1>
-    </div>
+<div class="container">
+    <h1>Формирование коммерческого предложения — ТОО «Мамыр»</h1>
 
-    <div class="section-title">1. Ответственный сотрудник и Заказчик</div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Ответственное лицо:</label>
-            <select id="managerSelect">
-                <option value="Руководитель отдела продаж: Лемперт Александр Сергеевич (+7 747 689 96 80)">Руководитель отдела продаж: Лемперт Александр Сергеевич (+7 747 689 96 80)</option>
-                <option value="Директор: Уралбаев Жанайдар Абишевич (+7 771 054 77 66)">Директор: Уралбаев Жанайдар Абишевич (+7 771 054 77 66)</option>
-                <option value="Менеджер 1 (Телефон не указан)">Менеджер 1</option>
-                <option value="Менеджер 2 (Телефон не указан)">Менеджер 2</option>
-                <option value="Менеджер 3 (Телефон не указан)">Менеджер 3</option>
-            </select>
+    <div class="form-section">
+        <h3>1. Данные менеджера и заказчика</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Менеджер:</label>
+                <select id="managerName">
+                    <option value="Менеджер 1">Менеджер 1</option>
+                    <option value="Менеджер 2">Менеджер 2</option>
+                    <option value="Менеджер 3">Менеджер 3</option>
+                    <option value="Руководитель отдела">Руководитель отдела продаж</option>
+                    <option value="Директор">Директор</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Заказчик (Клиент / ТОО):</label>
+                <input type="text" id="clientName" placeholder="Введите название клиента...">
+            </div>
         </div>
-        <div class="form-group">
-            <label>Заказчик (ТОО / ИП / ФИО):</label>
-            <input type="text" id="clientName" placeholder="Например: ТОО «Мамыр»" value="ТОО «Мамыр»">
-        </div>
-        <div class="form-group">
-            <label>Контактный телефон:</label>
-            <input type="text" id="clientPhone" placeholder="+7 700 000 00 00" value="+7 700 000 00 00">
-        </div>
-        <div class="form-group">
-            <label>WhatsApp для отправки КП:</label>
-            <input type="text" id="clientWa" placeholder="+7 700 000 00 00" value="+7 700 000 00 00">
-        </div>
-        <div class="form-group">
-            <label>Назначение объекта:</label>
-            <input type="text" id="purpose" placeholder="Например: Зернохранилище" value="Зернохранилище">
-        </div>
-    </div>
-
-    <div class="section-title">2. Конструкция и покрытие</div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Тип здания:</label>
-            <select id="buildingType">
-                <option value="arch_pvc">Арочный холодный (Тент ПВХ)</option>
-                <option value="straight_arch_pvc">Прямостенный арочный холодный (Тент ПВХ)</option>
-                <option value="straight_gable_prof">Прямостенный двускатный холодный (Профлист)</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Ширина (м):</label>
-            <input type="number" id="width" value="18" min="10" max="30">
-        </div>
-        <div class="form-group">
-            <label>Длина (м):</label>
-            <input type="number" id="length" value="36" min="10" max="150">
-        </div>
-        <div class="form-group" id="wallHBox" style="display:none;">
-            <label>Высота стены (м):</label>
-            <input type="number" id="wallH" value="3" min="3" max="10">
-        </div>
-    </div>
-
-    <div class="section-title">3. Ворота и вентиляция</div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Размер ворот:</label>
-            <select id="gateSize">
-                <option value="4x4">4.0 х 4.0 м</option>
-                <option value="3x3">3.0 х 3.0 м</option>
-                <option value="5x5">5.0 х 5.0 м</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Количество ворот (шт):</label>
-            <input type="number" id="gateCount" value="2" min="0" max="10">
-        </div>
-        <div class="form-group">
-            <label>Вентиляционные решетки (комплектов):</label>
-            <input type="number" id="ventCount" value="2" min="0" max="10">
-        </div>
-    </div>
-
-    <div class="section-title">4. Работы, Фундамент, Доставка и Скидка</div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Монтажные работы:</label>
-            <select id="montageType">
-                <option value="include">Включены (строительная бригада под ключ)</option>
-                <option value="none">Без монтажа (шеф-монтаж / своими силами)</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Фундамент:</label>
-            <select id="fundType">
-                <option value="strip">Ленточный ж/б монолитный + Сваи + Отмостка</option>
-                <option value="screw">Винтовые сваи</option>
-                <option value="none">Подготовка Заказчика (0 ₸)</option>
-            </select>
-        </div>
-        <div class="form-group" id="stripParamsBox">
-            <label>Лента (Ширина x Высота, м):</label>
-            <div style="display:flex; gap:5px;">
-                <input type="number" id="fundW" value="0.4" step="0.05" placeholder="Ширина">
-                <input type="number" id="fundH" value="1.2" step="0.1" placeholder="Высота">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Телефон:</label>
+                <input type="text" id="clientPhone" placeholder="+7 (...) ...-.." value="+7 700 000 00 00">
+            </div>
+            <div class="form-group">
+                <label>WhatsApp:</label>
+                <input type="text" id="clientWhatsapp" placeholder="+7 (...) ...-.." value="+7 700 000 00 00">
             </div>
         </div>
     </div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Доставка от Костаная (км):</label>
-            <input type="number" id="distance" value="0" min="0">
-        </div>
-        <div class="form-group">
-            <label>Скидка (%):</label>
-            <input type="number" id="discountPercent" value="0" min="0" max="30">
-        </div>
-    </div>
 
-    <div class="section-title">5. Фотографии объекта (для 2-й страницы)</div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Фото 1 (Вид снаружи):</label>
-            <input type="file" id="imgInput1" accept="image/*" onchange="previewImage(this, 'pdfImg1')">
-        </div>
-        <div class="form-group">
-            <label>Фото 2 (Конструктив):</label>
-            <input type="file" id="imgInput2" accept="image/*" onchange="previewImage(this, 'pdfImg2')">
-        </div>
-    </div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Фото 3 (Интерьер):</label>
-            <input type="file" id="imgInput3" accept="image/*" onchange="previewImage(this, 'pdfImg3')">
-        </div>
-        <div class="form-group">
-            <label>Фото 4 (Готовый объект):</label>
-            <input type="file" id="imgInput4" accept="image/*" onchange="previewImage(this, 'pdfImg4')">
-        </div>
-    </div>
-
-    <button class="btn-generate" id="btnGen" onclick="generateAndSaveKP()">📄 Сформировать и скачать КП (PDF)</button>
-</div>
-
-<div id="pdfTemplateWrapper">
-    <div id="pdfContent">
-        <div class="pdf-page">
-            <div class="pdf-header">
-                <div class="pdf-header-text">
-                    <b>ЖАУАПКЕРШІЛІГІ ШЕКТЕУЛІ СЕРІКТЕСТІГІ «Мамыр»</b><br>
-                    Қазақстан Республикасы 110000, Қостанай облысы, Қостанай қаласы, Узкоколейная көш. 9<br>
-                    Тел: +7 771 054 77 66 | E-mail: too.mamyr@mail.ru
-                </div>
-                <div style="text-align:right;">
-                    <strong style="font-size:16px; color:#b8860b; font-family:'Arial Black';">M-CONSTRUCTION</strong><br>
-                    <span style="font-size:8pt; color:#555; font-weight:bold;">ТОВАРИЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «Мамыр»</span>
-                </div>
+    <div class="form-section">
+        <h3>2. Параметры объекта и покрытия</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Назначение объекта:</label>
+                <select id="purpose">
+                    <option value="Ангар универсальный">Ангар универсальный</option>
+                    <option value="Зернохранилище">Зернохранилище</option>
+                    <option value="Животноводческий комплекс">Животноводческий комплекс</option>
+                    <option value="Склад">Склад</option>
+                    <option value="Спортивная арена">Спортивная арена</option>
+                </select>
             </div>
-
-            <div class="kp-title" id="pdfKpNum">КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ</div>
-            
-            <div class="kp-meta">
-                <b>Объект:</b> <span id="pdfObjectTitle">Быстровозводимый ангар</span><br>
-                <b>Назначение:</b> <span id="pdfPurpose">Зернохранилище</span>
-            </div>
-
-            <table class="kp-table">
-                <thead>
-                    <tr>
-                        <th style="width: 48%;">Наименование и подробное описание</th>
-                        <th style="width: 12%;">Кол-во</th>
-                        <th style="width: 20%;">Сумма (₸)</th>
-                        <th style="width: 20%;">Примечание</th>
-                    </tr>
-                </thead>
-                <tbody id="pdfTableBody"></tbody>
-            </table>
-
-            <div class="conditions-box">
-                <h4>Коммерческие условия:</h4>
-                - Цены указаны в тенге с НДС 16%.<br>
-                - 50% предоплата на закуп материалов.<br>
-                - 25% перед отгрузкой готового комплекта ангара.<br>
-                - 25% после подписания АВР и накладной.
-
-                <h4>Сроки реализации:</h4>
-                - Изготовление МК: 30 дней | Фундаментные работы: 20 дней | Монтажные работы: 30 дней
-            </div>
-
-            <div class="footer-line">
-                <b>ТОО «Мамыр»</b> | Республика Казахстан, 110000, г. Костанай, ул. Узкоколейная, д. 9 | БИН 011240003418<br>
-                Лицензия СМР II категория ГС-2 № 03293 от 15.10.2020 г. | Тел: +7 771 054 77 66 | E-mail: too.mamyr@mail.ru
+            <div class="form-group">
+                <label>Тип покрытия:</label>
+                <select id="coverType" onchange="calculateTotal()">
+                    <option value="tent">Тентовый (ПВХ)</option>
+                    <option value="profist">Профлист</option>
+                </select>
             </div>
         </div>
-
-        <div class="pdf-page">
-            <div class="pdf-header">
-                <div class="pdf-header-text">
-                    <b>ЖАУАПКЕРШІЛІГІ ШЕКТЕУЛІ СЕРІКТЕСТІГІ «Мамыр»</b><br>
-                    Қазақстан Республикасы 110000, Қостанай қаласы, Узкоколейная көш. 9
-                </div>
-                <div style="text-align:right;">
-                    <strong style="font-size:15px; color:#b8860b;">M-CONSTRUCTION</strong>
-                </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Ширина (м):</label>
+                <input type="number" id="width" value="20" oninput="calculateTotal()">
             </div>
-
-            <div class="kp-title" style="margin-bottom:10px;">ТЕХНИЧЕСКИЕ РЕШЕНИЯ И ПРЕИМУЩЕСТВА «M-CONSTRUCTION»</div>
-
-            <div class="feature-box">
-                <div class="feature-title">Строительство под ключ</div>
-                Мы осуществляем полный цикл реализации проекта: проектирование, заводское производство, устройство фундамента и монтаж. Клиент получает готовый к эксплуатации объект от одного подрядчика.
+            <div class="form-group">
+                <label>Длина (м):</label>
+                <input type="number" id="length" value="80" oninput="calculateTotal()">
             </div>
-
-            <div class="feature-box">
-                <div class="feature-title">Болтовые соединения и точность монтажа</div>
-                Все несущие конструкции собираются исключительно на болтовых соединениях. Это исключает необходимость сварки на объекте, гарантирует точность геометрии и позволяет проводить работы при любых погодных условиях.
-            </div>
-
-            <div class="feature-box">
-                <div class="feature-title">Расчет нагрузок и региональные стандарты</div>
-                Проектирование ведется с учетом индивидуальных условий эксплуатации. Ветровые и снеговые нагрузки рассчитываются согласно строительным нормам (СНиП) конкретного региона.
-            </div>
-
-            <div class="photo-grid">
-                <div class="photo-card" id="pdfImg1Box"><img id="pdfImg1" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Объект M-CONSTRUCTION<br>(Вид снаружи)</span></div>
-                <div class="photo-card" id="pdfImg2Box"><img id="pdfImg2" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Объект M-CONSTRUCTION<br>(Конструктив МК)</span></div>
-                <div class="photo-card" id="pdfImg3Box"><img id="pdfImg3" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Объект M-CONSTRUCTION<br>(Внутреннее пространство)</span></div>
-                <div class="photo-card" id="pdfImg4Box"><img id="pdfImg4" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Объект M-CONSTRUCTION<br>(Готовый объект)</span></div>
-            </div>
-
-            <div style="margin-top: 20px; font-size: 10.5pt; font-weight: bold; line-height: 1.35;">
-                С уважением,<br>
-                <span id="pdfSignManager"></span>
-            </div>
-
-            <div class="footer-line">
-                <b>ТОО «Мамыр»</b> | Республика Казахстан, 110000, г. Костанай, ул. Узкоколейная, д. 9 | БИН 011240003418<br>
-                Лицензия СМР II категория ГС-2 № 03293 от 15.10.2020 г. | Тел: +7 771 054 77 66 | E-mail: too.mamyr@mail.ru
+            <div class="form-group">
+                <label>Высота (м):</label>
+                <input type="number" id="height" value="6" oninput="calculateTotal()">
             </div>
         </div>
     </div>
+
+    <div class="form-section">
+        <h3>3. Стоимость элементов (Ангар, Ворота, Доставка, Монтаж)</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Стоимость ангара (базовая, ₸):</label>
+                <input type="number" id="baseHangarPrice" value="25000000" oninput="calculateTotal()">
+            </div>
+            <div class="form-group">
+                <label>Стоимость ворот (₸):</label>
+                <input type="number" id="gatesPrice" value="1500000" oninput="calculateTotal()">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Расстояние доставки (км):</label>
+                <input type="number" id="distance" value="350" oninput="calculateTotal()">
+            </div>
+            <div class="form-group">
+                <label>Ставка за 1 км за 1 машину (₸):</label>
+                <input type="number" id="ratePerKm" value="500" oninput="calculateTotal()">
+            </div>
+            <div class="form-group">
+                <label>Количество рейсов (машин):</label>
+                <input type="number" id="truckCount" value="3" min="1" oninput="calculateTotal()">
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h3>4. Сроки выполнения работ</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Срок изготовления:</label>
+                <input type="text" id="termManufacture" value="от 20 рабочих дней">
+            </div>
+            <div class="form-group">
+                <label>Срок монтажных работ:</label>
+                <input type="text" id="termInstallation" value="от 10 рабочих дней">
+            </div>
+            <div class="form-group">
+                <label>Срок фундаментных работ:</label>
+                <input type="text" id="termFoundation" value="по согласованию">
+            </div>
+        </div>
+    </div>
+
+    <div class="total-box">
+        <span>Итоговая стоимость КП:</span>
+        <span id="totalFinalDisplay">0 ₸</span>
+    </div>
+
+    <button class="btn-submit" onclick="generateAndSaveKP()">Сформировать КП и сохранить в реестр</button>
 </div>
 
 <script>
-    var BIN_ID = "6ac861c6ffd5d160535b0623";
-    var SECRET_KEY = "$2a$10$IMgqPeq6EGMUWkoPpesa5.NXtCKi6SpV9oE.H/hRWRVC9gheuz1WO";
-    var VAT = 1.16;
+    function calculateTotal() {
+        var baseHangar = parseFloat(document.getElementById('baseHangarPrice').value) || 0;
+        var gates = parseFloat(document.getElementById('gatesPrice').value) || 0;
+        var hangarAndGates = baseHangar + gates;
 
-    document.getElementById('buildingType').addEventListener('change', function() {
-        document.getElementById('wallHBox').style.display = (this.value.indexOf('straight') !== -1) ? 'block' : 'none';
-    });
-    document.getElementById('fundType').addEventListener('change', function() {
-        document.getElementById('stripParamsBox').style.display = (this.value === 'strip') ? 'block' : 'none';
-    });
+        // Монтаж: 21% для тента, 23% для профлиста от (Ангар + Ворота)
+        var coverType = document.getElementById('coverType').value;
+        var installationPercent = (coverType === 'profist') ? 0.23 : 0.21;
+        var installation = hangarAndGates * installationPercent;
 
-    function previewImage(input, targetImgId) {
-        if (input.files && input.files[0]) {
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                var img = document.getElementById(targetImgId);
-                img.src = e.target.result;
-                img.style.display = 'block';
-                if (img.nextElementSibling) img.nextElementSibling.style.display = 'none';
-            }
-            reader.readAsDataURL(input.files[0]);
-        }
-    }
+        // Доставка: расстояние * ставка * количество рейсов (машин)
+        var distance = parseFloat(document.getElementById('distance').value) || 0;
+        var ratePerKm = parseFloat(document.getElementById('ratePerKm').value) || 0;
+        var truckCount = parseInt(document.getElementById('truckCount').value) || 1;
+        var delivery = distance * ratePerKm * truckCount;
 
-    function getNum(id, fallback) {
-        var el = document.getElementById(id);
-        if (!el) return fallback;
-        var v = parseFloat(el.value);
-        return isNaN(v) ? fallback : v;
+        var total = hangarAndGates + installation + delivery;
+
+        document.getElementById('totalFinalDisplay').innerText = total.toLocaleString('ru-RU') + ' ₸';
+        return total;
     }
 
     function generateAndSaveKP() {
-        var btn = document.getElementById('btnGen');
-        btn.disabled = true;
-        btn.innerText = "⏳ Формирование PDF...";
+        var manager = document.getElementById('managerName').value;
+        var client = document.getElementById('clientName').value.trim() || 'Заказчик';
+        var phone = document.getElementById('clientPhone').value;
+        var whatsapp = document.getElementById('clientWhatsapp').value;
+        
+        var purpose = document.getElementById('purpose').value;
+        var width = document.getElementById('width').value;
+        var length = document.getElementById('length').value;
+        var height = document.getElementById('height').value;
+        
+        var dimensionsText = width + 'x' + length + (height ? 'x' + height : '') + 'м';
+        var fullObjectInfo = purpose + ' (' + dimensionsText + ')';
+        
+        var totalFinal = calculateTotal();
+        var totalFinalFormatted = totalFinal.toLocaleString('ru-RU') + ' ₸';
 
-        try {
-            var manager = document.getElementById('managerSelect').value;
-            var client = document.getElementById('clientName').value || 'Заказчик';
-            var phone = document.getElementById('clientPhone').value || '—';
-            var whatsapp = document.getElementById('clientWa').value || '—';
-            var purpose = document.getElementById('purpose').value || 'Ангар';
-            
-            var type = document.getElementById('buildingType').value;
-            var w = getNum('width', 18);
-            var l = getNum('length', 36);
-            var wallH = getNum('wallH', 3);
-            var area = w * l;
+        // Считываем введенные сроки
+        var termMan = document.getElementById('termManufacture').value;
+        var termInst = document.getElementById('termInstallation').value;
+        var termFound = document.getElementById('termFoundation').value;
+        var trucks = document.getElementById('truckCount').value;
 
-            var gateSize = document.getElementById('gateSize').value;
-            var gateCount = getNum('gateCount', 0);
-            var ventCount = getNum('ventCount', 0);
+        // Сохранение в localStorage для реестра
+        var history = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
+        
+        var newDeal = {
+            id: Date.now(),
+            manager: manager,
+            client: client,
+            phone: phone,
+            whatsapp: whatsapp,
+            object: fullObjectInfo,
+            price: totalFinalFormatted,
+            status: 'sent',
+            date: new Date().toLocaleDateString('ru-RU'),
+            terms: {
+                manufacture: termMan,
+                installation: termInst,
+                foundation: termFound,
+                truckCount: trucks
+            },
+            history: []
+        };
 
-            var montageType = document.getElementById('montageType').value;
-            var fundType = document.getElementById('fundType').value;
-            var fundW = getNum('fundW', 0.4);
-            var fundH = getNum('fundH', 1.2);
+        history.push(newDeal);
+        localStorage.setItem('mamyr_kp_history', JSON.stringify(history));
 
-            var distance = getNum('distance', 0);
-            var discountPercent = getNum('discountPercent', 0);
-
-            var rateNoVat = 0;
-            var isProf = false;
-            var coverDesc = "";
-
-            if (type === 'arch_pvc') {
-                if (w <= 13) rateNoVat = 17000;
-                else if (w <= 16) rateNoVat = 19000;
-                else rateNoVat = 22000;
-                coverDesc = "Тент ПВХ 900 гр/м² не поддерживающий горения";
-            } else if (type === 'straight_arch_pvc') {
-                rateNoVat = (w <= 13) ? 19000 : 25000;
-                coverDesc = "Тент ПВХ 900 гр/м² не поддерживающий горения";
-            } else {
-                isProf = true;
-                rateNoVat = (w <= 13) ? 23000 : 26000;
-                coverDesc = "Кровельное: Профнастил Н-44 0.7 мм оцинкованный.<br>Стеновое: Профнастил Н-44 0.7 мм оцинкованный.";
-            }
-
-            var heightMult = 1.0;
-            if (type === 'straight_arch_pvc' && wallH > 3) heightMult += (wallH - 3) * 0.03;
-            if (type === 'straight_gable_prof' && wallH > 4) heightMult += (wallH - 4) * 0.03;
-
-            var constPrice = Math.round(area * rateNoVat * heightMult * VAT);
-
-            var singleGate = 700000;
-            var gateW = 4;
-            if (gateSize === '3x3') { singleGate = 600000; gateW = 3; }
-            if (gateSize === '5x5') { singleGate = 800000; gateW = 5; }
-            var gatePrice = singleGate * gateCount;
-
-            var ventPrice = ventCount * 58000 * VAT;
-
-            var fundPrice = 0;
-            var fundDesc = "";
-            var fundNote = "";
-
-            if (fundType === 'strip') {
-                var P = 2 * (w + l);
-                var netP = Math.max(0, P - (gateW * gateCount));
-                var stripVol = netP * fundW * fundH;
-                var pilesVol = (Math.floor(l / 3) * 2 + 8) * 0.25;
-                var blindVol = P * 1.0 * 0.1;
-                var totalVol = Math.round(stripVol + pilesVol + blindVol);
-                
-                fundPrice = Math.round(totalVol * 135000 * VAT);
-                fundDesc = "Фундамент ж/б монолитный Н-" + fundH + "м, В-" + fundW + "м. Буроналивные сваи Ø300, L-2.0м. Отмостка 0,1х1,0м.";
-                fundNote = totalVol + " м³";
-            } else if (fundType === 'screw') {
-                var P = 2 * (w + l);
-                var screwRate = (w <= 13) ? 22000 : (w <= 17) ? 26000 : (w <= 22) ? 30000 : 34000;
-                fundPrice = Math.round(P * screwRate * VAT);
-                fundDesc = "Свайно-винтовой фундамент по периметру здания";
-                fundNote = P + " п.м.";
-            } else {
-                fundDesc = "Подготовка фундамента Заказчиком";
-                fundPrice = 0;
-                fundNote = "—";
-            }
-
-            var montagePrice = 0;
-            if (montageType === 'include') {
-                var montagePercent = isProf ? 0.23 : 0.18;
-                montagePrice = Math.round(constPrice * montagePercent);
-            }
-
-            var deliveryPrice = Math.round(distance * 1000 * VAT);
-
-            var totalBase = constPrice + gatePrice + ventPrice + fundPrice + montagePrice + deliveryPrice;
-            var discountAmount = Math.round(totalBase * (discountPercent / 100));
-            var totalFinal = totalBase - discountAmount;
-
-            var kpNum = Math.floor(100 + Math.random() * 900);
-
-            document.getElementById('pdfKpNum').innerText = "КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ: " + client.toUpperCase();
-            document.getElementById('pdfObjectTitle').innerText = "Быстровозводимый " + (isProf ? "металлический" : "металлотентовый") + " ангар " + w.toFixed(1) + " х " + l.toFixed(1) + " х " + (type.indexOf('straight') !== -1 ? wallH.toFixed(1) : (w*0.35).toFixed(1)) + " м (" + area + " м²)";
-            document.getElementById('pdfPurpose').innerText = purpose;
-
-            var rows = "<tr>" +
-                "<td><b>Комплект сборно-разборной стальной конструкции ангара.</b><br>Размер: " + w.toFixed(1) + " х " + l.toFixed(1) + " м.<br>Тип: " + (type.indexOf('straight') !== -1 ? "Прямостенный" : "Арочный") + ".<br>Соединение: Болтовое.<br>Покрытие: " + coverDesc + "</td>" +
-                "<td style='text-align:center;'>1 к-т</td>" +
-                "<td style='text-align:right;'>" + constPrice.toLocaleString('ru-RU') + "</td>" +
-                "<td>Заводское изготовление</td>" +
-            "</tr>";
-
-            if (gateCount > 0) {
-                rows += "<tr>" +
-                    "<td><b>Ворота металлические, распашные [" + gateW + ".0 х " + gateW + ".0 м].</b><br>Комплектация: Встроенная дверь (2.0 х 1.0 м), засовы, упоры, навесы.</td>" +
-                    "<td style='text-align:center;'>" + gateCount + " к-та</td>" +
-                    "<td style='text-align:right;'>" + gatePrice.toLocaleString('ru-RU') + "</td>" +
-                    "<td>—</td>" +
-                "</tr>";
-            }
-
-            if (ventCount > 0) {
-                rows += "<tr>" +
-                    "<td><b>Вентиляционная решетка по торцам</b></td>" +
-                    "<td style='text-align:center;'>" + ventCount + " к-та</td>" +
-                    "<td style='text-align:right;'>" + ventPrice.toLocaleString('ru-RU') + "</td>" +
-                    "<td>—</td>" +
-                "</tr>";
-            }
-
-            rows += "<tr>" +
-                "<td><b>" + fundDesc + "</b></td>" +
-                "<td style='text-align:center;'>—</td>" +
-                "<td style='text-align:right;'>" + fundPrice.toLocaleString('ru-RU') + "</td>" +
-                "<td>" + fundNote + "</td>" +
-            "</tr>" +
-            "<tr>" +
-                "<td><b>Монтажные работы строительной бригады</b></td>" +
-                "<td style='text-align:center;'>работа</td>" +
-                "<td style='text-align:right;'>" + (montagePrice > 0 ? montagePrice.toLocaleString('ru-RU') : "0") + "</td>" +
-                "<td>" + (montagePrice > 0 ? "Спецтехника включена" : "Шеф-монтаж / своими силами") + "</td>" +
-            "</tr>" +
-            "<tr>" +
-                "<td><b>Транспортные расходы и логистика (1000 тг/км от г. Костанай)</b></td>" +
-                "<td style='text-align:center;'>" + distance + " км</td>" +
-                "<td style='text-align:right;'>" + deliveryPrice.toLocaleString('ru-RU') + "</td>" +
-                "<td>Возможен самовывоз</td>" +
-            "</tr>" +
-            "<tr class='total-row'>" +
-                "<td colspan='2'>ИТОГО С УЧЕТОМ НДС 16%:</td>" +
-                "<td style='text-align:right;'>" + totalBase.toLocaleString('ru-RU') + "</td>" +
-                "<td>₸</td>" +
-            "</tr>";
-
-            if (discountPercent > 0) {
-                rows += "<tr class='total-row-discount'>" +
-                    "<td colspan='2'>ИТОГО С УЧЕТОМ СКИДКИ (" + discountPercent + "%):</td>" +
-                    "<td style='text-align:right;'>" + totalFinal.toLocaleString('ru-RU') + "</td>" +
-                    "<td>₸</td>" +
-                "</tr>";
-            }
-
-            document.getElementById('pdfTableBody').innerHTML = rows;
-            document.getElementById('pdfSignManager').innerText = manager;
-
-            var element = document.getElementById('pdfContent');
-            var opt = {
-                margin:       0,
-                filename:     'КП_' + client + '.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, logging: false, scrollY: 0 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            html2pdf().set(opt).from(element).save().then(function() {
-                btn.disabled = false;
-                btn.innerText = "📄 Сформировать и скачать КП (PDF)";
-            }).catch(function(err) {
-                alert("Ошибка создания PDF: " + err.message);
-                btn.disabled = false;
-                btn.innerText = "📄 Сформировать и скачать КП (PDF)";
-            });
-
-            fetch("https://api.jsonbin.io/v3/b/" + BIN_ID + "/latest", {
-                headers: { "X-Master-Key": SECRET_KEY, "X-Bin-Meta": "false" }
-            })
-            .then(function(res) { return res.json(); })
-            .then(function(db) {
-                if (Array.isArray(db)) db = db[0] || {};
-                if (!db.kpi_registry) db.kpi_registry = [];
-
-                db.kpi_registry.push({
-                    id: "KP-" + kpNum,
-                    date: new Date().toLocaleDateString('ru-RU') + " " + new Date().toLocaleTimeString('ru-RU'),
-                    manager: manager,
-                    client: client,
-                    phone: phone,
-                    whatsapp: whatsapp,
-                    area: area,
-                    total: totalFinal
-                });
-try {
-    var selManager = document.getElementById('manager') ? document.getElementById('manager').options[document.getElementById('manager').selectedIndex].text : manager;
-    var localDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
-    localDeals.push({ 
-        id: Date.now(), 
-        manager: selManager, 
-        client: client, 
-       phone: phone,
-    whatsapp: document.getElementById('whatsapp') ? document.getElementById('whatsapp').value : phone,
-    object: (document.getElementById('purpose') ? document.getElementById('purpose').value : 'Ангар') + ' (' + (document.getElementById('width') ? document.getElementById('width').value : '0') + 'x' + (document.getElementById('length') ? document.getElementById('length').value : '0') + (document.getElementById('height') && document.getElementById('height').value ? 'x' + document.getElementById('height').value : '') + 'м)',
-    price: totalFinal,
-    status: 'new',
-    date: new Date().toLocaleDateString('ru-RU')
-});
-    localStorage.setItem('mamyr_kp_history', JSON.stringify(localDeals));
-} catch(err) {
-    console.log('Ошибка сохранения:', err);
-}
-                return fetch("https://api.jsonbin.io/v3/b/" + BIN_ID, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json", "X-Master-Key": SECRET_KEY },
-                    body: JSON.stringify(db)
-                });
-            }).catch(function(e) { console.log(e); });
-
-        } catch (e) {
-            alert("Ошибка выполнения: " + e.message);
-            btn.disabled = false;
-            btn.innerText = "📄 Сформировать и скачать КП (PDF)";
-        }
+        alert('Коммерческое предложение успешно сформировано и сохранено в реестр!');
+        
+        // Опционально: перенаправление в реестр
+        // window.location.href = 'registry.html';
     }
-</script>
 
+    window.onload = calculateTotal;
+</script>
 </body>
 </html>
