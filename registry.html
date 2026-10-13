@@ -3,19 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <title>Реестр коммерческих предложений — ТОО «Мамыр»</title>
+    <!-- Библиотека SheetJS для генерации Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Calibri', 'Arial', sans-serif; }
         body { background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 1400px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2b6cb0; padding-bottom: 15px; margin-bottom: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2b6cb0; padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
         .header h1 { color: #1a365d; font-size: 22px; margin: 0; }
+        .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
         
         /* Панель фильтров и статистики */
         .toolbar { display: flex; justify-content: space-between; align-items: center; background: #edf2f7; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
-        .filter-group { display: flex; align-items: center; gap: 10px; }
-        .filter-group label { font-weight: bold; color: #2d3748; font-size: 14px; }
-        .filter-group select { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e0; font-size: 14px; font-weight: bold; background: #fff; }
+        .filter-group { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .filter-item { display: flex; align-items: center; gap: 8px; }
+        .filter-item label { font-weight: bold; color: #2d3748; font-size: 14px; }
+        .filter-item select, .filter-item input { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e0; font-size: 14px; font-weight: bold; background: #fff; }
 
         .stats-info { font-size: 14px; color: #4a5568; }
         .stats-info b { color: #2b6cb0; font-size: 16px; }
@@ -32,28 +36,13 @@
         /* Цветовая гамма статусов */
         .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; text-align: center; width: 100%; }
         
-        /* 1. Создано КП / Веду переговоры - Синий */
         .status-sent, .status-new { background: #ebf8ff; color: #2b6cb0; }
-        
-        /* 2. Взял паузу - Серый */
         .status-pause { background: #edf2f7; color: #4a5568; }
-        
-        /* 3. Нет обратной связи / Не берет трубку - Желтый */
         .status-nosignal { background: #fefcbf; color: #744210; }
-        
-        /* 4. Дорого - Оранжево-персиковый */
         .status-expensive { background: #feebc8; color: #c05621; }
-        
-        /* 5. Просит скидку - Светло-красный */
         .status-discount { background: #fed7d7; color: #9b2c2c; }
-        
-        /* 6. У конкурентов дешевле - Темно-красный */
         .status-competitor { background: #742a2a; color: #ffffff; }
-        
-        /* 7. Готов контрактоваться / Делаем договор - Фиолетовый */
         .status-ready, .status-contract { background: #e9d8fd; color: #553c9a; }
-        
-        /* 8. Внес предоплату - Зеленый */
         .status-success { background: #c6f6d5; color: #22543d; }
 
         /* Модальное окно истории */
@@ -71,21 +60,31 @@
 <div class="container">
     <div class="header">
         <h1>Общий реестр коммерческих предложений</h1>
-        <button onclick="loadRegistry()" style="background: #2b6cb0; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">Обновить</button>
+        <div class="header-actions">
+            <button onclick="exportToExcel()" style="background: #276749; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">📊 Выгрузить в Excel</button>
+            <button onclick="loadRegistry()" style="background: #2b6cb0; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">Обновить</button>
+            <button onclick="clearAllData()" style="background: #e53e3e; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">🗑️ Очистить всю базу</button>
+        </div>
     </div>
 
     <!-- Панель управления -->
     <div class="toolbar">
         <div class="filter-group">
-            <label for="managerFilter">Фильтр по сотруднику:</label>
-            <select id="managerFilter" onchange="loadRegistry()">
-                <option value="ALL">-- Все сотрудники --</option>
-                <option value="Менеджер 1">Менеджер 1</option>
-                <option value="Менеджер 2">Менеджер 2</option>
-                <option value="Менеджер 3">Менеджер 3</option>
-                <option value="Руководитель отдела">Руководитель отдела продаж</option>
-                <option value="Директор">Директор</option>
-            </select>
+            <div class="filter-item">
+                <label for="managerFilter">Сотрудник:</label>
+                <select id="managerFilter" onchange="loadRegistry()">
+                    <option value="ALL">-- Все сотрудники --</option>
+                    <option value="Менеджер 1">Менеджер 1</option>
+                    <option value="Менеджер 2">Менеджер 2</option>
+                    <option value="Менеджер 3">Менеджер 3</option>
+                    <option value="Руководитель отдела">Руководитель отдела продаж</option>
+                    <option value="Директор">Директор</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label for="clientSearch">Поиск по Заказчику:</label>
+                <input type="text" id="clientSearch" placeholder="Введите имя или ТОО..." oninput="loadRegistry()">
+            </div>
         </div>
         <div class="stats-info">
             Всего КП: <b id="totalCount">0</b> шт. | Сумма: <b id="totalSum">0 ₸</b>
@@ -107,6 +106,8 @@
 </div>
 
 <script>
+    var currentFilteredDeals = []; // Сохраняем текущую выборку для экспорта
+
     var statusNames = {
         'sent': 'Создано КП / Веду переговоры',
         'new': 'Создано КП',
@@ -122,18 +123,20 @@
 
     function loadRegistry() {
         var filterRole = document.getElementById('managerFilter').value;
+        var clientQuery = document.getElementById('clientSearch').value.toLowerCase().trim();
         var allDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
         
-        var filteredDeals = allDeals.filter(function(deal) {
-            if (filterRole === 'ALL') return true;
-            return deal.manager && deal.manager.indexOf(filterRole) !== -1;
+        currentFilteredDeals = allDeals.filter(function(deal) {
+            var matchRole = (filterRole === 'ALL') || (deal.manager && deal.manager.indexOf(filterRole) !== -1);
+            var matchClient = !clientQuery || (deal.client && deal.client.toLowerCase().indexOf(clientQuery) !== -1);
+            return matchRole && matchClient;
         });
 
         var container = document.getElementById('tableContainer');
-        var totalCount = filteredDeals.length;
+        var totalCount = currentFilteredDeals.length;
         var totalSumNumber = 0;
 
-        filteredDeals.forEach(function(deal) {
+        currentFilteredDeals.forEach(function(deal) {
             if (deal.price) {
                 var cleanNum = parseInt(String(deal.price).replace(/\D/g, ''));
                 if (!isNaN(cleanNum)) totalSumNumber += cleanNum;
@@ -144,7 +147,7 @@
         document.getElementById('totalSum').innerText = totalSumNumber.toLocaleString('ru-RU') + ' ₸';
 
         if (totalCount === 0) {
-            container.innerHTML = '<div class="empty-text">Сделок по выбранному критерию не найдено.</div>';
+            container.innerHTML = '<div class="empty-text">Сделок по выбранным критериям не найдено.</div>';
             return;
         }
 
@@ -158,7 +161,7 @@
             '<th>Статус</th>' +
             '</tr></thead><tbody>';
 
-        filteredDeals.forEach(function(deal) {
+        currentFilteredDeals.forEach(function(deal) {
             var currentStatus = deal.status || 'sent';
             var statusLabel = statusNames[currentStatus] || 'Создано КП';
 
@@ -185,10 +188,8 @@
 
         document.getElementById('modalClientTitle').innerText = deal.client || 'Заказчик';
         
-        // Шаг 1: Всегда выводим создание КП
         var historyHtml = '<div style="margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #edf2f7;"><b>1. ' + (deal.date || '-') + '</b> — Создано КП</div>';
         
-        // Шаги 2, 3 и т.д.: Выводим всю хронологию изменений по порядку
         if (deal.history && deal.history.length > 0) {
             deal.history.forEach(function(step, index) {
                 historyHtml += '<div style="margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #edf2f7;"><b>' + (index + 2) + '.</b> ' + step + '</div>';
@@ -203,6 +204,87 @@
 
     function closeModal() {
         document.getElementById('historyModal').style.display = 'none';
+    }
+
+    function clearAllData() {
+        if (confirm('Внимание! Вы действительно хотите удалить все сохраненные сделки, статусы и историю? Это действие нельзя отменить.')) {
+            localStorage.removeItem('mamyr_kp_history');
+            loadRegistry();
+            alert('База данных успешно очищена.');
+        }
+    }
+
+    /* Функция выгрузки текущего отчета в Excel */
+    function exportToExcel() {
+        if (!currentFilteredDeals || currentFilteredDeals.length === 0) {
+            alert('Нет данных для выгрузки!');
+            return;
+        }
+
+        var exportData = [];
+        var totalSumNumber = 0;
+
+        currentFilteredDeals.forEach(function(deal, index) {
+            var currentStatus = deal.status || 'sent';
+            var statusLabel = statusNames[currentStatus] || 'Создано КП';
+            var priceNum = 0;
+
+            if (deal.price) {
+                var cleanNum = parseInt(String(deal.price).replace(/\D/g, ''));
+                if (!isNaN(cleanNum)) {
+                    priceNum = cleanNum;
+                    totalSumNumber += cleanNum;
+                }
+            }
+
+            // Формируем строчку для Excel
+            exportData.push({
+                "№": index + 1,
+                "Дата": deal.date || "-",
+                "Менеджер": deal.manager || "Не указан",
+                "Заказчик": deal.client || "Заказчик",
+                "Телефон": deal.phone || "-",
+                "WhatsApp": deal.whatsapp || deal.phone || "-",
+                "Объект / Габариты": deal.object || "Ангар",
+                "Сумма КП (₸)": priceNum || deal.price,
+                "Текущий статус": statusLabel
+            });
+        });
+
+        // Добавляем итоговую строку для печати
+        exportData.push({
+            "№": "",
+            "Дата": "",
+            "Менеджер": "",
+            "Заказчик": "ИТОГО СДЕЛОК:",
+            "Телефон": currentFilteredDeals.length + " шт.",
+            "WhatsApp": "",
+            "Объект / Габариты": "ОБЩАЯ СУММА:",
+            "Сумма КП (₸)": totalSumNumber,
+            "Текущий статус": ""
+        });
+
+        var worksheet = XLSX.utils.json_to_sheet(exportData);
+        
+        // Настраиваем ширину колонок для красивой печати
+        worksheet['!cols'] = [
+            { wch: 5 },  // №
+            { wch: 12 }, // Дата
+            { wch: 25 }, // Менеджер
+            { wch: 25 }, // Заказчик
+            { wch: 18 }, // Телефон
+            { wch: 18 }, // WhatsApp
+            { wch: 25 }, // Объект
+            { wch: 18 }, // Сумма
+            { wch: 30 }  // Статус
+        ];
+
+        var workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Реестр КП");
+
+        // Генерируем название файла с текущей датой
+        var dateStr = new Date().toLocaleDateString('ru-RU').replace(/\./g, '-');
+        XLSX.writeFile(workbook, "Реестр_КП_ТОО_Мамыр_" + dateStr + ".xlsx");
     }
 
     function getStatusClass(status) {
