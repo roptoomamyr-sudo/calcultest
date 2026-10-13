@@ -162,7 +162,6 @@
             var currentStatus = deal.status || 'sent';
             var statusLabel = statusNames[currentStatus] || 'Создано КП';
 
-            // Если whatsapp не заполнен отдельно, подтягиваем обычный телефон
             var waDisplay = deal.whatsapp || deal.phone || '-';
 
             html += '<tr>' +
@@ -186,11 +185,13 @@
 
         document.getElementById('modalClientTitle').innerText = deal.client || 'Заказчик';
         
-        var historyHtml = '<div><b>1. Создано КП</b> (' + (deal.date || '-') + ')</div>';
+        // Показываем самую первую запись о создании КП
+        var historyHtml = '<div style="margin-bottom: 8px;"><b>• ' + (deal.date || '-') + '</b> — Создано КП</div>';
         
+        // Выводим всю хронологию последующих изменений
         if (deal.history && deal.history.length > 0) {
-            deal.history.forEach(function(step, idx) {
-                historyHtml += '<div><b>' + (idx + 2) + '.</b> ' + step + '</div>';
+            deal.history.forEach(function(step) {
+                historyHtml += '<div style="margin-bottom: 8px;"><b>•</b> ' + step + '</div>';
             });
         }
 
