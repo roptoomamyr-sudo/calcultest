@@ -2,38 +2,36 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Личный кабинет — руководитель отдела продаж</title>
+    <title>Личный кабинет — Мруководитель отдела продаж</title>
     <style>
         * { box-sizing: border-box; font-family: 'Calibri', 'Arial', sans-serif; }
         body { background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .container { max-width: 1250px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2b6cb0; padding-bottom: 15px; margin-bottom: 20px; }
         .header h1 { color: #1a365d; font-size: 20px; margin: 0; }
         .btn-create { background: #2b6cb0; color: #fff; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; font-size: 14px; }
         .btn-create:hover { background: #2c5282; }
 
-        /* Блок суммарной статистики */
         .stats-box { background: #f8fafc; border: 1px solid #cbd5e0; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
         .stats-box span { font-size: 15px; color: #4a5568; }
         .stats-box b { font-size: 18px; color: #2b6cb0; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #cbd5e0; padding: 10px 12px; text-align: left; font-size: 13px; }
+        th, td { border: 1px solid #cbd5e0; padding: 10px 12px; text-align: left; font-size: 13px; vertical-align: middle; }
         th { background: #2b6cb0; color: #fff; font-weight: bold; font-size: 12px; text-transform: uppercase; }
         tr:nth-child(even) { background: #f8fafc; }
 
         select.status-select { padding: 6px 8px; border-radius: 4px; border: 1px solid #cbd5e0; font-size: 12px; font-weight: bold; width: 100%; }
         
-        /* Цвета для разных статусов */
-        .status-sent { background: #ebf8ff; color: #2b6cb0; }
+        /* Цвета статусов */
+        .status-sent, .status-new { background: #ebf8ff; color: #2b6cb0; }
         .status-pause { background: #edf2f7; color: #4a5568; }
+        .status-nosignal { background: #fefcbf; color: #744210; }
         .status-expensive { background: #feebc8; color: #c05621; }
-        .status-discount { background: #fffaf0; color: #dd6b20; }
-        .status-competitor { background: #fed7d7; color: #9b2c2c; }
-        .status-nosignal { background: #edf2f7; color: #718096; }
-        .status-ready { background: #ebf8ff; color: #3182ce; }
-        .status-contract { background: #faf5ff; color: #6b46c1; }
+        .status-discount { background: #fed7d7; color: #9b2c2c; }
+        .status-competitor { background: #742a2a; color: #ffffff; }
+        .status-ready, .status-contract { background: #e9d8fd; color: #553c9a; }
         .status-success { background: #c6f6d5; color: #22543d; }
 
         .empty-text { text-align: center; color: #718096; padding: 30px; font-style: italic; }
@@ -46,85 +44,17 @@
         <a href="manager.html" class="btn-create">+ Сформировать новое КП</a>
     </div>
 
-    <!-- Общая сумма КП -->
     <div class="stats-box">
-        <span>Всего отправлено коммерческих предложений: <b id="totalCount">0</b> шт.</span>
-        <span>Общая сумма по КП: <b id="totalSum">0 ₸</b></span>
+        <span>Всего отправлено КП: <b id="totalCount">0</b> шт.</span>
+        <span>Общая сумма портфеля: <b id="totalSum">0 ₸</b></span>
     </div>
 
     <div id="tableContainer"></div>
 </div>
 
 <script>
-    var MY_ROLE = "руководитель отдела продаж"; // Для других кабинетов просто поменяйте эту строку (например, "Директор")
+    var MY_ROLE = "руководитель отдела продаж"; // Для manager2.html укажите "Менеджер 2", для director.html — "Директор" и т.д.
 
-    function loadDeals() {
-        var allDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
-        var myDeals = allDeals.filter(function(deal) {
-            return deal.manager && deal.manager.indexOf(MY_ROLE) !== -1;
-        });
-
-        var container = document.getElementById('tableContainer');
-        
-        // Считаем общую статистику
-        var totalCount = myDeals.length;
-        var totalSumNumber = 0;
-
-        myDeals.forEach(function(deal) {
-            if (deal.price) {
-                // Извлекаем только цифры из строки суммы (например, "5 450 000 ₸" -> 5450000)
-                var cleanNum = parseInt(String(deal.price).replace(/\D/g, ''));
-                if (!isNaN(cleanNum)) {
-                    totalSumNumber += cleanNum;
-                }
-            }
-        });
-
-        // Выводим статистику на экран
-        document.getElementById('totalCount').innerText = totalCount;
-        document.getElementById('totalSum').innerText = totalSumNumber.toLocaleString('ru-RU') + ' ₸';
-
-        if (totalCount === 0) {
-            container.innerHTML = '<div class="empty-text">У вас пока нет оформленных коммерческих предложений.</div>';
-            return;
-        }
-
-        var html = '<table><thead><tr>' +
-            '<th>Дата</th>' +
-            '<th>Заказчик</th>' +
-            '<th>Объект / Габариты</th>' +
-            '<th>Сумма КП</th>' +
-            '<th>Статус сделки</th>' +
-            '</tr></thead><tbody>';
-
-        myDeals.forEach(function(deal) {
-            var currentStatus = deal.status || 'sent';
-            html += '<tr>' +
-                '<td>' + (deal.date || '-') + '</td>' +
-                '<td><b>' + (deal.client || 'Заказчик') + '</b></td>' +
-                '<td>' + (deal.object || 'Ангар') + '</td>' +
-                '<td><b>' + (deal.price || '-') + '</b></td>' +
-                '<td>' +
-                    '<select class="status-select ' + getStatusClass(currentStatus) + '" onchange="updateStatus(' + deal.id + ', this.value)">' +
-                        '<option value="sent"' + (currentStatus === 'sent' ? ' selected' : '') + '>Отправил КП</option>' +
-                        '<option value="pause"' + (currentStatus === 'pause' ? ' selected' : '') + '>Клиент взял паузу</option>' +
-                        '<option value="expensive"' + (currentStatus === 'expensive' ? ' selected' : '') + '>Дорого</option>' +
-                        '<option value="discount"' + (currentStatus === 'discount' ? ' selected' : '') + '>Просит скидку</option>' +
-                        '<option value="competitor"' + (currentStatus === 'competitor' ? ' selected' : '') + '>У конкурентов дешевле</option>' +
-                        '<option value="nosignal"' + (currentStatus === 'nosignal' ? ' selected' : '') + '>Не берет трубку / нет обратной связи</option>' +
-                        '<option value="ready"' + (currentStatus === 'ready' ? ' selected' : '') + '>Готов контрактоваться</option>' +
-                        '<option value="contract"' + (currentStatus === 'contract' ? ' selected' : '') + '>Делаем договор</option>' +
-                        '<option value="success"' + (currentStatus === 'success' ? ' selected' : '') + '>Внес предоплату</option>' +
-                    '</select>' +
-                '</td>' +
-            '</tr>';
-        });
-        html += '</tbody></table>';
-        container.innerHTML = html;
-    }
-
-   function updateStatus(dealId, newStatus) {
-    var allDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
     var statusNames = {
         'sent': 'Создано КП / Веду переговоры',
         'new': 'Создано КП',
@@ -138,33 +68,96 @@
         'success': 'Внес предоплату'
     };
 
-    var timeString = new Date().toLocaleDateString('ru-RU') + ' ' + new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'});
-    var statusLabel = statusNames[newStatus] || newStatus;
+    function loadDeals() {
+        var allDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
+        var myDeals = allDeals.filter(function(deal) {
+            return deal.manager && deal.manager.indexOf(MY_ROLE) !== -1;
+        });
 
-    allDeals.forEach(function(deal) { 
-        if (deal.id === dealId) {
-            deal.status = newStatus;
-            if (!deal.history) {
-                deal.history = [];
+        var container = document.getElementById('tableContainer');
+        var totalCount = myDeals.length;
+        var totalSumNumber = 0;
+
+        myDeals.forEach(function(deal) {
+            if (deal.price) {
+                var cleanNum = parseInt(String(deal.price).replace(/\D/g, ''));
+                if (!isNaN(cleanNum)) totalSumNumber += cleanNum;
             }
-            // Добавляем текущую дату, время и название статуса в историю
-            deal.history.push(timeString + ' — ' + statusLabel);
-        } 
-    });
+        });
 
-    localStorage.setItem('mamyr_kp_history', JSON.stringify(allDeals));
-    loadDeals();
+        document.getElementById('totalCount').innerText = totalCount;
+        document.getElementById('totalSum').innerText = totalSumNumber.toLocaleString('ru-RU') + ' ₸';
+
+        if (totalCount === 0) {
+            container.innerHTML = '<div class="empty-text">У вас пока нет оформленных коммерческих предложений.</div>';
+            return;
+        }
+
+        var html = '<table><thead><tr>' +
+            '<th>Дата</th>' +
+            '<th>Заказчик</th>' +
+            '<th>Телефон</th>' +
+            '<th>Объект</th>' +
+            '<th>Сумма КП</th>' +
+            '<th>Статус сделки</th>' +
+            '</tr></thead><tbody>';
+
+        myDeals.forEach(function(deal) {
+            var currentStatus = deal.status || 'sent';
+
+            html += '<tr>' +
+                '<td>' + (deal.date || '-') + '</td>' +
+                '<td><b>' + (deal.client || 'Заказчик') + '</b></td>' +
+                '<td>' + (deal.phone || '-') + '</td>' +
+                '<td>' + (deal.object || 'Ангар') + '</td>' +
+                '<td><b>' + (deal.price || '-') + '</b></td>' +
+                '<td>' +
+                    '<select class="status-select ' + getStatusClass(currentStatus) + '" onchange="updateStatus(' + deal.id + ', this.value)">' +
+                        '<option value="sent"' + (currentStatus === 'sent' ? ' selected' : '') + '>Создано КП / Веду переговоры</option>' +
+                        '<option value="pause"' + (currentStatus === 'pause' ? ' selected' : '') + '>Клиент взял паузу</option>' +
+                        '<option value="nosignal"' + (currentStatus === 'nosignal' ? ' selected' : '') + '>Нет обратной связи / Не берет трубку</option>' +
+                        '<option value="expensive"' + (currentStatus === 'expensive' ? ' selected' : '') + '>Дорого</option>' +
+                        '<option value="discount"' + (currentStatus === 'discount' ? ' selected' : '') + '>Просит скидку</option>' +
+                        '<option value="competitor"' + (currentStatus === 'competitor' ? ' selected' : '') + '>У конкурентов дешевле</option>' +
+                        '<option value="ready"' + (currentStatus === 'ready' ? ' selected' : '') + '>Готов контрактоваться</option>' +
+                        '<option value="contract"' + (currentStatus === 'contract' ? ' selected' : '') + '>Делаем договор</option>' +
+                        '<option value="success"' + (currentStatus === 'success' ? ' selected' : '') + '>Внес предоплату</option>' +
+                    '</select>' +
+                '</td>' +
+            '</tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function updateStatus(dealId, newStatus) {
+        var allDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
+        var timeString = new Date().toLocaleDateString('ru-RU') + ' ' + new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'});
+        var statusLabel = statusNames[newStatus] || newStatus;
+
+        allDeals.forEach(function(deal) { 
+            if (deal.id === dealId) {
+                deal.status = newStatus;
+                if (!deal.history) {
+                    deal.history = [];
+                }
+                deal.history.push(timeString + ' — ' + statusLabel);
+            } 
+        });
+
+        localStorage.setItem('mamyr_kp_history', JSON.stringify(allDeals));
+        loadDeals();
+    }
 
     function getStatusClass(status) {
         switch(status) {
-            case 'sent': return 'status-sent';
+            case 'sent': case 'new': return 'status-sent';
             case 'pause': return 'status-pause';
+            case 'nosignal': return 'status-nosignal';
             case 'expensive': return 'status-expensive';
             case 'discount': return 'status-discount';
             case 'competitor': return 'status-competitor';
-            case 'nosignal': return 'status-nosignal';
-            case 'ready': return 'status-ready';
-            case 'contract': return 'status-contract';
+            case 'ready': case 'contract': return 'status-contract';
             case 'success': return 'status-success';
             default: return 'status-sent';
         }
