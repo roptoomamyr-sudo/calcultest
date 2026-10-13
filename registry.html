@@ -14,6 +14,7 @@
         .header h1 { color: #1a365d; font-size: 22px; margin: 0; }
         .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
         
+        /* Панель фильтров и статистики */
         .toolbar { display: flex; justify-content: space-between; align-items: center; background: #edf2f7; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
         .filter-group { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
         .filter-item { display: flex; align-items: center; gap: 8px; }
@@ -63,6 +64,7 @@
         </div>
     </div>
 
+    <!-- Панель управления и фильтров -->
     <div class="toolbar">
         <div class="filter-group">
             <div class="filter-item">
@@ -77,7 +79,22 @@
                 </select>
             </div>
             <div class="filter-item">
-                <label for="clientSearch">Поиск по Заказчику:</label>
+                <label for="statusFilter">Статус:</label>
+                <select id="statusFilter" onchange="loadRegistry()">
+                    <option value="ALL">-- Все статусы --</option>
+                    <option value="sent">Создано КП / Веду переговоры</option>
+                    <option value="pause">Клиент взял паузу</option>
+                    <option value="nosignal">Нет обратной связи / Не берет трубку</option>
+                    <option value="expensive">Дорого</option>
+                    <option value="discount">Просит скидку</option>
+                    <option value="competitor">У конкурентов дешевле</option>
+                    <option value="ready">Готов контрактоваться</option>
+                    <option value="contract">Делаем договор</option>
+                    <option value="success">Внес предоплату</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label for="clientSearch">Заказчик:</label>
                 <input type="text" id="clientSearch" placeholder="Введите имя или ТОО..." oninput="loadRegistry()">
             </div>
         </div>
@@ -89,6 +106,7 @@
     <div id="tableContainer"></div>
 </div>
 
+<!-- Модальное окно истории -->
 <div class="modal-overlay" id="historyModal">
     <div class="modal-card">
         <div class="modal-header">
@@ -116,29 +134,29 @@
     };
 
     function getObjectDescription(deal) {
-        // Проверяем, сохранены ли специфические параметры напрямую
         var parts = [];
         if (deal.purpose) parts.push(deal.purpose);
         if (deal.dimensions) parts.push(deal.dimensions);
         if (parts.length > 0) return parts.join(' — ');
 
-        // Если объект строка и не равна просто слову "Ангар", выводим её
         if (deal.object && deal.object !== 'Ангар') {
             return deal.object;
         }
-
         return 'Размеры и назначение не указаны';
     }
 
     function loadRegistry() {
         var filterRole = document.getElementById('managerFilter').value;
+        var filterStatus = document.getElementById('statusFilter').value;
         var clientQuery = document.getElementById('clientSearch').value.toLowerCase().trim();
         var allDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
         
         currentFilteredDeals = allDeals.filter(function(deal) {
+            var dealStatus = deal.status || 'sent';
             var matchRole = (filterRole === 'ALL') || (deal.manager && deal.manager.indexOf(filterRole) !== -1);
+            var matchStatus = (filterStatus === 'ALL') || (dealStatus === filterStatus);
             var matchClient = !clientQuery || (deal.client && deal.client.toLowerCase().indexOf(clientQuery) !== -1);
-            return matchRole && matchClient;
+            return matchRole && matchStatus && matchClient;
         });
 
         var container = document.getElementById('tableContainer');
