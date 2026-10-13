@@ -106,7 +106,7 @@
 </div>
 
 <script>
-    var currentFilteredDeals = []; // Сохраняем текущую выборку для экспорта
+    var currentFilteredDeals = [];
 
     var statusNames = {
         'sent': 'Создано КП / Веду переговоры',
@@ -120,6 +120,22 @@
         'contract': 'Делаем договор',
         'success': 'Внес предоплату'
     };
+
+    // Вспомогательная функция для сборки описания объекта
+    function getObjectDescription(deal) {
+        var parts = [];
+        
+        if (deal.purpose) parts.push(deal.purpose); // Например: "Зернохранилище", "Склад", "Спортивный арена"
+        if (deal.dimensions) parts.push(deal.dimensions); // Например: "24х109 м"
+        
+        // Если отдельные поля не передавались, но есть текстовое описание объекта
+        if (parts.length === 0 && deal.object) {
+            return deal.object;
+        }
+        
+        // Собираем всё в одну строку или выводим по умолчанию
+        return parts.length > 0 ? parts.join(' — ') : (deal.object || 'Каркасно-тентовый ангар');
+    }
 
     function loadRegistry() {
         var filterRole = document.getElementById('managerFilter').value;
@@ -156,7 +172,7 @@
             '<th>Заказчик</th>' +
             '<th>Телефон</th>' +
             '<th>WhatsApp</th>' +
-            '<th>Объект / Габариты</th>' +
+            '<th>Назначение / Объект / Габариты</th>' +
             '<th>Сумма КП</th>' +
             '<th>Статус</th>' +
             '</tr></thead><tbody>';
@@ -164,15 +180,15 @@
         currentFilteredDeals.forEach(function(deal) {
             var currentStatus = deal.status || 'sent';
             var statusLabel = statusNames[currentStatus] || 'Создано КП';
-
             var waDisplay = deal.whatsapp || deal.phone || '-';
+            var objectText = getObjectDescription(deal);
 
             html += '<tr>' +
                 '<td><b>' + (deal.manager || 'Не указан') + '</b></td>' +
                 '<td><span class="client-link" onclick="openHistory(' + deal.id + ')">' + (deal.client || 'Заказчик') + ' ℹ️</span></td>' +
                 '<td>' + (deal.phone || '-') + '</td>' +
                 '<td>' + waDisplay + '</td>' +
-                '<td>' + (deal.object || 'Ангар') + '</td>' +
+                '<td>' + objectText + '</td>' +
                 '<td><b>' + (deal.price || '-') + '</b></td>' +
                 '<td><span class="status-badge ' + getStatusClass(currentStatus) + '">' + statusLabel + '</span></td>' +
             '</tr>';
@@ -214,7 +230,6 @@
         }
     }
 
-    /* Функция выгрузки текущего отчета в Excel */
     function exportToExcel() {
         if (!currentFilteredDeals || currentFilteredDeals.length === 0) {
             alert('Нет данных для выгрузки!');
@@ -237,7 +252,6 @@
                 }
             }
 
-            // Формируем строчку для Excel
             exportData.push({
                 "№": index + 1,
                 "Дата": deal.date || "-",
@@ -245,13 +259,12 @@
                 "Заказчик": deal.client || "Заказчик",
                 "Телефон": deal.phone || "-",
                 "WhatsApp": deal.whatsapp || deal.phone || "-",
-                "Объект / Габариты": deal.object || "Ангар",
+                "Назначение / Объект": getObjectDescription(deal),
                 "Сумма КП (₸)": priceNum || deal.price,
                 "Текущий статус": statusLabel
             });
         });
 
-        // Добавляем итоговую строку для печати
         exportData.push({
             "№": "",
             "Дата": "",
@@ -259,30 +272,28 @@
             "Заказчик": "ИТОГО СДЕЛОК:",
             "Телефон": currentFilteredDeals.length + " шт.",
             "WhatsApp": "",
-            "Объект / Габариты": "ОБЩАЯ СУММА:",
+            "Назначение / Объект": "ОБЩАЯ СУММА:",
             "Сумма КП (₸)": totalSumNumber,
             "Текущий статус": ""
         });
 
         var worksheet = XLSX.utils.json_to_sheet(exportData);
         
-        // Настраиваем ширину колонок для красивой печати
         worksheet['!cols'] = [
-            { wch: 5 },  // №
-            { wch: 12 }, // Дата
-            { wch: 25 }, // Менеджер
-            { wch: 25 }, // Заказчик
-            { wch: 18 }, // Телефон
-            { wch: 18 }, // WhatsApp
-            { wch: 25 }, // Объект
-            { wch: 18 }, // Сумма
-            { wch: 30 }  // Статус
+            { wch: 5 },  
+            { wch: 12 }, 
+            { wch: 25 }, 
+            { wch: 25 }, 
+            { wch: 18 }, 
+            { wch: 18 }, 
+            { wch: 30 }, 
+            { wch: 18 }, 
+            { wch: 30 }  
         ];
 
         var workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Реестр КП");
 
-        // Генерируем название файла с текущей датой
         var dateStr = new Date().toLocaleDateString('ru-RU').replace(/\./g, '-');
         XLSX.writeFile(workbook, "Реестр_КП_ТОО_Мамыр_" + dateStr + ".xlsx");
     }
