@@ -62,7 +62,7 @@
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; }
         .modal-header h3 { margin: 0; color: #1a365d; font-size: 18px; }
         .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #a0aec0; }
-        .history-list { font-size: 13px; color: #4a5568; line-height: 1.8; max-height: 280px; overflow-y: auto; }
+        .history-list { font-size: 13px; color: #4a5568; line-height: 1.6; max-height: 280px; overflow-y: auto; }
         .empty-text { text-align: center; color: #718096; padding: 30px; font-style: italic; }
     </style>
 </head>
@@ -185,14 +185,16 @@
 
         document.getElementById('modalClientTitle').innerText = deal.client || 'Заказчик';
         
-        // Показываем самую первую запись о создании КП
-        var historyHtml = '<div style="margin-bottom: 8px;"><b>• ' + (deal.date || '-') + '</b> — Создано КП</div>';
+        // Шаг 1: Всегда выводим создание КП
+        var historyHtml = '<div style="margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #edf2f7;"><b>1. ' + (deal.date || '-') + '</b> — Создано КП</div>';
         
-        // Выводим всю хронологию последующих изменений
+        // Шаги 2, 3 и т.д.: Выводим всю хронологию изменений по порядку
         if (deal.history && deal.history.length > 0) {
-            deal.history.forEach(function(step) {
-                historyHtml += '<div style="margin-bottom: 8px;"><b>•</b> ' + step + '</div>';
+            deal.history.forEach(function(step, index) {
+                historyHtml += '<div style="margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #edf2f7;"><b>' + (index + 2) + '.</b> ' + step + '</div>';
             });
+        } else {
+            historyHtml += '<div style="color: #718096; font-style: italic; margin-top: 5px;">Других изменений статуса пока не зафиксировано.</div>';
         }
 
         document.getElementById('modalHistoryContent').innerHTML = historyHtml;
