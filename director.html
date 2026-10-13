@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Личный кабинет — директор</title>
+    <title>Личный кабинет — Директор</title>
     <style>
         * { box-sizing: border-box; font-family: 'Calibri', 'Arial', sans-serif; }
         body { background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
@@ -40,7 +40,7 @@
 <body>
 <div class="container">
     <div class="header">
-        <h1>Кабинет сделок: директор</h1>
+        <h1>Кабинет сделок: Директор</h1>
         <a href="manager.html" class="btn-create">+ Сформировать новое КП</a>
     </div>
 
@@ -53,7 +53,7 @@
 </div>
 
 <script>
-    var MY_ROLE = "директор"; // Для manager2.html укажите "Менеджер 2", для director.html — "Директор" и т.д.
+    var MY_ROLE = "Директор"; // Для manager2.html укажите "Менеджер 2", для director.html — "Директор" и т.д.
 
     var statusNames = {
         'sent': 'Создано КП / Веду переговоры',
@@ -113,16 +113,17 @@
                 '<td><b>' + (deal.price || '-') + '</b></td>' +
                 '<td>' +
                     '<select class="status-select ' + getStatusClass(currentStatus) + '" onchange="updateStatus(' + deal.id + ', this.value)">' +
-                        '<option value="sent"' + (currentStatus === 'sent' ? ' selected' : '') + '>Создано КП / Веду переговоры</option>' +
-                        '<option value="pause"' + (currentStatus === 'pause' ? ' selected' : '') + '>Клиент взял паузу</option>' +
-                        '<option value="nosignal"' + (currentStatus === 'nosignal' ? ' selected' : '') + '>Нет обратной связи / Не берет трубку</option>' +
-                        '<option value="expensive"' + (currentStatus === 'expensive' ? ' selected' : '') + '>Дорого</option>' +
-                        '<option value="discount"' + (currentStatus === 'discount' ? ' selected' : '') + '>Просит скидку</option>' +
-                        '<option value="competitor"' + (currentStatus === 'competitor' ? ' selected' : '') + '>У конкурентов дешевле</option>' +
-                        '<option value="ready"' + (currentStatus === 'ready' ? ' selected' : '') + '>Готов контрактоваться</option>' +
-                        '<option value="contract"' + (currentStatus === 'contract' ? ' selected' : '') + '>Делаем договор</option>' +
-                        '<option value="success"' + (currentStatus === 'success' ? ' selected' : '') + '>Внес предоплату</option>' +
-                    '</select>' +
+    '<option value="sent"' + (currentStatus === 'sent' || currentStatus === 'new' ? ' selected' : '') + '>Создано КП</option>' +
+    '<option value="talks"' + (currentStatus === 'talks' ? ' selected' : '') + '>Веду переговоры</option>' +
+    '<option value="nosignal"' + (currentStatus === 'nosignal' ? ' selected' : '') + '>Нет обратной связи / Не берет трубку</option>' +
+    '<option value="pause"' + (currentStatus === 'pause' ? ' selected' : '') + '>Клиент взял паузу</option>' +
+    '<option value="expensive"' + (currentStatus === 'expensive' ? ' selected' : '') + '>Дорого</option>' +
+    '<option value="discount"' + (currentStatus === 'discount' ? ' selected' : '') + '>Просит скидку</option>' +
+    '<option value="competitor"' + (currentStatus === 'competitor' ? ' selected' : '') + '>У конкурентов дешевле</option>' +
+    '<option value="ready"' + (currentStatus === 'ready' ? ' selected' : '') + '>Готов контрактоваться</option>' +
+    '<option value="contract"' + (currentStatus === 'contract' ? ' selected' : '') + '>Делаем договор</option>' +
+    '<option value="success"' + (currentStatus === 'success' ? ' selected' : '') + '>Внес предоплату</option>' +
+'</select>' +
                 '</td>' +
             '</tr>';
         });
