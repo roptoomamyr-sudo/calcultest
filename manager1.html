@@ -123,14 +123,37 @@
         container.innerHTML = html;
     }
 
-    function updateStatus(dealId, newStatus) {
-        var allDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
-        allDeals.forEach(function(deal) { 
-            if (deal.id === dealId) deal.status = newStatus; 
-        });
-        localStorage.setItem('mamyr_kp_history', JSON.stringify(allDeals));
-        loadDeals();
-    }
+  function updateStatus(dealId, newStatus) {
+    var allDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
+    var statusNames = {
+        'sent': 'Создано КП / Веду переговоры',
+        'new': 'Создано КП',
+        'pause': 'Клиент взял паузу',
+        'nosignal': 'Нет обратной связи / Не берет трубку',
+        'expensive': 'Дорого',
+        'discount': 'Просит скидку',
+        'competitor': 'У конкурентов дешевле',
+        'ready': 'Готов контрактоваться',
+        'contract': 'Делаем договор',
+        'success': 'Внес предоплату'
+    };
+
+    var timeString = new Date().toLocaleDateString('ru-RU') + ' ' + new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'});
+    var statusLabel = statusNames[newStatus] || newStatus;
+
+    allDeals.forEach(function(deal) { 
+        if (deal.id === dealId) {
+            deal.status = newStatus;
+            if (!deal.history) {
+                deal.history = [];
+            }
+            // Добавляем текущую дату, время и название статуса в историю
+            deal.history.push(timeString + ' — ' + statusLabel);
+        } 
+    });
+
+    localStorage.setItem('mamyr_kp_history', JSON.stringify(allDeals));
+    loadDeals();
 
     function getStatusClass(status) {
         switch(status) {
