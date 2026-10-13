@@ -548,9 +548,23 @@
                     area: area,
                     total: totalFinal
                 });
-var localDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
-localDeals.push({ id: Date.now(), manager: manager, client: client, phone: phone, object: 'Ангар', price: totalFinal, status: 'new', date: new Date().toLocaleDateString('ru-RU') });
-localStorage.setItem('mamyr_kp_history', JSON.stringify(localDeals));
+try {
+    var selManager = document.getElementById('manager') ? document.getElementById('manager').options[document.getElementById('manager').selectedIndex].text : manager;
+    var localDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
+    localDeals.push({ 
+        id: Date.now(), 
+        manager: selManager, 
+        client: client, 
+        phone: phone, 
+        object: 'Ангар', 
+        price: totalFinal, 
+        status: 'new', 
+        date: new Date().toLocaleDateString('ru-RU') 
+    });
+    localStorage.setItem('mamyr_kp_history', JSON.stringify(localDeals));
+} catch(err) {
+    console.log('Ошибка сохранения:', err);
+}
                 return fetch("https://api.jsonbin.io/v3/b/" + BIN_ID, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json", "X-Master-Key": SECRET_KEY },
