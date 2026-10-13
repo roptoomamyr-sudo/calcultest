@@ -3,110 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Генератор КП — ТОО «Мамыр»</title>
+    <title>Личный Кабинет — Менеджер 1</title>
     <style>
         * { box-sizing: border-box; font-family: 'Calibri', 'Arial', sans-serif; }
         body { background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        h1 { color: #1a365d; font-size: 22px; margin-top: 0; border-bottom: 2px solid #2b6cb0; padding-bottom: 10px; }
-        .section-title { font-size: 16px; color: #2b6cb0; margin-top: 20px; margin-bottom: 10px; font-weight: bold; }
+        .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2b6cb0; padding-bottom: 15px; margin-bottom: 25px; }
+        .header h1 { color: #1a365d; font-size: 22px; margin: 0; }
+        .btn-create { background: #2b6cb0; color: #fff; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; font-size: 14px; }
+        .btn-create:hover { background: #2c5282; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #cbd5e0; padding: 12px; text-align: left; font-size: 14px; }
+        th { background: #2b6cb0; color: #fff; font-weight: bold; font-size: 12px; text-transform: uppercase; }
+        tr:nth-child(even) { background: #f8fafc; }
+
+        select.status-select { padding: 6px 10px; border-radius: 4px; border: 1px solid #cbd5e0; font-size: 13px; font-weight: bold; }
+        .status-new { background: #ebf8ff; color: #2b6cb0; }
+        .status-work { background: #feebc8; color: #c05621; }
+        .status-success { background: #c6f6d5; color: #22543d; }
+        .status-cancel { background: #fed7d7; color: #9b2c2c; }
         
-        .panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; }
-        .control-group label { display: block; font-weight: bold; font-size: 13px; color: #2d3748; margin-bottom: 6px; }
-        .control-group select, .control-group input { width: 100%; padding: 9px 12px; font-size: 14px; border: 1px solid #cbd5e0; border-radius: 6px; background: #fff; }
-        
-        .btn { background: #2b6cb0; color: #fff; border: none; padding: 14px 20px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 10px; transition: background 0.2s; }
-        .btn:hover { background: #2c5282; }
+        .empty-text { text-align: center; color: #718096; padding: 30px; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Генератор Коммерческих Предложений M-CONSTRUCTION</h1>
-
-    <div class="section-title">1. Ответственный сотрудник и заказчик</div>
-    <div class="panel">
-        <div class="control-group">
-            <label for="managerSelect">Ответственное лицо:</label>
-            <select id="managerSelect">
-                <option value="manager1">Менеджер 1</option>
-                <option value="manager2">Менеджер 2</option>
-            </select>
-        </div>
-        <div class="control-group">
-            <label for="clientName">Заказчик (ТОО / ИП / ФИО):</label>
-            <input type="text" id="clientName" value="ТОО «Мамыр»" placeholder="Введите заказчика">
-        </div>
-        <div class="control-group">
-            <label for="clientPhone">Контактный телефон:</label>
-            <input type="text" id="clientPhone" value="+7 700 000 00 00">
-        </div>
-        <div class="control-group">
-            <label for="objectType">Назначение объекта:</label>
-            <input type="text" id="objectType" value="Зернохранилище">
-        </div>
+    <div class="header">
+        <h1>Кабинет управления сделками: Менеджер 1</h1>
+        <a href="manager.html" class="btn-create">+ Сформировать новое КП</a>
     </div>
 
-    <div class="section-title">2. Конструкция и габариты</div>
-    <div class="panel">
-        <div class="control-group">
-            <label for="buildingType">Тип здания:</label>
-            <select id="buildingType">
-                <option value="Арочный холодный (Тент ПВХ)">Арочный холодный (Тент ПВХ)</option>
-                <option value="Прямостенный арочный">Прямостенный арочный</option>
-            </select>
-        </div>
-        <div class="control-group">
-            <label for="width">Ширина (м):</label>
-            <input type="number" id="width" value="18">
-        </div>
-        <div class="control-group">
-            <label for="length">Длина (м):</label>
-            <input type="number" id="length" value="36">
-        </div>
-        <div class="control-group">
-            <label for="amount">Итоговая стоимость (₸):</label>
-            <input type="text" id="amount" value="6 500 000 ₸">
-        </div>
-    </div>
-
-    <button class="btn" onclick="generateAndSaveKP()">Сформировать КП и сохранить в кабинет менеджера</button>
+    <div id="tableContainer"></div>
 </div>
 
 <script>
-    function generateAndSaveKP() {
-        var managerId = document.getElementById('managerSelect').value; // manager1 или manager2
-        var client = document.getElementById('clientName').value;
-        var phone = document.getElementById('clientPhone').value;
-        var object = document.getElementById('objectType').value;
-        var bType = document.getElementById('buildingType').value;
-        var w = document.getElementById('width').value;
-        var l = document.getElementById('length').value;
-        var price = document.getElementById('amount').value;
+    var CURRENT_ROLE = "Менеджер 1"; // Отфильтрует КП именно для Менеджера 1
 
-        var newDeal = {
-            id: Date.now(),
-            managerId: managerId,
-            client: client,
-            phone: phone,
-            object: object,
-            params: bType + ' (' + w + '×' + l + ' м)',
-            price: price,
-            date: new Date().toLocaleDateString('ru-RU'),
-            status: 'new'
-        };
-
-        // Загружаем существующие сделки и добавляем новую
-        var allDeals = JSON.parse(localStorage.getItem('mamyr_all_deals')) || [];
-        allDeals.push(newDeal);
-        localStorage.setItem('mamyr_all_deals', JSON.stringify(allDeals));
-
-        var managerTitle = (managerId === 'manager1') ? 'Менеджеру 1' : 'Менеджеру 2';
-        alert('КП успешно сформировано! Сделка сохранена и передана в кабинет ' + managerTitle + '.');
+    function loadDeals() {
+        var allDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
         
-        // Перенаправляем в кабинет этого менеджера
-        window.location.href = managerId + '.html';
+        // Фильтруем сделки по автору/ответственному
+        var myDeals = allDeals.filter(function(deal) {
+            return deal.manager === CURRENT_ROLE || deal.managerId === "manager1";
+        });
+
+        var container = document.getElementById('tableContainer');
+
+        if (myDeals.length === 0) {
+            container.innerHTML = '<div class="empty-text">У вас пока нет оформленных коммерческих предложений.</div>';
+            return;
+        }
+
+        var html = '<table><thead><tr>' +
+            '<th>Дата</th>' +
+            '<th>Заказчик</th>' +
+            '<th>Назначение / Обьект</th>' +
+            '<th>Габариты</th>' +
+            '<th>Сумма КП</th>' +
+            '<th>Статус сделки</th>' +
+            '</tr></thead><tbody>';
+
+        myDeals.forEach(function(deal, idx) {
+            html += '<tr>' +
+                '<td>' + (deal.date || '-') + '</td>' +
+                '<td><b>' + (deal.client || 'ТОО «Мамыр»') + '</b></td>' +
+                '<td>' + (deal.object || 'Ангар') + '</td>' +
+                '<td>' + (deal.size || '-') + '</td>' +
+                '<td><b>' + (deal.price || '-') + '</b></td>' +
+                '<td>' +
+                    '<select class="status-select ' + getStatusClass(deal.status) + '" onchange="updateStatus(' + deal.id + ', this.value)">' +
+                        '<option value="new"' + (deal.status === 'new' ? ' selected' : '') + '>Новая заявка</option>' +
+                        '<option value="work"' + (deal.status === 'work' ? ' selected' : '') + '>В работе / КП отправлено</option>' +
+                        '<option value="success"' + (deal.status === 'success' ? ' selected' : '') + '>Договор / Предоплата</option>' +
+                        '<option value="cancel"' + (deal.status === 'cancel' ? ' selected' : '') + '>Отказ</option>' +
+                    '</select>' +
+                '</td>' +
+            '</tr>';
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
     }
+
+    function updateStatus(dealId, newStatus) {
+        var allDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
+        allDeals.forEach(function(deal) {
+            if (deal.id === dealId) {
+                deal.status = newStatus;
+            }
+        });
+        localStorage.setItem('mamyr_kp_history', JSON.stringify(allDeals));
+        loadDeals();
+    }
+
+    function getStatusClass(status) {
+        if (status === 'new') return 'status-new';
+        if (status === 'work') return 'status-work';
+        if (status === 'success') return 'status-success';
+        if (status === 'cancel') return 'status-cancel';
+        return 'status-new';
+    }
+
+    window.onload = loadDeals;
 </script>
 
 </body>
