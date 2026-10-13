@@ -29,25 +29,40 @@
         .client-link { color: #2b6cb0; text-decoration: underline; cursor: pointer; font-weight: bold; }
         .client-link:hover { color: #1a365d; }
 
-        /* Бейджи статусов */
+        /* Цветовая гамма статусов */
         .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; text-align: center; width: 100%; }
-        .status-sent { background: #ebf8ff; color: #2b6cb0; }
+        
+        /* 1. Создано КП / Веду переговоры - Синий */
+        .status-sent, .status-new { background: #ebf8ff; color: #2b6cb0; }
+        
+        /* 2. Взял паузу - Серый */
         .status-pause { background: #edf2f7; color: #4a5568; }
+        
+        /* 3. Нет обратной связи / Не берет трубку - Желтый */
+        .status-nosignal { background: #fefcbf; color: #744210; }
+        
+        /* 4. Дорого - Оранжево-персиковый */
         .status-expensive { background: #feebc8; color: #c05621; }
-        .status-discount { background: #fffaf0; color: #dd6b20; }
-        .status-competitor { background: #fed7d7; color: #9b2c2c; }
-        .status-nosignal { background: #edf2f7; color: #718096; }
-        .status-ready { background: #ebf8ff; color: #3182ce; }
-        .status-contract { background: #faf5ff; color: #6b46c1; }
+        
+        /* 5. Просит скидку - Светло-красный */
+        .status-discount { background: #fed7d7; color: #9b2c2c; }
+        
+        /* 6. У конкурентов дешевле - Темно-красный */
+        .status-competitor { background: #742a2a; color: #ffffff; }
+        
+        /* 7. Готов контрактоваться / Делаем договор - Фиолетовый */
+        .status-ready, .status-contract { background: #e9d8fd; color: #553c9a; }
+        
+        /* 8. Внес предоплату - Зеленый */
         .status-success { background: #c6f6d5; color: #22543d; }
 
         /* Модальное окно истории */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-card { background: #fff; border-radius: 10px; padding: 25px; width: 480px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-card { background: #fff; border-radius: 10px; padding: 25px; width: 500px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; }
         .modal-header h3 { margin: 0; color: #1a365d; font-size: 18px; }
         .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #a0aec0; }
-        .history-list { font-size: 13px; color: #4a5568; line-height: 1.6; max-height: 250px; overflow-y: auto; }
+        .history-list { font-size: 13px; color: #4a5568; line-height: 1.8; max-height: 280px; overflow-y: auto; }
         .empty-text { text-align: center; color: #718096; padding: 30px; font-style: italic; }
     </style>
 </head>
@@ -93,16 +108,16 @@
 
 <script>
     var statusNames = {
-        'sent': 'Отправил КП',
+        'sent': 'Создано КП / Веду переговоры',
+        'new': 'Создано КП',
         'pause': 'Клиент взял паузу',
+        'nosignal': 'Нет обратной связи / Не берет трубку',
         'expensive': 'Дорого',
         'discount': 'Просит скидку',
         'competitor': 'У конкурентов дешевле',
-        'nosignal': 'Не берет трубку',
         'ready': 'Готов контрактоваться',
         'contract': 'Делаем договор',
-        'success': 'Внес предоплату',
-        'new': 'Новая заявка'
+        'success': 'Внес предоплату'
     };
 
     function loadRegistry() {
@@ -145,13 +160,16 @@
 
         filteredDeals.forEach(function(deal) {
             var currentStatus = deal.status || 'sent';
-            var statusLabel = statusNames[currentStatus] || currentStatus;
+            var statusLabel = statusNames[currentStatus] || 'Создано КП';
+
+            // Если whatsapp не заполнен отдельно, подтягиваем обычный телефон
+            var waDisplay = deal.whatsapp || deal.phone || '-';
 
             html += '<tr>' +
                 '<td><b>' + (deal.manager || 'Не указан') + '</b></td>' +
                 '<td><span class="client-link" onclick="openHistory(' + deal.id + ')">' + (deal.client || 'Заказчик') + ' ℹ️</span></td>' +
                 '<td>' + (deal.phone || '-') + '</td>' +
-                '<td>' + (deal.whatsapp || '-') + '</td>' +
+                '<td>' + waDisplay + '</td>' +
                 '<td>' + (deal.object || 'Ангар') + '</td>' +
                 '<td><b>' + (deal.price || '-') + '</b></td>' +
                 '<td><span class="status-badge ' + getStatusClass(currentStatus) + '">' + statusLabel + '</span></td>' +
@@ -168,11 +186,12 @@
 
         document.getElementById('modalClientTitle').innerText = deal.client || 'Заказчик';
         
-        var historyHtml = '';
+        var historyHtml = '<div><b>1. Создано КП</b> (' + (deal.date || '-') + ')</div>';
+        
         if (deal.history && deal.history.length > 0) {
-            historyHtml = '<ol type="1" style="padding-left:20px; margin:0;"><li>' + deal.history.join('</li><li>') + '</li></ol>';
-        } else {
-            historyHtml = '• ' + (deal.date || '-') + ' — Создано КП (' + (statusNames[deal.status] || 'Отправил КП') + ')';
+            deal.history.forEach(function(step, idx) {
+                historyHtml += '<div><b>' + (idx + 2) + '.</b> ' + step + '</div>';
+            });
         }
 
         document.getElementById('modalHistoryContent').innerHTML = historyHtml;
@@ -185,14 +204,13 @@
 
     function getStatusClass(status) {
         switch(status) {
-            case 'sent': return 'status-sent';
+            case 'sent': case 'new': return 'status-sent';
             case 'pause': return 'status-pause';
+            case 'nosignal': return 'status-nosignal';
             case 'expensive': return 'status-expensive';
             case 'discount': return 'status-discount';
             case 'competitor': return 'status-competitor';
-            case 'nosignal': return 'status-nosignal';
-            case 'ready': return 'status-ready';
-            case 'contract': return 'status-contract';
+            case 'ready': case 'contract': return 'status-contract';
             case 'success': return 'status-success';
             default: return 'status-sent';
         }
