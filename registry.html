@@ -14,7 +14,6 @@
         .header h1 { color: #1a365d; font-size: 22px; margin: 0; }
         .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
         
-        /* Панель фильтров и статистики */
         .toolbar { display: flex; justify-content: space-between; align-items: center; background: #edf2f7; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
         .filter-group { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
         .filter-item { display: flex; align-items: center; gap: 8px; }
@@ -29,11 +28,9 @@
         th { background: #1a365d; color: #fff; font-weight: bold; font-size: 12px; text-transform: uppercase; }
         tr:nth-child(even) { background: #f8fafc; }
 
-        /* Кликабельный заказчик */
         .client-link { color: #2b6cb0; text-decoration: underline; cursor: pointer; font-weight: bold; }
         .client-link:hover { color: #1a365d; }
 
-        /* Цветовая гамма статусов */
         .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; text-align: center; width: 100%; }
         
         .status-sent, .status-new { background: #ebf8ff; color: #2b6cb0; }
@@ -45,7 +42,6 @@
         .status-ready, .status-contract { background: #e9d8fd; color: #553c9a; }
         .status-success { background: #c6f6d5; color: #22543d; }
 
-        /* Модальное окно истории */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
         .modal-card { background: #fff; border-radius: 10px; padding: 25px; width: 500px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; }
@@ -67,7 +63,6 @@
         </div>
     </div>
 
-    <!-- Панель управления -->
     <div class="toolbar">
         <div class="filter-group">
             <div class="filter-item">
@@ -94,7 +89,6 @@
     <div id="tableContainer"></div>
 </div>
 
-<!-- Модальное окно истории -->
 <div class="modal-overlay" id="historyModal">
     <div class="modal-card">
         <div class="modal-header">
@@ -121,20 +115,19 @@
         'success': 'Внес предоплату'
     };
 
-    // Вспомогательная функция для сборки описания объекта
     function getObjectDescription(deal) {
+        // Проверяем, сохранены ли специфические параметры напрямую
         var parts = [];
-        
-        if (deal.purpose) parts.push(deal.purpose); // Например: "Зернохранилище", "Склад", "Спортивный арена"
-        if (deal.dimensions) parts.push(deal.dimensions); // Например: "24х109 м"
-        
-        // Если отдельные поля не передавались, но есть текстовое описание объекта
-        if (parts.length === 0 && deal.object) {
+        if (deal.purpose) parts.push(deal.purpose);
+        if (deal.dimensions) parts.push(deal.dimensions);
+        if (parts.length > 0) return parts.join(' — ');
+
+        // Если объект строка и не равна просто слову "Ангар", выводим её
+        if (deal.object && deal.object !== 'Ангар') {
             return deal.object;
         }
-        
-        // Собираем всё в одну строку или выводим по умолчанию
-        return parts.length > 0 ? parts.join(' — ') : (deal.object || 'Каркасно-тентовый ангар');
+
+        return 'Размеры и назначение не указаны';
     }
 
     function loadRegistry() {
@@ -172,7 +165,7 @@
             '<th>Заказчик</th>' +
             '<th>Телефон</th>' +
             '<th>WhatsApp</th>' +
-            '<th>Назначение / Объект / Габариты</th>' +
+            '<th>Назначение / Габариты объекта</th>' +
             '<th>Сумма КП</th>' +
             '<th>Статус</th>' +
             '</tr></thead><tbody>';
@@ -259,7 +252,7 @@
                 "Заказчик": deal.client || "Заказчик",
                 "Телефон": deal.phone || "-",
                 "WhatsApp": deal.whatsapp || deal.phone || "-",
-                "Назначение / Объект": getObjectDescription(deal),
+                "Назначение и Габариты": getObjectDescription(deal),
                 "Сумма КП (₸)": priceNum || deal.price,
                 "Текущий статус": statusLabel
             });
@@ -272,7 +265,7 @@
             "Заказчик": "ИТОГО СДЕЛОК:",
             "Телефон": currentFilteredDeals.length + " шт.",
             "WhatsApp": "",
-            "Назначение / Объект": "ОБЩАЯ СУММА:",
+            "Назначение и Габариты": "ОБЩАЯ СУММА:",
             "Сумма КП (₸)": totalSumNumber,
             "Текущий статус": ""
         });
@@ -286,7 +279,7 @@
             { wch: 25 }, 
             { wch: 18 }, 
             { wch: 18 }, 
-            { wch: 30 }, 
+            { wch: 35 }, 
             { wch: 18 }, 
             { wch: 30 }  
         ];
