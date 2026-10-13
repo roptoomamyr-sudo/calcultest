@@ -14,7 +14,6 @@
         .header h1 { color: #1a365d; font-size: 22px; margin: 0; }
         .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
         
-        /* Панель фильтров и статистики */
         .toolbar { display: flex; justify-content: space-between; align-items: center; background: #edf2f7; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
         .filter-group { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
         .filter-item { display: flex; align-items: center; gap: 8px; }
@@ -34,14 +33,19 @@
 
         .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; text-align: center; width: 100%; }
         
-        .status-sent, .status-new { background: #ebf8ff; color: #2b6cb0; }
-        .status-pause { background: #edf2f7; color: #4a5568; }
-        .status-nosignal { background: #fefcbf; color: #744210; }
-        .status-expensive { background: #feebc8; color: #c05621; }
-        .status-discount { background: #fed7d7; color: #9b2c2c; }
-        .status-competitor { background: #742a2a; color: #ffffff; }
-        .status-ready, .status-contract { background: #e9d8fd; color: #553c9a; }
-        .status-success { background: #c6f6d5; color: #22543d; }
+        /* Обновленные цвета статусов */
+        .status-sent, .status-new { background: #e2e8f0; color: #2d3748; } /* Создано КП - серый */
+        .status-talks { background: #ebf8ff; color: #2b6cb0; } /* Веду переговоры - синий */
+        .status-pause { background: #edf2f7; color: #4a5568; } /* Взял паузу */
+        .status-nosignal { background: #fefcbf; color: #744210; } /* Нет обратной связи - желтый */
+        .status-expensive { background: #feebc8; color: #c05621; } /* Дорого - оранжевый */
+        .status-discount { background: #fed7d7; color: #9b2c2c; } /* Просит скидку - светло-красный */
+        .status-competitor { background: #742a2a; color: #ffffff; } /* У конкурентов дешевле - темный */
+        
+        /* Финальные зеленые статусы */
+        .status-ready { background: #d4edda; color: #155724; } /* Готов контрактоваться - салатовый */
+        .status-contract { background: #28a745; color: #ffffff; } /* Делаем договор - зелёный */
+        .status-success { background: #155724; color: #ffffff; } /* Внес предоплату - темно-зеленый */
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
         .modal-card { background: #fff; border-radius: 10px; padding: 25px; width: 500px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
@@ -64,7 +68,6 @@
         </div>
     </div>
 
-    <!-- Панель управления и фильтров -->
     <div class="toolbar">
         <div class="filter-group">
             <div class="filter-item">
@@ -82,9 +85,10 @@
                 <label for="statusFilter">Статус:</label>
                 <select id="statusFilter" onchange="loadRegistry()">
                     <option value="ALL">-- Все статусы --</option>
-                    <option value="sent">Создано КП / Веду переговоры</option>
-                    <option value="pause">Клиент взял паузу</option>
+                    <option value="sent">Создано КП</option>
+                    <option value="talks">Веду переговоры</option>
                     <option value="nosignal">Нет обратной связи / Не берет трубку</option>
+                    <option value="pause">Клиент взял паузу</option>
                     <option value="expensive">Дорого</option>
                     <option value="discount">Просит скидку</option>
                     <option value="competitor">У конкурентов дешевле</option>
@@ -106,7 +110,6 @@
     <div id="tableContainer"></div>
 </div>
 
-<!-- Модальное окно истории -->
 <div class="modal-overlay" id="historyModal">
     <div class="modal-card">
         <div class="modal-header">
@@ -121,8 +124,9 @@
     var currentFilteredDeals = [];
 
     var statusNames = {
-        'sent': 'Создано КП / Веду переговоры',
+        'sent': 'Создано КП',
         'new': 'Создано КП',
+        'talks': 'Веду переговоры',
         'pause': 'Клиент взял паузу',
         'nosignal': 'Нет обратной связи / Не берет трубку',
         'expensive': 'Дорого',
@@ -312,12 +316,14 @@
     function getStatusClass(status) {
         switch(status) {
             case 'sent': case 'new': return 'status-sent';
+            case 'talks': return 'status-talks';
             case 'pause': return 'status-pause';
             case 'nosignal': return 'status-nosignal';
             case 'expensive': return 'status-expensive';
             case 'discount': return 'status-discount';
             case 'competitor': return 'status-competitor';
-            case 'ready': case 'contract': return 'status-contract';
+            case 'ready': return 'status-ready';
+            case 'contract': return 'status-contract';
             case 'success': return 'status-success';
             default: return 'status-sent';
         }
