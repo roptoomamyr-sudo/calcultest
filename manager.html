@@ -555,12 +555,13 @@ try {
         id: Date.now(), 
         manager: selManager, 
         client: client, 
-        phone: phone, 
-        object: 'Ангар', 
-        price: totalFinal, 
-        status: 'new', 
-        date: new Date().toLocaleDateString('ru-RU') 
-    });
+       phone: phone,
+    whatsapp: document.getElementById('whatsapp') ? document.getElementById('whatsapp').value : phone,
+    object: (document.getElementById('purpose') ? document.getElementById('purpose').value : 'Ангар') + ' (' + (document.getElementById('width') ? document.getElementById('width').value : '0') + 'x' + (document.getElementById('length') ? document.getElementById('length').value : '0') + (document.getElementById('height') && document.getElementById('height').value ? 'x' + document.getElementById('height').value : '') + 'м)',
+    price: totalFinal,
+    status: 'new',
+    date: new Date().toLocaleDateString('ru-RU')
+});
     localStorage.setItem('mamyr_kp_history', JSON.stringify(localDeals));
 } catch(err) {
     console.log('Ошибка сохранения:', err);
