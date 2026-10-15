@@ -43,22 +43,12 @@ def load_db():
                 "phone": "+7 705 626 54 24",
                 "region": "Костанайская область",
                 "stage": "stage_5",
-                "manager": "Лемперт А.С. (РОП)",
+                "manager": "Менеджер 1",
                 "total_sum": 0,
                 "history": [{"date": "15.10.2026 12:00", "author": "РОП", "text": "Создана сделка, скинул КП"}],
-                "tasks": [{"date": "15.10.2026", "type": "Звонок", "text": "Уточнить решение по КП", "done": False}]
-            },
-            {
-                "id": "2",
-                "title": 'КХ "АХМЕТОВ"',
-                "client": 'КХ "АХМЕТОВ"',
-                "phone": "+7 870 561 26 31",
-                "region": "Павлодарская область",
-                "stage": "stage_2",
-                "manager": "Не назначен",
-                "total_sum": 0,
-                "history": [{"date": "15.10.2026 12:05", "author": "Директор", "text": "Не дозвон"}],
-                "tasks": []
+                "tasks": [
+                    {"id": "t1", "date": "2026-10-14", "type": "Звонок", "text": "Уточнить решение по КП", "done": False, "reminded": True}
+                ]
             }
         ]
     }
@@ -127,7 +117,12 @@ CRM_HTML = """
     <div class="d-flex align-items-center gap-3">
         <h5 class="m-0 fw-bold text-secondary">🗂️ CRM Воронка Ангары (Bitrix24)</h5>
         <button class="btn btn-success btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addModal">+ Добавить сделку</button>
-        <button class="btn btn-warning btn-sm fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#tasksListModal">🔔 Напоминания <span class="badge bg-danger ms-1">{{ total_tasks_count }}</span></button>
+        <button class="btn btn-warning btn-sm fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#tasksListModal">
+            🔔 Задачи <span class="badge bg-primary ms-1">{{ total_tasks_count }}</span>
+            {% if overdue_count > 0 %}
+            <span class="badge bg-danger ms-1">⚠️ Просрочено: {{ overdue_count }}</span>
+            {% endif %}
+        </button>
     </div>
     <div class="d-flex align-items-center gap-3">
         <span class="badge bg-success">Облачная CRM Активна</span>
@@ -148,9 +143,18 @@ CRM_HTML = """
                     <div class="text-muted text-truncate">📍 {{ d.region or 'Регион не указан' }}</div>
                     <div class="text-secondary text-truncate">📞 {{ d.phone or 'Нет телефона' }}</div>
                     
-                    {% if d.tasks %}
-                    <div class="mt-1"><span class="badge bg-warning text-dark">⏰ Задача: {{ d.tasks[-1].date }} ({{ d.tasks[-1].type }})</span></div>
-                    {% endif %}
+                    {% for t in d.tasks %}
+                        {% if not t.done %}
+                            {% if t.date < today_str %}
+                            <div class="mt-1"><span class="badge bg-danger">⚠️ Просрочено: {{ t.date }} ({{ t.type }})</span></div>
+                            {% else %}
+                            <div class="mt-1"><span class="badge bg-warning text-dark">⏰ {{ t.date }} ({{ t.type }})</span></div>
+                            {% endif %}
+                            {% if t.reminded %}
+                            <div class="mt-1"><span class="badge bg-danger text-white">⚡ РОП требует выполнить!</span></div>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
 
                     <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 11px;">
                         {% if loop.index0 >= 10 or d.total_sum > 0 %}
@@ -162,7 +166,7 @@ CRM_HTML = """
                     </div>
                 </div>
 
-                <!-- Карточка клиента -->
+                <!-- Модальное окно редактирования -->
                 <div class="modal fade" id="cardModal{{ d.id }}" tabindex="-1">
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
@@ -207,7 +211,6 @@ CRM_HTML = """
                                             {% else %}
                                             <input type="text" class="form-control bg-light" value="{{ d.manager }}" readonly>
                                             <input type="hidden" name="manager" value="{{ d.manager }}">
-                                            <div class="form-text text-muted">Изменять ответственного может только РОП или Директор.</div>
                                             {% endif %}
                                         </div>
 
@@ -216,35 +219,29 @@ CRM_HTML = """
                                             <input type="number" name="total_sum" class="form-control" value="{{ d.total_sum }}">
                                         </div>
 
-                                        <!-- Блок постановки задачи / напоминания -->
                                         <div class="col-12 bg-light p-3 border rounded">
-                                            <h6 class="fw-bold text-warning text-dark m-0 mb-2">⏰ Поставить напоминание / задачу:</h6>
+                                            <h6 class="fw-bold text-dark m-0 mb-2">⏰ Поставить новое напоминание / задачу:</h6>
                                             <div class="row g-2">
-                                                <div class="col-md-4">
-                                                    <input type="date" name="task_date" class="form-control form-control-sm">
-                                                </div>
+                                                <div class="col-md-4"><input type="date" name="task_date" class="form-control form-control-sm"></div>
                                                 <div class="col-md-4">
                                                     <select name="task_type" class="form-select form-select-sm">
                                                         <option value="Звонок">📞 Звонок</option>
                                                         <option value="Встреча">🤝 Встреча</option>
                                                         <option value="Отправить КП">📄 Отправить КП</option>
                                                         <option value="Отправить презентацию">📊 Отправить презентацию</option>
-                                                        <option value="Выставить счет">💳 Выставить счет</option>
                                                     </select>
                                                 </div>
-                                                <div class="col-md-4">
-                                                    <input type="text" name="task_text" class="form-control form-control-sm" placeholder="Что нужно сделать...">
-                                                </div>
+                                                <div class="col-md-4"><input type="text" name="task_text" class="form-control form-control-sm" placeholder="Что сделать..."></div>
                                             </div>
                                         </div>
 
                                         <div class="col-12">
-                                            <label class="form-label fw-bold text-success">+ Добавить комментарий в историю:</label>
-                                            <textarea name="new_comment" class="form-control" rows="2" placeholder="Напишите результат звонка..."></textarea>
+                                            <label class="form-label fw-bold text-success">+ Добавить комментарий:</label>
+                                            <textarea name="new_comment" class="form-control" rows="2"></textarea>
                                         </div>
 
                                         <div class="col-12">
-                                            <label class="form-label fw-bold text-secondary">📜 История и задачи:</label>
+                                            <label class="form-label fw-bold text-secondary">📜 История:</label>
                                             <div class="history-box">
                                                 {% if d.history %}
                                                     {% for h in d.history|reverse %}
@@ -273,7 +270,53 @@ CRM_HTML = """
     {% endfor %}
 </div>
 
-<!-- Модальное окно создания -->
+<!-- Модальное окно «Все задачи и напоминания» -->
+<div class="modal fade" id="tasksListModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold">🔔 Панель задач и контроля</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group">
+                {% for d in deals %}
+                    {% for t in d.tasks %}
+                    {% if not t.done %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center {% if t.date < today_str %}list-group-item-danger{% endif %}">
+                        <div>
+                            {% if t.date < today_str %}
+                            <span class="badge bg-danger">⚠️ Просрочено (план: {{ t.date }})</span>
+                            {% else %}
+                            <span class="badge bg-primary">{{ t.date }}</span>
+                            {% endif %}
+                            <span class="badge bg-dark">{{ t.type }}</span>
+                            <strong class="ms-2">{{ d.client }}</strong>
+                            <div class="small mt-1">{{ t.text }}</div>
+                            <div class="small text-muted mt-1">Ответственный: <b>{{ d.manager }}</b></div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <form method="POST" action="/complete_task/{{ d.id }}/{{ t.id }}">
+                                <button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button>
+                            </form>
+                            
+                            {% if user.role in ['director', 'rop'] and t.date < today_str %}
+                            <form method="POST" action="/remind_task/{{ d.id }}/{{ t.id }}">
+                                <button type="submit" class="btn btn-danger btn-sm fw-bold">⚡ Напомнить менеджеру</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления сделки -->
 <div class="modal fade" id="addModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -286,7 +329,6 @@ CRM_HTML = """
                     <div class="mb-2"><label class="form-label">Клиент / ТОО / КХ:</label><input type="text" name="client" class="form-control" required placeholder="ТОО Агро"></div>
                     <div class="mb-2"><label class="form-label">Телефон:</label><input type="text" name="phone" class="form-control" placeholder="+7..."></div>
                     <div class="mb-2"><label class="form-label">Регион:</label><input type="text" name="region" class="form-control" placeholder="Костанайская область"></div>
-                    <div class="mb-2"><label class="form-label">Сумма (₸):</label><input type="number" name="total_sum" class="form-control" value="0"></div>
                     <div class="mb-2"><label class="form-label">Комментарий:</label><textarea name="comment" class="form-control" rows="2"></textarea></div>
                 </div>
                 <div class="modal-footer">
@@ -298,67 +340,21 @@ CRM_HTML = """
     </div>
 </div>
 
-<!-- Модальное окно списка всех напоминаний -->
-<div class="modal fade" id="tasksListModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title fw-bold">🔔 Все запланированные напоминания</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="list-group">
-                {% for d in deals %}
-                    {% for t in d.tasks %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="badge bg-primary">{{ t.date }}</span>
-                            <span class="badge bg-secondary">{{ t.type }}</span>
-                            <strong class="ms-2">{{ d.client }}</strong>
-                            <div class="small text-muted mt-1">{{ t.text }}</div>
-                        </div>
-                        <span class="badge bg-light text-dark border">Менеджер: {{ d.manager }}</span>
-                    </div>
-                    {% endfor %}
-                {% endfor %}
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Скрипт Drag and Drop (Перетаскивание мышкой) -->
 <script>
-function dragDeal(ev, dealId) {
-    ev.dataTransfer.setData("dealId", dealId);
-}
-
-function allowDrop(ev) {
-    ev.preventDefault();
-    ev.currentTarget.classList.add("drag-over");
-}
-
-function removeDragOver(ev) {
-    ev.currentTarget.classList.remove("drag-over");
-}
-
+function dragDeal(ev, dealId) { ev.dataTransfer.setData("dealId", dealId); }
+function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add("drag-over"); }
+function removeDragOver(ev) { ev.currentTarget.classList.remove("drag-over"); }
 function dropDeal(ev, targetStage) {
     ev.preventDefault();
     ev.currentTarget.classList.remove("drag-over");
     var dealId = ev.dataTransfer.getData("dealId");
-    
-    // Отправляем запрос на сервер об изменении этапа
     fetch('/move_deal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: dealId, stage: targetStage })
-    }).then(res => res.json()).then(data => {
-        if(data.success) {
-            location.reload(); // Мгновенно обновляем воронку
-        }
-    });
+    }).then(res => res.json()).then(data => { if(data.success) location.reload(); });
 }
 </script>
 </body>
@@ -388,10 +384,77 @@ def index():
     user = USERS[session["user"]]
     db = load_db()
     
-    # Считаем общее количество задач
-    total_tasks = sum(len(d.get("tasks", [])) for d in db["deals"])
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    total_tasks = 0
+    overdue_count = 0
     
-    return render_template_string(CRM_HTML, user=user, stages=STAGES, deals=db["deals"], total_tasks_count=total_tasks)
+    for d in db["deals"]:
+        for t in d.get("tasks", []):
+            if not t.get("done", False):
+                total_tasks += 1
+                if t.get("date", "") < today_str:
+                    overdue_count += 1
+                    
+    return render_template_string(
+        CRM_HTML, 
+        user=user, 
+        stages=STAGES, 
+        deals=db["deals"], 
+        total_tasks_count=total_tasks, 
+        overdue_count=overdue_count,
+        today_str=today_str
+    )
+
+@app.route("/complete_task/<deal_id>/<task_id>", methods=["POST"])
+def complete_task(deal_id, task_id):
+    if "user" not in session: return redirect(url_for("login"))
+    user = USERS[session["user"]]
+    db = load_db()
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    
+    for d in db["deals"]:
+        if d["id"] == deal_id:
+            for t in d.get("tasks", []):
+                if t.get("id") == task_id:
+                    t["done"] = True
+                    task_date = t.get("date", "")
+                    
+                    # Проверяем на просрочку
+                    if task_date < today_str:
+                        history_text = f"✓ Выполнил задачу с просрочкой (план: {task_date}, факт: {datetime.now().strftime('%Y-%m-%d')}): [{t['type']}] {t['text']}"
+                    else:
+                        history_text = f"✓ Выполнил задачу вовремя: [{t['type']}] {t['text']}"
+                        
+                    d["history"].append({
+                        "date": now_str, 
+                        "author": user["name"], 
+                        "text": history_text
+                    })
+                    break
+    save_db(db)
+    return redirect(url_for("index"))
+
+@app.route("/remind_task/<deal_id>/<task_id>", methods=["POST"])
+def remind_task(deal_id, task_id):
+    if "user" not in session: return redirect(url_for("login"))
+    user = USERS[session["user"]]
+    db = load_db()
+    
+    for d in db["deals"]:
+        if d["id"] == deal_id:
+            for t in d.get("tasks", []):
+                if t.get("id") == task_id:
+                    t["reminded"] = True
+                    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+                    d["history"].append({
+                        "date": now_str, 
+                        "author": user["name"], 
+                        "text": f"⚡ РОП напомнил менеджеру о просроченной задаче!"
+                    })
+                    break
+    save_db(db)
+    return redirect(url_for("index"))
 
 @app.route("/move_deal", methods=["POST"])
 def move_deal():
@@ -444,7 +507,7 @@ def add():
         "region": request.form.get("region"),
         "stage": "stage_1",
         "manager": user["name"],
-        "total_sum": int(request.form.get("total_sum") or 0),
+        "total_sum": 0,
         "history": history_list,
         "tasks": []
     })
@@ -464,14 +527,14 @@ def update(id):
             new_sum = int(request.form.get("total_sum") or 0)
             new_comment = request.form.get("new_comment", "").strip()
             
-            # Задача
             task_date = request.form.get("task_date")
             task_type = request.form.get("task_type")
             task_text = request.form.get("task_text", "").strip()
             
             if task_date and task_text:
                 if "tasks" not in d: d["tasks"] = []
-                d["tasks"].append({"date": task_date, "type": task_type, "text": task_text, "done": False})
+                task_id = f"t_{len(d['tasks'])+1}_{int(datetime.now().timestamp())}"
+                d["tasks"].append({"id": task_id, "date": task_date, "type": task_type, "text": task_text, "done": False, "reminded": False})
                 now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
                 d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Поставил задачу ({task_type} на {task_date}): {task_text}"})
 
