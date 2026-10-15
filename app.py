@@ -1,12 +1,13 @@
 from flask import Flask, render_template_string, request, redirect, url_for, session
 import json
 import os
+import csv
 
 app = Flask(__name__)
 app.secret_key = "angar_crm_secret_2026"
 
 DB_FILE = "crm_db.json"
-EXCEL_FILE = "baza_selkhoz.xlsx"
+CSV_FILE = "baza.csv"
 
 USERS = {
     "director": {"pass": "dir123", "name": "Уралбаев Ж.А. (Директор)", "role": "director"},
@@ -45,40 +46,47 @@ def map_stage_by_text(note, row_text):
         return "stage_5"
     return "stage_1"
 
-def load_from_excel():
+def load_from_csv():
     deals = []
-    if os.path.exists(EXCEL_FILE):
-        try:
-            import openpyxl
-            wb = openpyxl.load_workbook(EXCEL_FILE, data_only=True)
-            sheet = wb.active
-            
-            for idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=1):
-                if not any(row):
-                    continue
+    if os.path.exists(CSV_FILE):
+        for encoding in ['utf-8-sig', 'cp1251', 'latin-1']:
+            try:
+                with open(CSV_FILE, mode='r', encoding=encoding) as f:
+                    # Определяем разделитель автоматически (запятая или точка с запятой)
+                    sample = f.read(2048)
+                    f.seek(0)
+                    delimiter = ';' if ';' in sample else ','
+                    
+                    reader = csv.reader(f, delimiter=delimiter)
+                    for idx, row in enumerate(reader, start=1):
+                        if idx == 1: # Пропускаем шапку, если она есть
+                            continue
+                        if not any(row):
+                            continue
+                        
+                        client_name = str(row[1] if len(row) > 1 and row[1] else (row[0] if row[0] else f"Клиент {idx}")).strip()
+                        phone = str(row[3] if len(row) > 3 and row[3] else "").strip()
+                        region = str(row[5] if len(row) > 5 and row[5] else "").strip()
+                        note = str(row[7] if len(row) > 7 and row[7] else "").strip()
+                        
+                        row_text = " ".join([str(cell or "") for cell in row])
+                        stage = map_stage_by_text(note, row_text)
+                        
+                        deals.append({
+                            "id": str(idx),
+                            "title": client_name,
+                            "client": client_name,
+                            "phone": phone,
+                            "region": region,
+                            "stage": stage,
+                            "manager": "Не назначен",
+                            "total_sum": 0,
+                            "comment": note
+                        })
+                break
+            except Exception as e:
+                print(f"Ошибка с кодировкой {encoding}: {e}")
                 
-                client_name = str(row[1] if len(row) > 1 and row[1] else (row[0] if row[0] else f"Клиент {idx}")).strip()
-                phone = str(row[3] if len(row) > 3 and row[3] else "").strip()
-                region = str(row[5] if len(row) > 5 and row[5] else "").strip()
-                note = str(row[7] if len(row) > 7 and row[7] else "").strip()
-                
-                row_text = " ".join([str(cell or "") for cell in row])
-                stage = map_stage_by_text(note, row_text)
-                
-                deals.append({
-                    "id": str(idx),
-                    "title": client_name,
-                    "client": client_name,
-                    "phone": phone,
-                    "region": region,
-                    "stage": stage,
-                    "manager": "Не назначен",
-                    "total_sum": 0,
-                    "comment": note
-                })
-        except Exception as e:
-            print("Ошибка загрузки Excel:", e)
-            
     if not deals:
         deals = [
             {
@@ -96,7 +104,6 @@ def load_from_excel():
     return {"deals": deals}
 
 def load_db():
-    # Главное изменение: если json уже создан, мы берем данные строго из него (без тяжелого чтения Excel на каждый запрос)
     if os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
@@ -106,8 +113,7 @@ def load_db():
         except:
             pass
             
-    # Если json нет, читаем из Excel один раз и сохраняем навсегда
-    data = load_from_excel()
+    data = load_from_csv()
     save_db(data)
     return data
 
@@ -251,7 +257,7 @@ CRM_HTML = """
                 <div class="modal-body">
                     <div class="mb-2"><label class="form-label">Клиент / ТОО / КХ:</label><input type="text" name="client" class="form-control" required placeholder="ТОО Агро"></div>
                     <div class="mb-2"><label class="form-label">Телефон:</label><input type="text" name="phone" class="form-control" placeholder="+7..."></div>
-                    <div class="mb-2"><label class="form-label">Регион:</label><input type="text" name="region" class="form-control" placeholder="Kostanay"></div>
+                    <div class="mb-2"><label class="form-label">Регион:</label><input type="text" name="region" class="form-control" placeholder="Костанайская область"></div>
                     <div class="mb-2"><label class="form-label">Сумма (₸):</label><input type="number" name="total_sum" class="form-control" value="0"></div>
                     <div class="mb-2"><label class="form-label">Комментарий:</label><textarea name="comment" class="form-control" rows="2"></textarea></div>
                 </div>
