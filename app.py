@@ -352,4 +352,290 @@ TASKS_TEMPLATE = HTML_TEMPLATE.replace("{% block content %}{% endblock %}", '''
     <div class="col-md-4">
         <div class="card p-3 shadow-sm">
             <h5 class="mb-3">Поставить новую задачу</h5>
-            <form method="P
+            <form method="POST" action="/add_task">
+                <div class="mb-2">
+                    <label class="form-label small">Суть задачи:</label>
+                    <input type="text" name="title" class="form-control" required placeholder="Подготовить чертежи...">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small">Ответственный:</label>
+                    <select name="responsible" class="form-select">
+                        {% for m in all_managers %}
+                        <option value="{{ m }}">{{ m }}</option>
+                        {% endfor %}
+                        <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
+                        <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small">Наблюдатель:</label>
+                    <select name="observer" class="form-select">
+                        <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
+                        <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">Срок (Дедлайн):</label>
+                    <input type="date" name="deadline" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 btn-sm">Поставить задачу</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <h4 class="mb-3">Список задач компании</h4>
+        <div class="list-group">
+            {% for t in tasks %}
+            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center mb-2 rounded shadow-sm">
+                <div>
+                    <h6 class="mb-1 fw-bold">{{ t.title }}</h6>
+                    <small class="text-muted">Поставил: {{ t.creator }} | <b>Ответственный: {{ t.responsible }}</b> | Наблюдатель: {{ t.observer }}</small><br>
+                    <small class="text-danger">Дедлайн: {{ t.deadline }}</small>
+                </div>
+                <div>
+                    {% if t.status == 'active' %}
+                    <a href="/complete_task/{{ t.id }}" class="btn btn-outline-success btn-sm">Выполнить</a>
+                    {% else %}
+                    <span class="badge bg-success">Выполнено</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+''')
+
+ANALYTICS_TEMPLATE = HTML_TEMPLATE.replace("{% block content %}{% endblock %}", '''
+<div class="row">
+    <div class="col-md-12">
+        <h3 class="mb-4">Аналитика воронки продаж и дебиторская задолженность</h3>
+        <div class="row text-white">
+            <div class="col-md-4 mb-3">
+                <div class="card bg-primary p-3 shadow">
+                    <h5>Всего сделок</h5>
+                    <h3>{{ total_deals }}</h3>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card bg-success p-3 shadow">
+                    <h5>Общая сумма портфеля</h5>
+                    <h3>{{ "{:,}".format(total_sum_all).replace(',', ' ') }} ₸</h3>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card bg-danger p-3 shadow">
+                    <h5>Общая дебиторка (остаток)</h5>
+                    <h3>{{ "{:,}".format(total_debt_all).replace(',', ' ') }} ₸</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+''')
+
+CALCULATOR_TEMPLATE = HTML_TEMPLATE.replace("{% block content %}{% endblock %}", '''
+<div class="row">
+    <div class="col-md-6">
+        <div class="card p-4 shadow-sm">
+            <h4 class="mb-3">Калькулятор арочных / прямостенных ангаров</h4>
+            <div class="mb-3">
+                <label class="form-label">Ширина (м):</label>
+                <input type="number" id="width" class="form-control" value="15">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Длина (м):</label>
+                <input type="number" id="length" class="form-control" value="40">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Тип ангара:</label>
+                <select id="type" class="form-select">
+                    <option value="cold">Холодный (тент ПВХ / профлист)</option>
+                    <option value="warm">Утепленный (сэндвич-панели / минеральная вата)</option>
+                </select>
+            </div>
+            <button onclick="calculate()" class="btn btn-primary w-100">Рассчитать предварительную стоимость</button>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-4 shadow-sm bg-light">
+            <h4>Результат расчета и генерации КП</h4>
+            <div id="calcResult" class="mt-3 fs-5">
+                Нажмите кнопку расчета слева, чтобы получить смету и сформировать коммерческое предложение.
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+function calculate() {
+    let w = document.getElementById('width').value;
+    let l = document.getElementById('length').value;
+    let type = document.getElementById('type').value;
+    let area = w * l;
+    let pricePerSq = (type === 'warm') ? 45000 : 25000;
+    let total = area * pricePerSq;
+    document.getElementById('calcResult').innerHTML = `
+        <b>Площадь ангара:</b> ${area} кв.м.<br>
+        <b>Исполнение:</b> ${type === 'warm' ? 'Утепленный' : 'Холодный'}<br>
+        <hr>
+        <h3 class="text-success">Итого стоимость: ${total.toLocaleString()} ₸</h3>
+        <p class="text-muted small mt-2">Расчет сформирован для коммерческого предложения.</p>
+    `;
+}
+</script>
+''')
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        if username in USERS and USERS[username]["pass"] == password:
+            session["user"] = username
+            return redirect(url_for("index"))
+        error = "Неверный логин или пароль"
+    return render_template_string(LOGIN_TEMPLATE, error=error)
+
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    return redirect(url_for("login"))
+
+@app.route("/")
+def index():
+    if "user" not in session:
+        return redirect(url_for("login"))
+    user_info = USERS[session["user"]]
+    db = load_db()
+    manager_filter = request.args.get("manager_filter", "")
+    deals = db["deals"]
+    if manager_filter:
+        deals = [d for d in deals if d.get("manager") == manager_filter]
+    all_managers = [u["name"] for u in USERS.values() if u["role"] == "manager"]
+    return render_template_string(KANBAN_TEMPLATE, active_tab="kanban", user=user_info, stages=STAGES, deals=deals, all_managers=all_managers, manager_filter=manager_filter)
+
+@app.route("/add_deal", methods=["POST"])
+def add_deal():
+    if "user" not in session:
+        return redirect(url_for("login"))
+    user_info = USERS[session["user"]]
+    db = load_db()
+    new_id = str(len(db["deals"]) + 1)
+    new_deal = {
+        "id": new_id,
+        "title": request.form.get("title"),
+        "client": request.form.get("client"),
+        "phone": request.form.get("phone"),
+        "stage": "new",
+        "manager": user_info["name"] if user_info["role"] == "manager" else "",
+        "total_sum": int(request.form.get("total_sum") or 0),
+        "prepay": 0,
+        "second_pay": 0,
+        "final_pay": 0,
+        "reminder_date": "",
+        "reminder_time": "",
+        "reminder_task": "",
+        "comments": [{"time": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_info["name"], "text": "Создана новая карточка клиента."}]
+    }
+    db["deals"].append(new_deal)
+    save_db(db)
+    return redirect(url_for("index"))
+
+@app.route("/update_deal/<deal_id>", methods=["POST"])
+def update_deal(deal_id):
+    if "user" not in session:
+        return redirect(url_for("login"))
+    user_info = USERS[session["user"]]
+    db = load_db()
+    for deal in db["deals"]:
+        if deal["id"] == deal_id:
+            deal["title"] = request.form.get("title")
+            deal["client"] = request.form.get("client")
+            deal["phone"] = request.form.get("phone")
+            old_stage = deal["stage"]
+            new_stage = request.form.get("stage")
+            deal["stage"] = new_stage
+            new_manager = request.form.get("manager")
+            if user_info["role"] in ["director", "rop"]:
+                deal["manager"] = new_manager
+            elif not deal.get("manager") and new_manager:
+                deal["manager"] = user_info["name"]
+            deal["total_sum"] = int(request.form.get("total_sum") or 0)
+            deal["prepay"] = int(request.form.get("prepay") or 0)
+            deal["second_pay"] = int(request.form.get("second_pay") or 0)
+            deal["final_pay"] = int(request.form.get("final_pay") or 0)
+            deal["reminder_date"] = request.form.get("reminder_date")
+            deal["reminder_time"] = request.form.get("reminder_time")
+            deal["reminder_task"] = request.form.get("reminder_task")
+            new_comment = request.form.get("new_comment")
+            if new_comment:
+                deal["comments"].append({"time": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_info["name"], "text": new_comment})
+            elif old_stage != new_stage:
+                deal["comments"].append({"time": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_info["name"], "text": "Изменен этап воронки."})
+            break
+    save_db(db)
+    return redirect(url_for("index"))
+
+@app.route("/tasks")
+def tasks_page():
+    if "user" not in session:
+        return redirect(url_for("login"))
+    db = load_db()
+    user_info = USERS[session["user"]]
+    all_managers = [u["name"] for u in USERS.values() if u["role"] == "manager"]
+    return render_template_string(TASKS_TEMPLATE, active_tab="tasks", user=user_info, tasks=db["tasks"], all_managers=all_managers)
+
+@app.route("/add_task", methods=["POST"])
+def add_task():
+    if "user" not in session:
+        return redirect(url_for("login"))
+    user_info = USERS[session["user"]]
+    db = load_db()
+    new_t = {
+        "id": str(len(db["tasks"]) + 1),
+        "title": request.form.get("title"),
+        "creator": user_info["name"],
+        "responsible": request.form.get("responsible"),
+        "observer": request.form.get("observer"),
+        "deadline": request.form.get("deadline"),
+        "status": "active"
+    }
+    db["tasks"].append(new_t)
+    save_db(db)
+    return redirect(url_for("tasks_page"))
+
+@app.route("/complete_task/<task_id>")
+def complete_task(task_id):
+    if "user" not in session:
+        return redirect(url_for("login"))
+    db = load_db()
+    for t in db["tasks"]:
+        if t["id"] == task_id:
+            t["status"] = "completed"
+    save_db(db)
+    return redirect(url_for("tasks_page"))
+
+@app.route("/analytics")
+def analytics_page():
+    if "user" not in session:
+        return redirect(url_for("login"))
+    user_info = USERS[session["user"]]
+    if user_info["role"] not in ["director", "rop"]:
+        return "Доступ ограничен", 403
+    db = load_db()
+    total_deals = len(db["deals"])
+    total_sum_all = sum(d.get("total_sum", 0) for d in db["deals"])
+    total_debt_all = sum(d.get("total_sum", 0) - (d.get("prepay", 0) + d.get("second_pay", 0) + d.get("final_pay", 0)) for d in db["deals"])
+    return render_template_string(ANALYTICS_TEMPLATE, active_tab="analytics", user=user_info, total_deals=total_deals, total_sum_all=total_sum_all, total_debt_all=total_debt_all)
+
+@app.route("/calculator")
+def calculator_page():
+    if "user" not in session:
+        return redirect(url_for("login"))
+    user_info = USERS[session["user"]]
+    return render_template_string(CALCULATOR_TEMPLATE, active_tab="calculator", user=user_info)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
