@@ -78,7 +78,7 @@ def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-LAYOUT = """
+INDEX_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -102,17 +102,108 @@ LAYOUT = """
 </nav>
 <div class="container-fluid mt-2">
     <ul class="nav nav-tabs">
-        <li class="nav-item"><a class="nav-link {% if tab=='kanban' %}active{% endif %}" href="/">Воронка</a></li>
-        <li class="nav-item"><a class="nav-link {% if tab=='tasks' %}active{% endif %}" href="/tasks">Задачи</a></li>
+        <li class="nav-item"><a class="nav-link active" href="/">Воронка</a></li>
+        <li class="nav-item"><a class="nav-link" href="/tasks">Задачи</a></li>
         {% if user.role in ['director', 'rop'] %}
-        <li class="nav-item"><a class="nav-link {% if tab=='analytics' %}active{% endif %}" href="/analytics">Аналитика</a></li>
+        <li class="nav-item"><a class="nav-link" href="/analytics">Аналитика</a></li>
         {% endif %}
-        <li class="nav-item"><a class="nav-link {% if tab=='calc' %}active{% endif %}" href="/calculator">Калькулятор и КП</a></li>
+        <li class="nav-item"><a class="nav-link" href="/calculator">Калькулятор и КП</a></li>
     </ul>
 </div>
+
 <div class="container-fluid mt-3">
-    {% block content %}{% endblock %}
+    <div class="mb-3 d-flex gap-2">
+        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">+ Добавить клиента</button>
+        <form method="GET">
+            <select name="manager_filter" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Все менеджеры</option>
+                {% for m in managers %}
+                <option value="{{ m }}" {% if f_man == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <div class="kanban">
+    {% for s_key, s_name in stages %}
+        <div class="k-col">
+            <h6 class="fw-bold text-secondary">{{ s_name }}</h6>
+            {% for d in deals %}
+                {% if d.stage == s_key %}
+                {% set debt = d.total_sum - (d.prepay + d.second_pay + d.final_pay) %}
+                <div class="card-deal border-start border-3 {% if debt > 0 %}border-danger{% else %}border-success{% endif %}">
+                    <div class="fw-bold text-primary">{{ d.title }}</div>
+                    <div>Клиент: {{ d.client }}</div>
+                    <div>Сумма: {{ "{:,}".format(d.total_sum).replace(',', ' ') }} ₸</div>
+                    <div>Долг: <span class="badge {% if debt > 0 %}bg-danger{% else %}bg-success{% endif %}">{{ "{:,}".format(debt).replace(',', ' ') }} ₸</span></div>
+                    <div class="text-muted small mt-1">Отв: {{ d.manager or 'Не назначен' }}</div>
+                    <button class="btn btn-outline-primary btn-sm w-100 mt-2 py-0" data-bs-toggle="modal" data-bs-target="#m{{ d.id }}">Открыть</button>
+                </div>
+
+                <div class="modal fade" id="m{{ d.id }}" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+                    <form method="POST" action="/update/{{ d.id }}">
+                        <div class="modal-header"><h5 class="modal-title">{{ d.title }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <div class="modal-body">
+                            <div class="row mb-2">
+                                <div class="col-6"><label>Объект:</label><input type="text" name="title" class="form-control" value="{{ d.title }}"></div>
+                                <div class="col-6"><label>Клиент:</label><input type="text" name="client" class="form-control" value="{{ d.client }}"></div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-4"><label>Телефон:</label><input type="text" name="phone" class="form-control" value="{{ d.phone }}"></div>
+                                <div class="col-4"><label>Этап:</label>
+                                    <select name="stage" class="form-select">
+                                        {% for sk, sv in stages %}<option value="{{ sk }}" {% if d.stage == sk %}selected{% endif %}>{{ sv }}</option>{% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-4"><label>Ответственный:</label>
+                                    {% if user.role in ['director', 'rop'] %}
+                                    <select name="manager" class="form-select">
+                                        <option value="">-- Нет --</option>
+                                        {% for m in managers %}<option value="{{ m }}" {% if d.manager == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
+                                    </select>
+                                    {% else %}
+                                        <input type="text" class="form-control" value="{{ d.manager }}" readonly>
+                                        <input type="hidden" name="manager" value="{{ d.manager }}">
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <h6 class="text-primary mt-3">Финансы и дебиторка</h6>
+                            <div class="row mb-2 bg-light p-2 rounded">
+                                <div class="col-3"><label class="small">Всего:</label><input type="number" name="total_sum" class="form-control" value="{{ d.total_sum }}"></div>
+                                <div class="col-3"><label class="small">Предоплата:</label><input type="number" name="prepay" class="form-control" value="{{ d.prepay }}"></div>
+                                <div class="col-3"><label class="small">2-й платеж:</label><input type="number" name="second_pay" class="form-control" value="{{ d.second_pay }}"></div>
+                                <div class="col-3"><label class="small">Окончание:</label><input type="number" name="final_pay" class="form-control" value="{{ d.final_pay }}"></div>
+                            </div>
+                            <h6 class="text-primary mt-3">Комментарии и история</h6>
+                            <textarea name="comment" class="form-control mb-2" placeholder="Новый комментарий..."></textarea>
+                            <div class="border p-2 bg-white small" style="max-height: 100px; overflow-y: auto;">
+                                {% for c in d.comments %}<div>[{{ c.time }}] <b>{{ c.author }}</b>: {{ c.text }}</div>{% endfor %}
+                            </div>
+                        </div>
+                        <div class="modal-footer"><button type="submit" class="btn btn-primary">Сохранить</button></div>
+                    </form>
+                </div></div></div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endfor %}
+    </div>
 </div>
+
+<div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+    <form method="POST" action="/add">
+        <div class="modal-header"><h5>Новый клиент</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <div class="mb-2"><label>Объект:</label><input type="text" name="title" class="form-control" required></div>
+            <div class="mb-2"><label>Клиент:</label><input type="text" name="client" class="form-control" required></div>
+            <div class="mb-2"><label>Телефон:</label><input type="text" name="phone" class="form-control"></div>
+            <div class="mb-2"><label>Сумма:</label><input type="number" name="total_sum" class="form-control" value="0"></div>
+        </div>
+        <div class="modal-footer"><button type="submit" class="btn btn-success">Создать</button></div>
+    </form>
+</div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 """
@@ -131,6 +222,165 @@ LOGIN_PAGE = """
     <button type="submit" class="btn btn-primary w-100">Войти</button>
 </form>
 </body></html>
+"""
+
+TASKS_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Задачи - Ангар CRM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-dark px-3 py-2 d-flex justify-content-between">
+    <a class="navbar-brand fw-bold" href="/"><i class="fa-solid fa-industry"></i> Ангар CRM | РОП: Лемперт А.С.</a>
+    <div class="text-white"><span>{{ user.name }}</span> | <a href="/logout" class="text-warning text-decoration-none">Выйти</a></div>
+</nav>
+<div class="container-fluid mt-2">
+    <ul class="nav nav-tabs">
+        <li class="nav-item"><a class="nav-link" href="/">Воронка</a></li>
+        <li class="nav-item"><a class="nav-link active" href="/tasks">Задачи</a></li>
+        {% if user.role in ['director', 'rop'] %}
+        <li class="nav-item"><a class="nav-link" href="/analytics">Аналитика</a></li>
+        {% endif %}
+        <li class="nav-item"><a class="nav-link" href="/calculator">Калькулятор и КП</a></li>
+    </ul>
+</div>
+<div class="container-fluid mt-3">
+    <div class="row">
+        <div class="col-md-4">
+            <form method="POST" action="/add_task" class="card p-3 shadow-sm">
+                <h5>Поставить задачу</h5>
+                <div class="mb-2"><label class="small">Суть:</label><input type="text" name="title" class="form-control" required></div>
+                <div class="mb-2"><label class="small">Ответственный:</label>
+                    <select name="responsible" class="form-select">
+                        {% for m in managers %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
+                        <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
+                        <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
+                    </select>
+                </div>
+                <div class="mb-2"><label class="small">Наблюдатель:</label>
+                    <select name="observer" class="form-select">
+                        <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
+                        <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
+                    </select>
+                </div>
+                <div class="mb-3"><label class="small">Дедлайн:</label><input type="date" name="deadline" class="form-control" required></div>
+                <button type="submit" class="btn btn-primary w-100 btn-sm">Создать задачу</button>
+            </form>
+        </div>
+        <div class="col-md-8">
+            <h4>Задачи компании</h4>
+            <div class="list-group">
+                {% for t in tasks %}
+                <div class="list-group-item d-flex justify-content-between align-items-center mb-2 shadow-sm">
+                    <div>
+                        <h6 class="fw-bold mb-1">{{ t.title }}</h6>
+                        <small class="text-muted">Отв: <b>{{ t.responsible }}</b> | Наблюдатель: {{ t.observer }} | Дедлайн: {{ t.deadline }}</small>
+                    </div>
+                    <div>
+                        {% if t.status == 'active' %}<a href="/done_task/{{ t.id }}" class="btn btn-success btn-sm">Выполнить</a>
+                        {% else %}<span class="badge bg-secondary">Готово</span>{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+"""
+
+ANALYTICS_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Аналитика - Ангар CRM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-dark px-3 py-2 d-flex justify-content-between">
+    <a class="navbar-brand fw-bold" href="/"><i class="fa-solid fa-industry"></i> Ангар CRM | РОП: Лемперт А.С.</a>
+    <div class="text-white"><span>{{ user.name }}</span> | <a href="/logout" class="text-warning text-decoration-none">Выйти</a></div>
+</nav>
+<div class="container-fluid mt-2">
+    <ul class="nav nav-tabs">
+        <li class="nav-item"><a class="nav-link" href="/">Воронка</a></li>
+        <li class="nav-item"><a class="nav-link" href="/tasks">Задачи</a></li>
+        <li class="nav-item"><a class="nav-link active" href="/analytics">Аналитика</a></li>
+        <li class="nav-item"><a class="nav-link" href="/calculator">Калькулятор и КП</a></li>
+    </ul>
+</div>
+<div class="container-fluid mt-3">
+    <h3>Аналитика воронки и дебиторки</h3>
+    <div class="row mt-4">
+        <div class="col-4"><div class="card p-3 bg-primary text-white"><h5>Всего сделок</h5><h3>{{ total_deals }}</h3></div></div>
+        <div class="col-4"><div class="card p-3 bg-success text-white"><h5>Сумма портфеля</h5><h3>{{ total_sum_fmt }} ₸</h3></div></div>
+        <div class="col-4"><div class="card p-3 bg-danger text-white"><h5>Дебиторка (остаток)</h5><h3>{{ total_debt_fmt }} ₸</h3></div></div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+"""
+
+CALCULATOR_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Калькулятор - Ангар CRM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-dark px-3 py-2 d-flex justify-content-between">
+    <a class="navbar-brand fw-bold" href="/"><i class="fa-solid fa-industry"></i> Ангар CRM | РОП: Лемперт А.С.</a>
+    <div class="text-white"><span>{{ user.name }}</span> | <a href="/logout" class="text-warning text-decoration-none">Выйти</a></div>
+</nav>
+<div class="container-fluid mt-2">
+    <ul class="nav nav-tabs">
+        <li class="nav-item"><a class="nav-link" href="/">Воронка</a></li>
+        <li class="nav-item"><a class="nav-link" href="/tasks">Задачи</a></li>
+        {% if user.role in ['director', 'rop'] %}
+        <li class="nav-item"><a class="nav-link" href="/analytics">Аналитика</a></li>
+        {% endif %}
+        <li class="nav-item"><a class="nav-link active" href="/calculator">Калькулятор и КП</a></li>
+    </ul>
+</div>
+<div class="container-fluid mt-3">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card p-3 shadow-sm">
+                <h4>Калькулятор ангаров</h4>
+                <div class="mb-2"><label>Ширина (м):</label><input type="number" id="w" class="form-control" value="15"></div>
+                <div class="mb-2"><label>Длина (м):</label><input type="number" id="l" class="form-control" value="40"></div>
+                <div class="mb-3"><label>Тип:</label><select id="t" class="form-select"><option value="25000">Холодный</option><option value="45000">Утепленный</option></select></div>
+                <button onclick="calc()" class="btn btn-primary w-100">Рассчитать</button>
+            </div>
+        </div>
+        <div class="col-md-6"><div class="card p-3 bg-light shadow-sm" id="res">Нажмите расчет</div></div>
+    </div>
+</div>
+<script>
+function calc() {
+    let w = document.getElementById('w').value;
+    let l = document.getElementById('l').value;
+    let p = document.getElementById('t').value;
+    let area = w * l;
+    let sum = area * p;
+    document.getElementById('res').innerHTML = `<h4>Площадь: ${area} кв.м</h4><h3 class='text-success'>Стоимость: ${sum.toLocaleString()} ₸</h3>`;
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
 """
 
 @app.route("/login", methods=["GET", "POST"])
@@ -159,97 +409,7 @@ def index():
     deals = db["deals"]
     if f_man: deals = [d for d in deals if d.get("manager") == f_man]
     managers = [u["name"] for u in USERS.values() if u["role"] == "manager"]
-
-    body = """
-    <div class="mb-3 d-flex gap-2">
-        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">+ Добавить клиента</button>
-        <form method="GET">
-            <select name="manager_filter" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="">Все менеджеры</option>
-                {% for m in managers %}
-                <option value="{{ m }}" {% if f_man == m %}selected{% endif %}>{{ m }}</option>
-                {% endfor %}
-            </select>
-        </form>
-    </div>
-    <div class="kanban">
-    {% for s_key, s_name in stages %}
-        <div class="k-col">
-            <h6 class="fw-bold text-secondary">{{ s_name }}</h6>
-            {% for d in deals if d.stage == s_key %}
-            {% set debt = d.total_sum - (d.prepay + d.second_pay + d.final_pay) %}
-            <div class="card-deal border-start border-3 {% if debt > 0 %}border-danger{% else %}border-success{% endif %}">
-                <div class="fw-bold text-primary">{{ d.title }}</div>
-                <div>Клиент: {{ d.client }}</div>
-                <div>Сумма: {{ "{:,}".format(d.total_sum).replace(',', ' ') }} ₸</div>
-                <div>Долг: <span class="badge {% if debt > 0 %}bg-danger{% else %}bg-success{% endif %}">{{ "{:,}".format(debt).replace(',', ' ') }} ₸</span></div>
-                <div class="text-muted small mt-1">Отв: {{ d.manager or 'Не назначен' }}</div>
-                <button class="btn btn-outline-primary btn-sm w-100 mt-2 py-0" data-bs-toggle="modal" data-bs-target="#m{{ d.id }}">Открыть</button>
-            </div>
-
-            <div class="modal fade" id="m{{ d.id }}" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
-                <form method="POST" action="/update/{{ d.id }}">
-                    <div class="modal-header"><h5 class="modal-title">{{ d.title }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                    <div class="modal-body">
-                        <div class="row mb-2">
-                            <div class="col-6"><label>Объект:</label><input type="text" name="title" class="form-control" value="{{ d.title }}"></div>
-                            <div class="col-6"><label>Клиент:</label><input type="text" name="client" class="form-control" value="{{ d.client }}"></div>
-                        </div>
-                        <div class="row mb-2">
-                            <div class="col-4"><label>Телефон:</label><input type="text" name="phone" class="form-control" value="{{ d.phone }}"></div>
-                            <div class="col-4"><label>Этап:</label>
-                                <select name="stage" class="form-select">
-                                    {% for sk, sv in stages %}<option value="{{ sk }}" {% if d.stage == sk %}selected{% endif %}>{{ sv }}</option>{% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-4"><label>Ответственный:</label>
-                                {% if user.role in ['director', 'rop'] %}
-                                <select name="manager" class="form-select">
-                                    <option value="">-- Нет --</option>
-                                    {% for m in managers %}<option value="{{ m }}" {% if d.manager == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
-                                </select>
-                                {% else %}
-                                    <input type="text" class="form-control" value="{{ d.manager }}" readonly>
-                                    <input type="hidden" name="manager" value="{{ d.manager }}">
-                                {% endif %}
-                            </div>
-                        </div>
-                        <h6 class="text-primary mt-3">Финансы и дебиторка</h6>
-                        <div class="row mb-2 bg-light p-2 rounded">
-                            <div class="col-3"><label class="small">Всего:</label><input type="number" name="total_sum" class="form-control" value="{{ d.total_sum }}"></div>
-                            <div class="col-3"><label class="small">Предоплата:</label><input type="number" name="prepay" class="form-control" value="{{ d.prepay }}"></div>
-                            <div class="col-3"><label class="small">2-й платеж:</label><input type="number" name="second_pay" class="form-control" value="{{ d.second_pay }}"></div>
-                            <div class="col-3"><label class="small">Окончание:</label><input type="number" name="final_pay" class="form-control" value="{{ d.final_pay }}"></div>
-                        </div>
-                        <h6 class="text-primary mt-3">Комментарии и история</h6>
-                        <textarea name="comment" class="form-control mb-2" placeholder="Новый комментарий..."></textarea>
-                        <div class="border p-2 bg-white small" style="max-height: 100px; overflow-y: auto;">
-                            {% for c in d.comments %}<div>[{{ c.time }}] <b>{{ c.author }}</b>: {{ c.text }}</div>{% endfor %}
-                        </div>
-                    </div>
-                    <div class="modal-footer"><button type="submit" class="btn btn-primary">Сохранить</button></div>
-                </form>
-            </div></div></div>
-            {% endfor %}
-        </div>
-    {% endfor %}
-    </div>
-
-    <div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-        <form method="POST" action="/add">
-            <div class="modal-header"><h5>Новый клиент</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
-                <div class="mb-2"><label>Объект:</label><input type="text" name="title" class="form-control" required></div>
-                <div class="mb-2"><label>Клиент:</label><input type="text" name="client" class="form-control" required></div>
-                <div class="mb-2"><label>Телефон:</label><input type="text" name="phone" class="form-control"></div>
-                <div class="mb-2"><label>Сумма:</label><input type="number" name="total_sum" class="form-control" value="0"></div>
-            </div>
-            <div class="modal-footer"><button type="submit" class="btn btn-success">Создать</button></div>
-        </form>
-    </div></div></div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    """
-    return render_template_string(LAYOUT.replace("{% block content %}{% endblock %}", body), tab="kanban", user=user, stages=STAGES, deals=deals, managers=managers, f_man=f_man)
+    return render_template_string(INDEX_TEMPLATE, user=user, stages=STAGES, deals=deals, managers=managers, f_man=f_man)
 
 @app.route("/add", methods=["POST"])
 def add():
@@ -302,50 +462,7 @@ def tasks():
     user = USERS[session["user"]]
     db = load_db()
     managers = [u["name"] for u in USERS.values() if u["role"] == "manager"]
-    body = """
-    <div class="row">
-        <div class="col-md-4">
-            <form method="POST" action="/add_task" class="card p-3 shadow-sm">
-                <h5>Поставить задачу</h5>
-                <div class="mb-2"><label class="small">Суть:</label><input type="text" name="title" class="form-control" required></div>
-                <div class="mb-2"><label class="small">Ответственный:</label>
-                    <select name="responsible" class="form-select">
-                        {% for m in managers %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
-                        <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
-                        <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
-                    </select>
-                </div>
-                <div class="mb-2"><label class="small">Наблюдатель:</label>
-                    <select name="observer" class="form-select">
-                        <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
-                        <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
-                    </select>
-                </div>
-                <div class="mb-3"><label class="small">Дедлайн:</label><input type="date" name="deadline" class="form-control" required></div>
-                <button type="submit" class="btn btn-primary w-100 btn-sm">Создать задачу</button>
-            </form>
-        </div>
-        <div class="col-md-8">
-            <h4>Задачи компании</h4>
-            <div class="list-group">
-                {% for t in tasks %}
-                <div class="list-group-item d-flex justify-content-between align-items-center mb-2 shadow-sm">
-                    <div>
-                        <h6 class="fw-bold mb-1">{{ t.title }}</h6>
-                        <small class="text-muted">Отв: <b>{{ t.responsible }}</b> | Наблюдатель: {{ t.observer }} | Дедлайн: {{ t.deadline }}</small>
-                    </div>
-                    <div>
-                        {% if t.status == 'active' %}<a href="/done_task/{{ t.id }}" class="btn btn-success btn-sm">Выполнить</a>
-                        {% else %}<span class="badge bg-secondary">Готово</span>{% endif %}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    """
-    return render_template_string(LAYOUT.replace("{% block content %}{% endblock %}", body), tab="tasks", user=user, tasks=db["tasks"], managers=managers)
+    return render_template_string(TASKS_TEMPLATE, user=user, tasks=db["tasks"], managers=managers)
 
 @app.route("/add_task", methods=["POST"])
 def add_task():
@@ -379,47 +496,22 @@ def analytics():
     user = USERS[session["user"]]
     if user["role"] not in ["director", "rop"]: return "Доступ запрещен", 403
     db = load_db()
+    total_deals = len(db["deals"])
     total_sum = sum(d.get("total_sum", 0) for d in db["deals"])
     total_debt = sum(d.get("total_sum", 0) - (d.get("prepay", 0) + d.get("second_pay", 0) + d.get("final_pay", 0)) for d in db["deals"])
-    body = f"""
-    <h3>Аналитика воронки и дебиторки</h3>
-    <div class="row mt-4">
-        <div class="col-4"><div class="card p-3 bg-primary text-white"><h5>Всего сделок</h5><h3>{len(db['deals'])}</h3></div></div>
-        <div class="col-4"><div class="card p-3 bg-success text-white"><h5>Сумма портфеля</h5><h3>{total_sum:,.0f} ₸</h3></div></div>
-        <div class="col-4"><div class="card p-3 bg-danger text-white"><h5>Дебиторка (остаток)</h5><h3>{total_debt:,.0f} ₸</h3></div></div>
-    </div>
-    """
-    return render_template_string(LAYOUT.replace("{% block content %}{% endblock %}", body), tab="analytics", user=user)
+    return render_template_string(
+        ANALYTICS_TEMPLATE, 
+        user=user, 
+        total_deals=total_deals, 
+        total_sum_fmt=f"{total_sum:,.0f}".replace(',', ' '), 
+        total_debt_fmt=f"{total_debt:,.0f}".replace(',', ' ')
+    )
 
 @app.route("/calculator")
 def calculator():
     if "user" not in session: return redirect(url_for("login"))
     user = USERS[session["user"]]
-    body = """
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card p-3 shadow-sm">
-                <h4>Калькулятор ангаров</h4>
-                <div class="mb-2"><label>Ширина (м):</label><input type="number" id="w" class="form-control" value="15"></div>
-                <div class="mb-2"><label>Длина (м):</label><input type="number" id="l" class="form-control" value="40"></div>
-                <div class="mb-3"><label>Тип:</label><select id="t" class="form-select"><option value="25000">Холодный</option><option value="45000">Утепленный</option></select></div>
-                <button onclick="calc()" class="btn btn-primary w-100">Рассчитать</button>
-            </div>
-        </div>
-        <div class="col-md-6"><div class="card p-3 bg-light shadow-sm" id="res">Нажмите расчет</div></div>
-    </div>
-    <script>
-    function calc() {
-        let w = document.getElementById('w').value;
-        let l = document.getElementById('l').value;
-        let p = document.getElementById('t').value;
-        let area = w * l;
-        let sum = area * p;
-        document.getElementById('res').innerHTML = `<h4>Площадь: ${area} кв.м</h4><h3 class='text-success'>Стоимость: ${sum.toLocaleString()} ₸</h3>`;
-    }
-    </script>
-    """
-    return render_template_string(LAYOUT.replace("{% block content %}{% endblock %}", body), tab="calc", user=user)
+    return render_template_string(CALCULATOR_TEMPLATE, user=user)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
