@@ -15,38 +15,51 @@ USERS = {
 }
 
 STAGES = [
-    ("new", "1. Новая заявка"),
-    ("contact", "2. Контакт"),
-    ("calc", "3. Расчет"),
-    ("kp", "4. КП"),
-    ("contract", "5. Договор"),
-    ("production", "6. Производство"),
-    ("paid", "7. Оплачено"),
-    ("closed_lost", "8. Закрыто")
+    ("stage_1", "1. Новый клиент", "#6c757d"),
+    ("stage_2", "2. Нужно выйти на ЛПР", "#212529"),
+    ("stage_3", "3. Скинул презентацию / инфу", "#0dcaf0"),
+    ("stage_4", "4. Скинул КП", "#198754"),
+    ("stage_5", "5. Нет обратной связи", "#fd7e14"),
+    ("stage_6", "6. Веду переговоры", "#0d6efd"),
+    ("stage_7", "7. Отложил / Передумал", "#dc3545"),
+    ("stage_8", "8. Купил у конкурентов", "#6c2323"),
+    ("stage_9", "9. Готов контрактоваться", "#157347"),
+    ("stage_10", "10. Сделали договор", "#0f5132"),
+    ("stage_11", "11. Внес предоплату", "#6f42c1"),
+    ("stage_12", "12. Выполнен (Дебиторка)", "#0d6efd"),
+    ("stage_13", "13. Оплачен полностью", "#198754"),
+    ("stage_14", "14. Повторный заказ (VIP)", "#ffc107")
 ]
 
 def load_db():
+    default_data = {
+        "deals": [
+            {
+                "id": "1",
+                "title": "Ангар 20х120",
+                "client": "ТОО \"МИРАМ\"",
+                "phone": "+7 705 626 54 24",
+                "region": "Костанайская область",
+                "stage": "stage_4",
+                "manager": "Не назначен",
+                "total_sum": 25000000,
+                "comment": "08.10.2026 ангар 20х120"
+            }
+        ]
+    }
     if not os.path.exists(DB_FILE):
-        data = {
-            "deals": [
-                {
-                    "id": "1",
-                    "title": "Ангар 20х50 для КФХ",
-                    "client": "ИП Иванов",
-                    "stage": "new",
-                    "manager": "Менеджер 1",
-                    "total_sum": 15000000
-                }
-            ]
-        }
-        with open(DB_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-        return data
+        save_db(default_data)
+        return default_data
     try:
         with open(DB_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+            if not isinstance(data, dict) or "deals" not in data:
+                save_db(default_data)
+                return default_data
+            return data
     except:
-        return {"deals": []}
+        save_db(default_data)
+        return default_data
 
 def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
@@ -60,13 +73,13 @@ LOGIN_HTML = """
     <title>Вход в Ангар CRM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="bg-dark d-flex align-items-center justify-content-center vh-100">
-<form method="POST" class="card p-4 shadow" style="width: 320px;">
-    <h3 class="mb-3 text-center text-primary">Ангар CRM</h3>
+<body class="bg-light d-flex align-items-center justify-content-center vh-100">
+<form method="POST" class="card p-4 shadow border-0" style="width: 340px;">
+    <h3 class="mb-3 text-center text-primary fw-bold">Ангар CRM</h3>
     {% if error %}<div class="alert alert-danger py-1">{{ error }}</div>{% endif %}
-    <div class="mb-3"><label>Логин:</label><input type="text" name="username" class="form-control" required autofocus></div>
-    <div class="mb-3"><label>Пароль:</label><input type="password" name="password" class="form-control" required></div>
-    <button type="submit" class="btn btn-primary w-100">Войти</button>
+    <div class="mb-3"><label class="form-label">Логин:</label><input type="text" name="username" class="form-control" required autofocus></div>
+    <div class="mb-3"><label class="form-label">Пароль:</label><input type="password" name="password" class="form-control" required></div>
+    <button type="submit" class="btn btn-primary w-100">Войти в систему</button>
 </form>
 </body>
 </html>
@@ -77,78 +90,136 @@ CRM_HTML = """
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Ангар CRM - Воронка</title>
+    <title>CRM Воронка Ангары (Bitrix24 Style)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f4f6f9; font-family: sans-serif; }
-        .kanban { display: flex; overflow-x: auto; gap: 12px; padding-bottom: 20px; }
-        .k-col { min-width: 260px; background: #e2e8f0; border-radius: 6px; padding: 10px; max-height: 80vh; overflow-y: auto; }
-        .deal-card { background: white; border-radius: 4px; padding: 10px; margin-bottom: 8px; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        body { background: #f8f9fa; font-family: Arial, sans-serif; }
+        .top-bar { background: #ffffff; border-bottom: 1px solid #dee2e6; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .kanban { display: flex; overflow-x: auto; gap: 12px; padding: 15px; height: calc(100vh - 120px); }
+        .k-col { min-width: 280px; max-width: 280px; background: #e9ecef; border-radius: 6px; display: flex; flex-direction: column; max-height: 100%; }
+        .k-header { padding: 10px; font-weight: bold; font-size: 13px; color: white; border-top-left-radius: 6px; border-top-right-radius: 6px; text-align: center; }
+        .k-body { padding: 8px; overflow-y: auto; flex-grow: 1; }
+        .deal-card { background: #ffffff; border-radius: 4px; padding: 10px; margin-bottom: 8px; font-size: 12px; border: 1px solid #ced4da; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; transition: 0.15s; }
+        .deal-card:hover { border-color: #0d6efd; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
-<nav class="navbar navbar-dark bg-dark px-3 py-2 d-flex justify-content-between">
-    <span class="navbar-brand fw-bold">Ангар CRM | РОП: Лемперт А.С.</span>
-    <div class="text-white">
-        <span>{{ user.name }}</span> | <a href="/logout" class="text-warning text-decoration-none">Выйти</a>
+
+<div class="top-bar">
+    <div class="d-flex align-items-center gap-3">
+        <h5 class="m-0 fw-bold text-secondary">🗂️ CRM Воронка Ангары (Bitrix24)</h5>
+        <button class="btn btn-success btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addModal">+ Добавить сделку</button>
     </div>
-</nav>
-
-<div class="container-fluid mt-3">
-    <div class="mb-3">
-        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">+ Добавить сделку</button>
-    </div>
-
-    <div class="kanban">
-    {% for s_key, s_name in stages %}
-        <div class="k-col">
-            <h6 class="fw-bold text-secondary">{{ s_name }}</h6>
-            {% for d in deals %}
-                {% if d.stage == s_key %}
-                <div class="deal-card border-start border-3 border-primary">
-                    <div class="fw-bold text-primary">{{ d.title }}</div>
-                    <div>Клиент: {{ d.client }}</div>
-                    <div>Сумма: {{ d.total_sum }} ₸</div>
-                    <div class="text-muted small mt-1">Отв: {{ d.manager or 'Не назначен' }}</div>
-                    <button class="btn btn-outline-primary btn-sm w-100 mt-2 py-0" data-bs-toggle="modal" data-bs-target="#m{{ d.id }}">Изменить</button>
-                </div>
-
-                <!-- Модальное окно редактирования -->
-                <div class="modal fade" id="m{{ d.id }}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-                    <form method="POST" action="/update/{{ d.id }}">
-                        <div class="modal-header"><h5 class="modal-title">{{ d.title }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                        <div class="modal-body">
-                            <div class="mb-2"><label>Объект:</label><input type="text" name="title" class="form-control" value="{{ d.title }}"></div>
-                            <div class="mb-2"><label>Клиент:</label><input type="text" name="client" class="form-control" value="{{ d.client }}"></div>
-                            <div class="mb-2"><label>Этап:</label>
-                                <select name="stage" class="form-select">
-                                    {% for sk, sv in stages %}<option value="{{ sk }}" {% if d.stage == sk %}selected{% endif %}>{{ sv }}</option>{% endfor %}
-                                </select>
-                            </div>
-                            <div class="mb-2"><label>Сумма (₸):</label><input type="number" name="total_sum" class="form-control" value="{{ d.total_sum }}"></div>
-                        </div>
-                        <div class="modal-footer"><button type="submit" class="btn btn-primary">Сохранить</button></div>
-                    </form>
-                </div></div></div>
-                {% endif %}
-            {% endfor %}
-        </div>
-    {% endfor %}
+    <div class="d-flex align-items-center gap-3">
+        <span class="badge bg-success">Облачная CRM Активна</span>
+        <span class="text-dark small">👤 {{ user.name }}</span>
+        <a href="/logout" class="btn btn-outline-danger btn-sm py-0">Выйти</a>
     </div>
 </div>
 
-<!-- Модальное окно добавления -->
-<div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-    <form method="POST" action="/add">
-        <div class="modal-header"><h5>Новая сделка</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body">
-            <div class="mb-2"><label>Объект / Ангар:</label><input type="text" name="title" class="form-control" required placeholder="Ангар 15х30"></div>
-            <div class="mb-2"><label>Клиент / Компания:</label><input type="text" name="client" class="form-control" required placeholder="ТОО Агро"></div>
-            <div class="mb-2"><label>Сумма (₸):</label><input type="number" name="total_sum" class="form-control" value="0"></div>
+<div class="kanban">
+    {% for s_key, s_name, s_color in stages %}
+    <div class="k-col">
+        <div class="k-header" style="background-color: {{ s_color }};">{{ s_name }}</div>
+        <div class="k-body">
+            {% for d in deals %}
+                {% if d.stage == s_key %}
+                <div class="deal-card" data-bs-toggle="modal" data-bs-target="#cardModal{{ d.id }}">
+                    <div class="fw-bold text-primary mb-1" style="font-size: 13px;">{{ d.client }}</div>
+                    <div class="text-muted text-truncate">📍 {{ d.region or 'Регион не указан' }}</div>
+                    <div class="text-secondary text-truncate">📞 {{ d.phone or 'Нет телефона' }}</div>
+                    <div class="text-dark mt-1 text-truncate">🏗️ <b>{{ d.title }}</b></div>
+                    <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 11px;">
+                        <span>Сумма: {{ "{:,}".format(d.total_sum).replace(",", " ") }} ₸</span>
+                        <span class="badge bg-light text-dark border">{{ d.manager or 'Не назначен' }}</span>
+                    </div>
+                </div>
+
+                <!-- Модальное окно "Провал в карточку клиента" -->
+                <div class="modal fade" id="cardModal{{ d.id }}" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <form method="POST" action="/update/{{ d.id }}">
+                                <div class="modal-header bg-primary text-white">
+                                    <h5 class="modal-title">Карточка клиента: {{ d.client }}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Компания / Клиент:</label>
+                                            <input type="text" name="client" class="form-control" value="{{ d.client }}" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Объект / Ангар:</label>
+                                            <input type="text" name="title" class="form-control" value="{{ d.title }}" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Телефон:</label>
+                                            <input type="text" name="phone" class="form-control" value="{{ d.phone }}">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Регион / Область:</label>
+                                            <input type="text" name="region" class="form-control" value="{{ d.region }}">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Этап воронки:</label>
+                                            <select name="stage" class="form-select">
+                                                {% for sk, sn, sc in stages %}
+                                                <option value="{{ sk }}" {% if d.stage == sk %}selected{% endif %}>{{ sn }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Сумма сделки (₸):</label>
+                                            <input type="number" name="total_sum" class="form-control" value="{{ d.total_sum }}">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold">Комментарий / История:</label>
+                                            <textarea name="comment" class="form-control" rows="3">{{ d.comment }}</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                                    <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
         </div>
-        <div class="modal-footer"><button type="submit" class="btn btn-success">Создать</button></div>
-    </form>
-</div></div></div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Модальное окно добавления сделки -->
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/add">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Новая заявка на ангар</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2"><label class="form-label">Клиент / Компания:</label><input type="text" name="client" class="form-control" required placeholder="ТОО Агро"></div>
+                    <div class="mb-2"><label class="form-label">Объект / Параметры:</label><input type="text" name="title" class="form-control" required placeholder="Ангар 20х50"></div>
+                    <div class="mb-2"><label class="form-label">Телефон:</label><input type="text" name="phone" class="form-control" placeholder="+7..."></div>
+                    <div class="mb-2"><label class="form-label">Регион:</label><input type="text" name="region" class="form-control" placeholder="Костанайская область"></div>
+                    <div class="mb-2"><label class="form-label">Сумма (₸):</label><input type="number" name="total_sum" class="form-control" value="0"></div>
+                    <div class="mb-2"><label class="form-label">Комментарий:</label><textarea name="comment" class="form-control" rows="2"></textarea></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-success btn-sm">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
@@ -185,12 +256,15 @@ def add():
     user = USERS[session["user"]]
     db = load_db()
     db["deals"].append({
-        "id": str(len(db["deals"]) + 1),
+        "id": str(len(db["deals"]) + 100),
         "title": request.form.get("title"),
         "client": request.form.get("client"),
-        "stage": "new",
-        "manager": user["name"] if user["role"] == "manager" else "Не назначен",
-        "total_sum": int(request.form.get("total_sum") or 0)
+        "phone": request.form.get("phone"),
+        "region": request.form.get("region"),
+        "stage": "stage_1",
+        "manager": user["name"],
+        "total_sum": int(request.form.get("total_sum") or 0),
+        "comment": request.form.get("comment")
     })
     save_db(db)
     return redirect(url_for("index"))
@@ -203,8 +277,11 @@ def update(id):
         if d["id"] == id:
             d["title"] = request.form.get("title")
             d["client"] = request.form.get("client")
+            d["phone"] = request.form.get("phone")
+            d["region"] = request.form.get("region")
             d["stage"] = request.form.get("stage")
             d["total_sum"] = int(request.form.get("total_sum") or 0)
+            d["comment"] = request.form.get("comment")
             break
     save_db(db)
     return redirect(url_for("index"))
