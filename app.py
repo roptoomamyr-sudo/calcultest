@@ -78,7 +78,7 @@ def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-HTML_TEMPLATE = '''
+BASE_LAYOUT = """
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -105,6 +105,7 @@ HTML_TEMPLATE = '''
             <a href="/logout" class="btn btn-outline-light btn-sm">Выйти</a>
         </div>
     </nav>
+
     <div class="container-fluid mt-3">
         <ul class="nav nav-tabs">
             <li class="nav-item"><a class="nav-link {% if active_tab == 'kanban' %}active{% endif %}" href="/"><i class="fa-solid fa-columns"></i> Воронка (Канбан)</a></li>
@@ -115,15 +116,17 @@ HTML_TEMPLATE = '''
             <li class="nav-item"><a class="nav-link {% if active_tab == 'calculator' %}active{% endif %}" href="/calculator"><i class="fa-solid fa-calculator"></i> Калькулятор и КП</a></li>
         </ul>
     </div>
+
     <div class="container-fluid mt-3">
         {% block content %}{% endblock %}
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-'''
+"""
 
-LOGIN_TEMPLATE = '''
+LOGIN_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -149,9 +152,9 @@ LOGIN_TEMPLATE = '''
     </div>
 </body>
 </html>
-'''
+"""
 
-KANBAN_TEMPLATE = HTML_TEMPLATE.replace("{% block content %}{% endblock %}", '''
+KANBAN_TEMPLATE = BASE_LAYOUT.replace("{% block content %}{% endblock %}", """
 <div class="row mb-3 align-items-center">
     <div class="col-md-8 d-flex gap-2">
         <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addDealModal"><i class="fa-solid fa-plus"></i> Добавить клиента</button>
@@ -345,9 +348,9 @@ KANBAN_TEMPLATE = HTML_TEMPLATE.replace("{% block content %}{% endblock %}", '''
         </div>
     </div>
 </div>
-''')
+""")
 
-TASKS_TEMPLATE = HTML_TEMPLATE.replace("{% block content %}{% endblock %}", '''
+TASKS_TEMPLATE = BASE_LAYOUT.replace("{% block content %}{% endblock %}", """
 <div class="row">
     <div class="col-md-4">
         <div class="card p-3 shadow-sm">
@@ -405,9 +408,9 @@ TASKS_TEMPLATE = HTML_TEMPLATE.replace("{% block content %}{% endblock %}", '''
         </div>
     </div>
 </div>
-''')
+""")
 
-ANALYTICS_TEMPLATE = HTML_TEMPLATE.replace("{% block content %}{% endblock %}", '''
+ANALYTICS_TEMPLATE = BASE_LAYOUT.replace("{% block content %}{% endblock %}", """
 <div class="row">
     <div class="col-md-12">
         <h3 class="mb-4">Аналитика воронки продаж и дебиторская задолженность</h3>
@@ -433,9 +436,9 @@ ANALYTICS_TEMPLATE = HTML_TEMPLATE.replace("{% block content %}{% endblock %}", 
         </div>
     </div>
 </div>
-''')
+""")
 
-CALCULATOR_TEMPLATE = HTML_TEMPLATE.replace("{% block content %}{% endblock %}", '''
+CALCULATOR_TEMPLATE = BASE_LAYOUT.replace("{% block content %}{% endblock %}", """
 <div class="row">
     <div class="col-md-6">
         <div class="card p-4 shadow-sm">
@@ -484,7 +487,8 @@ function calculate() {
     `;
 }
 </script>
-''')
+""")
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -514,7 +518,15 @@ def index():
     if manager_filter:
         deals = [d for d in deals if d.get("manager") == manager_filter]
     all_managers = [u["name"] for u in USERS.values() if u["role"] == "manager"]
-    return render_template_string(KANBAN_TEMPLATE, active_tab="kanban", user=user_info, stages=STAGES, deals=deals, all_managers=all_managers, manager_filter=manager_filter)
+    return render_template_string(
+        KANBAN_TEMPLATE,
+        active_tab="kanban",
+        user=user_info,
+        stages=STAGES,
+        deals=deals,
+        all_managers=all_managers,
+        manager_filter=manager_filter
+    )
 
 @app.route("/add_deal", methods=["POST"])
 def add_deal():
