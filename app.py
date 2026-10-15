@@ -1,13 +1,11 @@
 from flask import Flask, render_template_string, request, redirect, url_for, session
 import json
 import os
-import csv
 
 app = Flask(__name__)
 app.secret_key = "angar_crm_secret_2026"
 
 DB_FILE = "crm_db.json"
-CSV_FILE = "baza.csv"
 
 USERS = {
     "director": {"pass": "dir123", "name": "Уралбаев Ж.А. (Директор)", "role": "director"},
@@ -34,61 +32,9 @@ STAGES = [
     ("stage_15", "15. Повторный заказ (VIP)", "#ffc107")
 ]
 
-def map_stage_by_text(note, row_text):
-    n = str(note or "").lower()
-    rt = str(row_text or "").lower()
-    
-    if any(k in n for k in ["скинуть инфу", "скинул инфу", "презентац", "инфу", "вотс апп", "ватсап", "whatsapp", "watsap"]):
-        return "stage_4"
-    if any(k in n for k in ["не дозвон", "недозвон", "откл"]):
-        return "stage_2"
-    if "х" in n or "x" in n or "х" in rt or "x" in rt or "скинул кп" in n or "кинул кп" in n or "кп" in n:
-        return "stage_5"
-    return "stage_1"
-
-def load_from_csv():
-    deals = []
-    if os.path.exists(CSV_FILE):
-        for encoding in ['utf-8-sig', 'cp1251', 'latin-1']:
-            try:
-                with open(CSV_FILE, mode='r', encoding=encoding) as f:
-                    # Определяем разделитель автоматически (запятая или точка с запятой)
-                    sample = f.read(2048)
-                    f.seek(0)
-                    delimiter = ';' if ';' in sample else ','
-                    
-                    reader = csv.reader(f, delimiter=delimiter)
-                    for idx, row in enumerate(reader, start=1):
-                        if idx == 1: # Пропускаем шапку, если она есть
-                            continue
-                        if not any(row):
-                            continue
-                        
-                        client_name = str(row[1] if len(row) > 1 and row[1] else (row[0] if row[0] else f"Клиент {idx}")).strip()
-                        phone = str(row[3] if len(row) > 3 and row[3] else "").strip()
-                        region = str(row[5] if len(row) > 5 and row[5] else "").strip()
-                        note = str(row[7] if len(row) > 7 and row[7] else "").strip()
-                        
-                        row_text = " ".join([str(cell or "") for cell in row])
-                        stage = map_stage_by_text(note, row_text)
-                        
-                        deals.append({
-                            "id": str(idx),
-                            "title": client_name,
-                            "client": client_name,
-                            "phone": phone,
-                            "region": region,
-                            "stage": stage,
-                            "manager": "Не назначен",
-                            "total_sum": 0,
-                            "comment": note
-                        })
-                break
-            except Exception as e:
-                print(f"Ошибка с кодировкой {encoding}: {e}")
-                
-    if not deals:
-        deals = [
+def load_db():
+    default_data = {
+        "deals": [
             {
                 "id": "1",
                 "title": 'ТОО "МИРАМ"',
@@ -96,26 +42,36 @@ def load_from_csv():
                 "phone": "+7 705 626 54 24",
                 "region": "Костанайская область",
                 "stage": "stage_5",
-                "manager": "Не назначен",
+                "manager": "Лемперт А.С.",
                 "total_sum": 25000000,
-                "comment": "ангар 20х120"
+                "comment": "Ангар 20х120, скинул КП"
+            },
+            {
+                "id": "2",
+                "title": 'КХ "АХМЕТОВ"',
+                "client": 'КХ "АХМЕТОВ"',
+                "phone": "+7 870 561 26 31",
+                "region": "Павлодарская область",
+                "stage": "stage_2",
+                "manager": "Не назначен",
+                "total_sum": 0,
+                "comment": "Не дозвон"
             }
         ]
-    return {"deals": deals}
-
-def load_db():
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict) and "deals" in data and data["deals"]:
-                    return data
-        except:
-            pass
-            
-    data = load_from_csv()
-    save_db(data)
-    return data
+    }
+    if not os.path.exists(DB_FILE):
+        save_db(default_data)
+        return default_data
+    try:
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if not isinstance(data, dict) or "deals" not in data:
+                save_db(default_data)
+                return default_data
+            return data
+    except:
+        save_db(default_data)
+        return default_data
 
 def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
@@ -306,7 +262,7 @@ def add():
     db = load_db()
     client_name = request.form.get("client")
     db["deals"].append({
-        "id": str(len(db["deals"]) + 1000),
+        "id": str(len(db["deals"]) + 1),
         "title": client_name,
         "client": client_name,
         "phone": request.form.get("phone"),
