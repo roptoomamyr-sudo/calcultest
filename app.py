@@ -64,7 +64,6 @@ def load_from_excel():
                 if not any(row):
                     continue
                 
-                # Имя компании / ТОО / КХ (Колонка B)
                 client_name = str(row[1] if len(row) > 1 and row[1] else (row[0] if row[0] else f"Клиент {idx}")).strip()
                 phone = str(row[3] if len(row) > 3 and row[3] else "").strip()
                 region = str(row[5] if len(row) > 5 and row[5] else "").strip()
@@ -194,7 +193,6 @@ CRM_HTML = """
                     </div>
                 </div>
 
-                <!-- Модальное окно редактирования -->
                 <div class="modal fade" id="cardModal{{ d.id }}" tabindex="-1">
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
@@ -250,7 +248,6 @@ CRM_HTML = """
     {% endfor %}
 </div>
 
-<!-- Модальное окно добавления -->
 <div class="modal fade" id="addModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -278,3 +275,69 @@ CRM_HTML = """
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+"""
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        u = request.form.get("username")
+        p = request.form.get("password")
+        if u in USERS and USERS[u]["pass"] == p:
+            session["user"] = u
+            return redirect(url_for("index"))
+        error = "Неверный логин или пароль"
+    return render_template_string(LOGIN_HTML, error=error)
+
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    return redirect(url_for("login"))
+
+@app.route("/")
+def index():
+    if "user" not in session: return redirect(url_for("login"))
+    user = USERS[session["user"]]
+    db = load_db()
+    return render_template_string(CRM_HTML, user=user, stages=STAGES, deals=db["deals"])
+
+@app.route("/add", methods=["POST"])
+def add():
+    if "user" not in session: return redirect(url_for("login"))
+    user = USERS[session["user"]]
+    db = load_db()
+    client_name = request.form.get("client")
+    db["deals"].append({
+        "id": str(len(db["deals"]) + 100),
+        "title": client_name,
+        "client": client_name,
+        "phone": request.form.get("phone"),
+        "region": request.form.get("region"),
+        "stage": "stage_1",
+        "manager": user["name"],
+        "total_sum": int(request.form.get("total_sum") or 0),
+        "comment": request.form.get("comment")
+    })
+    save_db(db)
+    return redirect(url_for("index"))
+
+@app.route("/update/<id>", methods=["POST"])
+def update(id):
+    if "user" not in session: return redirect(url_for("login"))
+    db = load_db()
+    for d in db["deals"]:
+        if d["id"] == id:
+            client_name = request.form.get("client")
+            d["title"] = client_name
+            d["client"] = client_name
+            d["phone"] = request.form.get("phone")
+            d["region"] = request.form.get("region")
+            d["stage"] = request.form.get("stage")
+            d["total_sum"] = int(request.form.get("total_sum") or 0)
+            d["comment"] = request.form.get("comment")
+            break
+    save_db(db)
+    return redirect(url_for("index"))
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
