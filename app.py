@@ -37,19 +37,12 @@ def map_stage_by_text(note, row_text):
     n = str(note or "").lower()
     rt = str(row_text or "").lower()
     
-    # 1. Голубой столбец (Скинул презентацию / инфу / вотсап)
     if any(k in n for k in ["скинуть инфу", "скинул инфу", "презентац", "инфу", "вотс апп", "ватсап", "whatsapp", "watsap"]):
         return "stage_4"
-    
-    # 2. Не дозвон (красный)
     if any(k in n for k in ["не дозвон", "недозвон", "откл"]):
         return "stage_2"
-    
-    # 3. Скинул КП (зеленый - есть размеры "х"/"x" или "кп")
     if "х" in n or "x" in n or "х" in rt or "x" in rt or "скинул кп" in n or "кинул кп" in n or "кп" in n:
         return "stage_5"
-    
-    # 4. Все остальное — в "1. Новый клиент"
     return "stage_1"
 
 def load_from_excel():
@@ -103,21 +96,20 @@ def load_from_excel():
     return {"deals": deals}
 
 def load_db():
-    if not os.path.exists(DB_FILE):
-        data = load_from_excel()
-        save_db(data)
-        return data
-    try:
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            if not isinstance(data, dict) or "deals" not in data or not data["deals"]:
-                data = load_from_excel()
-                save_db(data)
-            return data
-    except:
-        data = load_from_excel()
-        save_db(data)
-        return data
+    # Главное изменение: если json уже создан, мы берем данные строго из него (без тяжелого чтения Excel на каждый запрос)
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict) and "deals" in data and data["deals"]:
+                    return data
+        except:
+            pass
+            
+    # Если json нет, читаем из Excel один раз и сохраняем навсегда
+    data = load_from_excel()
+    save_db(data)
+    return data
 
 def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
@@ -259,7 +251,7 @@ CRM_HTML = """
                 <div class="modal-body">
                     <div class="mb-2"><label class="form-label">Клиент / ТОО / КХ:</label><input type="text" name="client" class="form-control" required placeholder="ТОО Агро"></div>
                     <div class="mb-2"><label class="form-label">Телефон:</label><input type="text" name="phone" class="form-control" placeholder="+7..."></div>
-                    <div class="mb-2"><label class="form-label">Регион:</label><input type="text" name="region" class="form-control" placeholder="Костанайская область"></div>
+                    <div class="mb-2"><label class="form-label">Регион:</label><input type="text" name="region" class="form-control" placeholder="Kostanay"></div>
                     <div class="mb-2"><label class="form-label">Сумма (₸):</label><input type="number" name="total_sum" class="form-control" value="0"></div>
                     <div class="mb-2"><label class="form-label">Комментарий:</label><textarea name="comment" class="form-control" rows="2"></textarea></div>
                 </div>
@@ -308,7 +300,7 @@ def add():
     db = load_db()
     client_name = request.form.get("client")
     db["deals"].append({
-        "id": str(len(db["deals"]) + 100),
+        "id": str(len(db["deals"]) + 1000),
         "title": client_name,
         "client": client_name,
         "phone": request.form.get("phone"),
