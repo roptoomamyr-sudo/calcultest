@@ -42,11 +42,11 @@ def load_db():
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
         return data
-    with open(DB_FILE, "r", encoding="utf-8") as f:
-        try:
+    try:
+        with open(DB_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-        except:
-            return {"deals": []}
+    except:
+        return {"deals": []}
 
 def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
