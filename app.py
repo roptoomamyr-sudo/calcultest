@@ -351,7 +351,7 @@ CRM_HTML = """
     </div>
 </div>
 
-<!-- Модальное окно добавления сделки (С ВЫБОРОМ ЭТАПА И ОТВЕТСТВЕННОГО) -->
+<!-- Модальное окно добавления сделки -->
 <div class="modal fade" id="addModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -635,12 +635,37 @@ def update(id):
             new_sum = int(request.form.get("total_sum") or 0)
             new_comment = request.form.get("new_comment", "").strip()
             
-            d["director"] = request.form.get("director", "").strip()
-            d["phones"] = [p.strip() for p in request.form.getlist("phones") if p.strip()]
+            new_director = request.form.get("director", "").strip()
+            new_phones = [p.strip() for p in request.form.getlist("phones") if p.strip()]
+            new_region = request.form.get("region", "").strip()
+            new_email = request.form.get("email", "").strip()
+            
+            now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+            
+            # Контроль удаления или изменения телефонов
+            old_phones = d.get("phones", [])
+            removed_phones = [p for p in old_phones if p not in new_phones]
+            if removed_phones:
+                d["history"].append({
+                    "date": now_str, 
+                    "author": current_user["name"], 
+                    "text": f"🗑️ Удалил номера телефонов: {', '.join(removed_phones)}"
+                })
+            
+            added_phones = [p for p in new_phones if p not in old_phones]
+            if added_phones:
+                d["history"].append({
+                    "date": now_str, 
+                    "author": current_user["name"], 
+                    "text": f"➕ Добавил номера телефонов: {', '.join(added_phones)}"
+                })
+
+            d["director"] = new_director
+            d["phones"] = new_phones
             d["contact_person"] = request.form.get("contact_person", "").strip()
             d["contact_phone"] = request.form.get("contact_phone", "").strip()
-            d["email"] = request.form.get("email", "").strip()
-            d["region"] = request.form.get("region", "").strip()
+            d["email"] = new_email
+            d["region"] = new_region
             
             task_date = request.form.get("task_date")
             task_type = request.form.get("task_type")
@@ -650,15 +675,12 @@ def update(id):
                 if "tasks" not in d: d["tasks"] = []
                 task_id = f"t_{len(d['tasks'])+1}_{int(datetime.now().timestamp())}"
                 d["tasks"].append({"id": task_id, "date": task_date, "type": task_type, "text": task_text, "done": False, "reminded": False})
-                now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
                 d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Поставил задачу ({task_type} на {task_date}): {task_text}"})
 
             if current_user["role"] in ["director", "rop"]:
                 requested_manager = request.form.get("manager")
                 if requested_manager:
                     d["manager"] = requested_manager
-            
-            now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
             
             if d["stage"] != new_stage:
                 stage_name = new_stage
