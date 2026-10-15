@@ -6,6 +6,7 @@ app = Flask(__name__)
 app.secret_key = "angar_crm_secret_2026"
 
 DB_FILE = "crm_db.json"
+EXCEL_FILE = "baza_selkhoz.xlsx"
 
 USERS = {
     "director": {"pass": "dir123", "name": "Уралбаев Ж.А. (Директор)", "role": "director"},
@@ -31,13 +32,81 @@ STAGES = [
     ("stage_14", "14. Повторный заказ (VIP)", "#ffc107")
 ]
 
-def load_db():
-    default_data = {
-        "deals": [
+def map_status_to_stage(status_str, color_str=""):
+    """Определение этапа по тексту статуса или цвету ячейки из Excel"""
+    s = str(status_str or "").lower()
+    c = str(color_str or "").lower()
+    
+    if "кп" in s or "зеленый" in c or "green" in c:
+        return "stage_4"
+    elif "презентац" in s or "инфу" in s or "голубой" in c or "blue" in c or "cyan" in c:
+        return "stage_3"
+    elif "отложил" in s or "передумал" in s or "красный" in c or "red" in c:
+        return "stage_7"
+    elif "лпр" in s:
+        return "stage_2"
+    elif "договор" in s:
+        return "stage_10"
+    elif "предоплат" in s:
+        return "stage_11"
+    elif "оплачен" in s:
+        return "stage_13"
+    elif "конкурент" in s:
+        return "stage_8"
+    else:
+        return "stage_1"
+
+def load_from_excel():
+    deals = []
+    if os.path.exists(EXCEL_FILE):
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(EXCEL_FILE, data_only=True)
+            sheet = wb.active
+            
+            for idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=False), start=1):
+                vals = [cell.value for cell in row]
+                if not any(vals):
+                    continue
+                
+                client = str(vals[0] or f"Клиент {idx}").strip()
+                phone = str(vals[1] or "").strip() if len(vals) > 1 else ""
+                region = str(vals[2] or "").strip() if len(vals) > 2 else ""
+                title = str(vals[3] or "Ангар").strip() if len(vals) > 3 else "Ангар"
+                status = str(vals[4] or "").strip() if len(vals) > 4 else ""
+                comment = str(vals[5] or "").strip() if len(vals) > 5 else ""
+                
+                # Читаем цвет заливки первой ячейки
+                cell_color = ""
+                try:
+                    fill = row[0].fill
+                    if fill and fill.start_color and fill.start_color.rgb:
+                        cell_color = str(fill.start_color.rgb)
+                except:
+                    pass
+
+                stage = map_status_to_stage(status, cell_color)
+                
+                deals.append({
+                    "id": str(idx),
+                    "title": title,
+                    "client": client,
+                    "phone": phone,
+                    "region": region,
+                    "stage": stage,
+                    "manager": "Не назначен",
+                    "total_sum": 0,
+                    "comment": comment or status
+                })
+        except Exception as e:
+            print("Ошибка чтения Excel:", e)
+            
+    if not deals:
+        deals = [
             {
                 "id": "1",
                 "title": "Ангар 20х120",
-                "client": "ТОО \"МИРАМ\"",
+                "client": 'ТОО "МИРАМ"',
                 "phone": "+7 705 626 54 24",
                 "region": "Костанайская область",
                 "stage": "stage_4",
@@ -46,20 +115,24 @@ def load_db():
                 "comment": "08.10.2026 ангар 20х120"
             }
         ]
-    }
+    return {"deals": deals}
+
+def load_db():
     if not os.path.exists(DB_FILE):
-        save_db(default_data)
-        return default_data
+        data = load_from_excel()
+        save_db(data)
+        return data
     try:
         with open(DB_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            if not isinstance(data, dict) or "deals" not in data:
-                save_db(default_data)
-                return default_data
+            if not isinstance(data, dict) or "deals" not in data or not data["deals"]:
+                data = load_from_excel()
+                save_db(data)
             return data
     except:
-        save_db(default_data)
-        return default_data
+        data = load_from_excel()
+        save_db(data)
+        return data
 
 def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
