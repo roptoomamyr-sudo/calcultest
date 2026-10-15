@@ -17,44 +17,40 @@ USERS = {
 
 STAGES = [
     ("stage_1", "1. Новый клиент", "#6c757d"),
-    ("stage_2", "2. Нужно выйти на ЛПР", "#212529"),
-    ("stage_3", "3. Скинул презентацию / инфу", "#0dcaf0"),
-    ("stage_4", "4. Скинул КП", "#198754"),
-    ("stage_5", "5. Нет обратной связи", "#fd7e14"),
-    ("stage_6", "6. Веду переговоры", "#0d6efd"),
-    ("stage_7", "7. Отложил / Передумал", "#dc3545"),
-    ("stage_8", "8. Купил у конкурентов", "#6c2323"),
-    ("stage_9", "9. Готов контрактоваться", "#157347"),
-    ("stage_10", "10. Сделали договор", "#0f5132"),
-    ("stage_11", "11. Внес предоплату", "#6f42c1"),
-    ("stage_12", "12. Выполнен (Дебиторка)", "#0d6efd"),
-    ("stage_13", "13. Оплачен полностью", "#198754"),
-    ("stage_14", "14. Повторный заказ (VIP)", "#ffc107")
+    ("stage_2", "2. Не дозвон", "#dc3545"),
+    ("stage_3", "3. Нужно выйти на ЛПР", "#212529"),
+    ("stage_4", "4. Скинул презентацию / инфу", "#0dcaf0"),
+    ("stage_5", "5. Скинул КП", "#198754"),
+    ("stage_6", "6. Нет обратной связи", "#fd7e14"),
+    ("stage_7", "7. Веду переговоры", "#0d6efd"),
+    ("stage_8", "8. Отложил / Передумал", "#ffc107"),
+    ("stage_9", "9. Купил у конкурентов", "#6c2323"),
+    ("stage_10", "10. Готов контрактоваться", "#157347"),
+    ("stage_11", "11. Сделали договор", "#0f5132"),
+    ("stage_12", "12. Внес предоплату", "#6f42c1"),
+    ("stage_13", "13. Выполнен (Дебиторка)", "#0d6efd"),
+    ("stage_14", "14. Оплачен полностью", "#198754"),
+    ("stage_15", "15. Повторный заказ (VIP)", "#ffc107")
 ]
 
-def map_status_to_stage(status_str, color_str=""):
-    """Определение этапа по тексту статуса или цвету ячейки из Excel"""
-    s = str(status_str or "").lower()
-    c = str(color_str or "").lower()
+def map_stage_by_text(note, row_text):
+    n = str(note or "").lower()
+    rt = str(row_text or "").lower()
     
-    if "кп" in s or "зеленый" in c or "green" in c:
+    # 1. Голубой столбец (Скинул презентацию / инфу / вотсап)
+    if any(k in n for k in ["скинуть инфу", "скинул инфу", "презентац", "инфу", "вотс апп", "ватсап", "whatsapp", "watsap"]):
         return "stage_4"
-    elif "презентац" in s or "инфу" in s or "голубой" in c or "blue" in c or "cyan" in c:
-        return "stage_3"
-    elif "отложил" in s or "передумал" in s or "красный" in c or "red" in c:
-        return "stage_7"
-    elif "лпр" in s:
+    
+    # 2. Не дозвон (красный)
+    if any(k in n for k in ["не дозвон", "недозвон", "откл"]):
         return "stage_2"
-    elif "договор" in s:
-        return "stage_10"
-    elif "предоплат" in s:
-        return "stage_11"
-    elif "оплачен" in s:
-        return "stage_13"
-    elif "конкурент" in s:
-        return "stage_8"
-    else:
-        return "stage_1"
+    
+    # 3. Скинул КП (зеленый - есть размеры "х"/"x" или "кп")
+    if "х" in n or "x" in n or "х" in rt or "x" in rt or "скинул кп" in n or "кинул кп" in n or "кп" in n:
+        return "stage_5"
+    
+    # 4. Все остальное — в "1. Новый клиент"
+    return "stage_1"
 
 def load_from_excel():
     deals = []
@@ -64,55 +60,45 @@ def load_from_excel():
             wb = openpyxl.load_workbook(EXCEL_FILE, data_only=True)
             sheet = wb.active
             
-            for idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=False), start=1):
-                vals = [cell.value for cell in row]
-                if not any(vals):
+            for idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=1):
+                if not any(row):
                     continue
                 
-                client = str(vals[0] or f"Клиент {idx}").strip()
-                phone = str(vals[1] or "").strip() if len(vals) > 1 else ""
-                region = str(vals[2] or "").strip() if len(vals) > 2 else ""
-                title = str(vals[3] or "Ангар").strip() if len(vals) > 3 else "Ангар"
-                status = str(vals[4] or "").strip() if len(vals) > 4 else ""
-                comment = str(vals[5] or "").strip() if len(vals) > 5 else ""
+                # Имя компании / ТОО / КХ (Колонка B)
+                client_name = str(row[1] if len(row) > 1 and row[1] else (row[0] if row[0] else f"Клиент {idx}")).strip()
+                phone = str(row[3] if len(row) > 3 and row[3] else "").strip()
+                region = str(row[5] if len(row) > 5 and row[5] else "").strip()
+                note = str(row[7] if len(row) > 7 and row[7] else "").strip()
                 
-                # Читаем цвет заливки первой ячейки
-                cell_color = ""
-                try:
-                    fill = row[0].fill
-                    if fill and fill.start_color and fill.start_color.rgb:
-                        cell_color = str(fill.start_color.rgb)
-                except:
-                    pass
-
-                stage = map_status_to_stage(status, cell_color)
+                row_text = " ".join([str(cell or "") for cell in row])
+                stage = map_stage_by_text(note, row_text)
                 
                 deals.append({
                     "id": str(idx),
-                    "title": title,
-                    "client": client,
+                    "title": client_name,
+                    "client": client_name,
                     "phone": phone,
                     "region": region,
                     "stage": stage,
                     "manager": "Не назначен",
                     "total_sum": 0,
-                    "comment": comment or status
+                    "comment": note
                 })
         except Exception as e:
-            print("Ошибка чтения Excel:", e)
+            print("Ошибка загрузки Excel:", e)
             
     if not deals:
         deals = [
             {
                 "id": "1",
-                "title": "Ангар 20х120",
+                "title": 'ТОО "МИРАМ"',
                 "client": 'ТОО "МИРАМ"',
                 "phone": "+7 705 626 54 24",
                 "region": "Костанайская область",
-                "stage": "stage_4",
+                "stage": "stage_5",
                 "manager": "Не назначен",
                 "total_sum": 25000000,
-                "comment": "08.10.2026 ангар 20х120"
+                "comment": "ангар 20х120"
             }
         ]
     return {"deals": deals}
@@ -198,17 +184,17 @@ CRM_HTML = """
             {% for d in deals %}
                 {% if d.stage == s_key %}
                 <div class="deal-card" data-bs-toggle="modal" data-bs-target="#cardModal{{ d.id }}">
-                    <div class="fw-bold text-primary mb-1" style="font-size: 13px;">{{ d.client }}</div>
+                    <div class="fw-bold text-primary mb-1" style="font-size: 13px;">{{ d.title }}</div>
                     <div class="text-muted text-truncate">📍 {{ d.region or 'Регион не указан' }}</div>
                     <div class="text-secondary text-truncate">📞 {{ d.phone or 'Нет телефона' }}</div>
-                    <div class="text-dark mt-1 text-truncate">🏗️ <b>{{ d.title }}</b></div>
+                    <div class="text-dark mt-1 text-truncate">💬 {{ d.comment or 'Нет описания' }}</div>
                     <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 11px;">
                         <span>Сумма: {{ "{:,}".format(d.total_sum).replace(",", " ") }} ₸</span>
                         <span class="badge bg-light text-dark border">{{ d.manager or 'Не назначен' }}</span>
                     </div>
                 </div>
 
-                <!-- Модальное окно "Провал в карточку клиента" -->
+                <!-- Модальное окно редактирования -->
                 <div class="modal fade" id="cardModal{{ d.id }}" tabindex="-1">
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
@@ -220,12 +206,8 @@ CRM_HTML = """
                                 <div class="modal-body">
                                     <div class="row g-3">
                                         <div class="col-md-6">
-                                            <label class="form-label fw-bold">Компания / Клиент:</label>
+                                            <label class="form-label fw-bold">Компания / ТОО / КХ:</label>
                                             <input type="text" name="client" class="form-control" value="{{ d.client }}" required>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold">Объект / Ангар:</label>
-                                            <input type="text" name="title" class="form-control" value="{{ d.title }}" required>
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label fw-bold">Телефон:</label>
@@ -268,18 +250,17 @@ CRM_HTML = """
     {% endfor %}
 </div>
 
-<!-- Модальное окно добавления сделки -->
+<!-- Модальное окно добавления -->
 <div class="modal fade" id="addModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="/add">
                 <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title">Новая заявка на ангар</h5>
+                    <h5 class="modal-title">Новая заявка</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-2"><label class="form-label">Клиент / Компания:</label><input type="text" name="client" class="form-control" required placeholder="ТОО Агро"></div>
-                    <div class="mb-2"><label class="form-label">Объект / Параметры:</label><input type="text" name="title" class="form-control" required placeholder="Ангар 20х50"></div>
+                    <div class="mb-2"><label class="form-label">Клиент / ТОО / КХ:</label><input type="text" name="client" class="form-control" required placeholder="ТОО Агро"></div>
                     <div class="mb-2"><label class="form-label">Телефон:</label><input type="text" name="phone" class="form-control" placeholder="+7..."></div>
                     <div class="mb-2"><label class="form-label">Регион:</label><input type="text" name="region" class="form-control" placeholder="Костанайская область"></div>
                     <div class="mb-2"><label class="form-label">Сумма (₸):</label><input type="number" name="total_sum" class="form-control" value="0"></div>
@@ -297,67 +278,3 @@ CRM_HTML = """
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-"""
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    error = None
-    if request.method == "POST":
-        u = request.form.get("username")
-        p = request.form.get("password")
-        if u in USERS and USERS[u]["pass"] == p:
-            session["user"] = u
-            return redirect(url_for("index"))
-        error = "Неверный логин или пароль"
-    return render_template_string(LOGIN_HTML, error=error)
-
-@app.route("/logout")
-def logout():
-    session.pop("user", None)
-    return redirect(url_for("login"))
-
-@app.route("/")
-def index():
-    if "user" not in session: return redirect(url_for("login"))
-    user = USERS[session["user"]]
-    db = load_db()
-    return render_template_string(CRM_HTML, user=user, stages=STAGES, deals=db["deals"])
-
-@app.route("/add", methods=["POST"])
-def add():
-    if "user" not in session: return redirect(url_for("login"))
-    user = USERS[session["user"]]
-    db = load_db()
-    db["deals"].append({
-        "id": str(len(db["deals"]) + 100),
-        "title": request.form.get("title"),
-        "client": request.form.get("client"),
-        "phone": request.form.get("phone"),
-        "region": request.form.get("region"),
-        "stage": "stage_1",
-        "manager": user["name"],
-        "total_sum": int(request.form.get("total_sum") or 0),
-        "comment": request.form.get("comment")
-    })
-    save_db(db)
-    return redirect(url_for("index"))
-
-@app.route("/update/<id>", methods=["POST"])
-def update(id):
-    if "user" not in session: return redirect(url_for("login"))
-    db = load_db()
-    for d in db["deals"]:
-        if d["id"] == id:
-            d["title"] = request.form.get("title")
-            d["client"] = request.form.get("client")
-            d["phone"] = request.form.get("phone")
-            d["region"] = request.form.get("region")
-            d["stage"] = request.form.get("stage")
-            d["total_sum"] = int(request.form.get("total_sum") or 0)
-            d["comment"] = request.form.get("comment")
-            break
-    save_db(db)
-    return redirect(url_for("index"))
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
