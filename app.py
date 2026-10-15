@@ -40,15 +40,17 @@ def load_db():
                 "id": "1",
                 "title": 'ТОО "МИРАМ"',
                 "client": 'ТОО "МИРАМ"',
-                "phone": "+7 705 626 54 24",
-                "region": "Костанайская область",
+                "director": "Иванов И.И.",
+                "phones": ["+7 705 626 54 24"],
+                "contact_person": "Бухгалтер Светлана",
+                "contact_phone": "+7 701 999 88 77",
+                "email": "miram@mail.kz",
+                "region": "Костанайская область, п. Заречный",
                 "stage": "stage_5",
                 "manager": "Менеджер 1",
                 "total_sum": 0,
                 "history": [{"date": "15.10.2026 12:00", "author": "РОП", "text": "Создана сделка, скинул КП"}],
-                "tasks": [
-                    {"id": "t1", "date": "2026-10-14", "type": "Звонок", "text": "Уточнить решение по КП", "done": False, "reminded": True}
-                ]
+                "tasks": []
             }
         ]
     }
@@ -141,7 +143,8 @@ CRM_HTML = """
                 <div class="deal-card" id="card-{{ d.id }}" draggable="true" ondragstart="dragDeal(event, '{{ d.id }}')" data-bs-toggle="modal" data-bs-target="#cardModal{{ d.id }}">
                     <div class="fw-bold text-primary mb-1" style="font-size: 13px;">{{ d.title }}</div>
                     <div class="text-muted text-truncate">📍 {{ d.region or 'Регион не указан' }}</div>
-                    <div class="text-secondary text-truncate">📞 {{ d.phone or 'Нет телефона' }}</div>
+                    <div class="text-secondary text-truncate">👤 Директор: {{ d.director or 'Не указан' }}</div>
+                    <div class="text-dark text-truncate">📞 {{ d.phones[0] if d.phones else 'Нет телефона' }}</div>
                     
                     {% for t in d.tasks %}
                         {% if not t.done %}
@@ -149,9 +152,6 @@ CRM_HTML = """
                             <div class="mt-1"><span class="badge bg-danger">⚠️ Просрочено: {{ t.date }} ({{ t.type }})</span></div>
                             {% else %}
                             <div class="mt-1"><span class="badge bg-warning text-dark">⏰ {{ t.date }} ({{ t.type }})</span></div>
-                            {% endif %}
-                            {% if t.reminded %}
-                            <div class="mt-1"><span class="badge bg-danger text-white">⚡ РОП требует выполнить!</span></div>
                             {% endif %}
                         {% endif %}
                     {% endfor %}
@@ -166,7 +166,7 @@ CRM_HTML = """
                     </div>
                 </div>
 
-                <!-- Модальное окно редактирования -->
+                <!-- Модальное окно карточки клиента -->
                 <div class="modal fade" id="cardModal{{ d.id }}" tabindex="-1">
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
@@ -178,17 +178,51 @@ CRM_HTML = """
                                 <div class="modal-body">
                                     <div class="row g-3">
                                         <div class="col-md-6">
-                                            <label class="form-label fw-bold">Компания / ТОО / КХ:</label>
+                                            <label class="form-label fw-bold">ТОО / КХ (Название):</label>
                                             <input type="text" name="client" class="form-control" value="{{ d.client }}" required>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label fw-bold">Телефон:</label>
-                                            <input type="text" name="phone" class="form-control" value="{{ d.phone }}">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold">Регион / Область:</label>
+                                            <label class="form-label fw-bold">Расположение (область, район, поселок):</label>
                                             <input type="text" name="region" class="form-control" value="{{ d.region }}">
                                         </div>
+                                        
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">ФИО Директора:</label>
+                                            <input type="text" name="director" class="form-control" value="{{ d.director }}">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Email:</label>
+                                            <input type="email" name="email" class="form-control" value="{{ d.email }}">
+                                        </div>
+
+                                        <div class="col-md-12">
+                                            <label class="form-label fw-bold">Телефоны директора:</label>
+                                            <div id="phones-container-{{ d.id }}">
+                                                {% if d.phones %}
+                                                    {% for phone in d.phones %}
+                                                    <div class="input-group mb-2">
+                                                        <input type="text" name="phones" class="form-control" value="{{ phone }}">
+                                                        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>
+                                                    </div>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <div class="input-group mb-2">
+                                                        <input type="text" name="phones" class="form-control" placeholder="+7...">
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="addPhoneField('phones-container-{{ d.id }}')">+ Добавить телефон</button>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Контактное лицо (бухгалтер, снабженец):</label>
+                                            <input type="text" name="contact_person" class="form-control" value="{{ d.contact_person }}">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Телефон контактного лица:</label>
+                                            <input type="text" name="contact_phone" class="form-control" value="{{ d.contact_phone }}">
+                                        </div>
+
                                         <div class="col-md-6">
                                             <label class="form-label fw-bold">Этап воронки:</label>
                                             <select name="stage" class="form-select">
@@ -219,8 +253,9 @@ CRM_HTML = """
                                             <input type="number" name="total_sum" class="form-control" value="{{ d.total_sum }}">
                                         </div>
 
+                                        <!-- Задачи -->
                                         <div class="col-12 bg-light p-3 border rounded">
-                                            <h6 class="fw-bold text-dark m-0 mb-2">⏰ Поставить новое напоминание / задачу:</h6>
+                                            <h6 class="fw-bold text-dark m-0 mb-2">⏰ Новое напоминание / задача:</h6>
                                             <div class="row g-2">
                                                 <div class="col-md-4"><input type="date" name="task_date" class="form-control form-control-sm"></div>
                                                 <div class="col-md-4">
@@ -316,24 +351,83 @@ CRM_HTML = """
     </div>
 </div>
 
-<!-- Модальное окно добавления сделки -->
+<!-- Модальное окно добавления сделки (С ВЫБОРОМ ЭТАПА И ОТВЕТСТВЕННОГО) -->
 <div class="modal fade" id="addModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST" action="/add">
                 <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title">Новая заявка</h5>
+                    <h5 class="modal-title fw-bold">➕ Новая заявка / Сделка</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-2"><label class="form-label">Клиент / ТОО / КХ:</label><input type="text" name="client" class="form-control" required placeholder="ТОО Агро"></div>
-                    <div class="mb-2"><label class="form-label">Телефон:</label><input type="text" name="phone" class="form-control" placeholder="+7..."></div>
-                    <div class="mb-2"><label class="form-label">Регион:</label><input type="text" name="region" class="form-control" placeholder="Костанайская область"></div>
-                    <div class="mb-2"><label class="form-label">Комментарий:</label><textarea name="comment" class="form-control" rows="2"></textarea></div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">ТОО / КХ (Название):</label>
+                            <input type="text" name="client" class="form-control" required placeholder="ТОО Агро">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Стартовый этап воронки:</label>
+                            <select name="stage" class="form-select">
+                                {% for sk, sn, sc in stages %}
+                                <option value="{{ sk }}">{{ sn }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Ответственный менеджер:</label>
+                            <select name="manager" class="form-select">
+                                <option value="{{ user.name }}">{{ user.name }} (Текущий)</option>
+                                <option value="Менеджер 1">Менеджер 1</option>
+                                <option value="Менеджер 2">Менеджер 2</option>
+                                <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
+                                <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Расположение (область, район, поселок):</label>
+                            <input type="text" name="region" class="form-control" placeholder="Костанайская область, п. Заречный">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">ФИО Директора:</label>
+                            <input type="text" name="director" class="form-control" placeholder="Иванов И.И.">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Email:</label>
+                            <input type="email" name="email" class="form-control" placeholder="client@mail.kz">
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Телефоны директора:</label>
+                            <div id="new-phones-container">
+                                <div class="input-group mb-2">
+                                    <input type="text" name="phones" class="form-control" placeholder="+7...">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="addPhoneField('new-phones-container')">+ Добавить телефон</button>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Контактное лицо (бухгалтер, снабженец):</label>
+                            <input type="text" name="contact_person" class="form-control" placeholder="Бухгалтер Светлана">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Телефон контактного лица:</label>
+                            <input type="text" name="contact_phone" class="form-control" placeholder="+7...">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Комментарий / Описание задачи:</label>
+                            <textarea name="comment" class="form-control" rows="2" placeholder="Первичный комментарий..."></textarea>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" class="btn btn-success btn-sm">Создать</button>
+                    <button type="submit" class="btn btn-success btn-sm fw-bold">Создать сделку</button>
                 </div>
             </form>
         </div>
@@ -343,6 +437,15 @@ CRM_HTML = """
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+function addPhoneField(containerId) {
+    var container = document.getElementById(containerId);
+    var div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = '<input type="text" name="phones" class="form-control" placeholder="+7...">' +
+                    '<button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>';
+    container.appendChild(div);
+}
+
 function dragDeal(ev, dealId) { ev.dataTransfer.setData("dealId", dealId); }
 function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add("drag-over"); }
 function removeDragOver(ev) { ev.currentTarget.classList.remove("drag-over"); }
@@ -420,17 +523,12 @@ def complete_task(deal_id, task_id):
                     t["done"] = True
                     task_date = t.get("date", "")
                     
-                    # Проверяем на просрочку
                     if task_date < today_str:
                         history_text = f"✓ Выполнил задачу с просрочкой (план: {task_date}, факт: {datetime.now().strftime('%Y-%m-%d')}): [{t['type']}] {t['text']}"
                     else:
                         history_text = f"✓ Выполнил задачу вовремя: [{t['type']}] {t['text']}"
                         
-                    d["history"].append({
-                        "date": now_str, 
-                        "author": user["name"], 
-                        "text": history_text
-                    })
+                    d["history"].append({"date": now_str, "author": user["name"], "text": history_text})
                     break
     save_db(db)
     return redirect(url_for("index"))
@@ -447,11 +545,7 @@ def remind_task(deal_id, task_id):
                 if t.get("id") == task_id:
                     t["reminded"] = True
                     now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
-                    d["history"].append({
-                        "date": now_str, 
-                        "author": user["name"], 
-                        "text": f"⚡ РОП напомнил менеджеру о просроченной задаче!"
-                    })
+                    d["history"].append({"date": now_str, "author": user["name"], "text": f"⚡ РОП напомнил менеджеру о просроченной задаче!"})
                     break
     save_db(db)
     return redirect(url_for("index"))
@@ -475,11 +569,7 @@ def move_deal():
                 
                 now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
                 d["stage"] = target_stage
-                d["history"].append({
-                    "date": now_str, 
-                    "author": user["name"], 
-                    "text": f"Перетащил карточку на этап: {stage_name}"
-                })
+                d["history"].append({"date": now_str, "author": user["name"], "text": f"Перетащил карточку на этап: {stage_name}"})
                 save_db(db)
                 return jsonify({"success": True})
     return jsonify({"success": False})
@@ -489,24 +579,42 @@ def add():
     if "user" not in session: return redirect(url_for("login"))
     user = USERS[session["user"]]
     db = load_db()
+    
     client_name = request.form.get("client")
+    selected_stage = request.form.get("stage", "stage_1")
+    selected_manager = request.form.get("manager", user["name"])
+    director = request.form.get("director", "").strip()
+    phones = [p.strip() for p in request.form.getlist("phones") if p.strip()]
+    contact_person = request.form.get("contact_person", "").strip()
+    contact_phone = request.form.get("contact_phone", "").strip()
+    email = request.form.get("email", "").strip()
+    region = request.form.get("region", "").strip()
     initial_comment = request.form.get("comment", "").strip()
     
     now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
     history_list = []
+    
+    stage_name = selected_stage
+    for sk, sn, sc in STAGES:
+        if sk == selected_stage: stage_name = sn
+
     if initial_comment:
-        history_list.append({"date": now_str, "author": user["name"], "text": initial_comment})
+        history_list.append({"date": now_str, "author": user["name"], "text": f"Создана заявка (этап: {stage_name}, ответственный: {selected_manager}). Комментарий: {initial_comment}"})
     else:
-        history_list.append({"date": now_str, "author": user["name"], "text": "Создана новая заявка"})
+        history_list.append({"date": now_str, "author": user["name"], "text": f"Создана новая заявка на этапе: {stage_name}, ответственный: {selected_manager}"})
 
     db["deals"].append({
         "id": str(len(db["deals"]) + 1),
         "title": client_name,
         "client": client_name,
-        "phone": request.form.get("phone"),
-        "region": request.form.get("region"),
-        "stage": "stage_1",
-        "manager": user["name"],
+        "director": director,
+        "phones": phones,
+        "contact_person": contact_person,
+        "contact_phone": contact_phone,
+        "email": email,
+        "region": region,
+        "stage": selected_stage,
+        "manager": selected_manager,
         "total_sum": 0,
         "history": history_list,
         "tasks": []
@@ -526,6 +634,13 @@ def update(id):
             new_stage = request.form.get("stage")
             new_sum = int(request.form.get("total_sum") or 0)
             new_comment = request.form.get("new_comment", "").strip()
+            
+            d["director"] = request.form.get("director", "").strip()
+            d["phones"] = [p.strip() for p in request.form.getlist("phones") if p.strip()]
+            d["contact_person"] = request.form.get("contact_person", "").strip()
+            d["contact_phone"] = request.form.get("contact_phone", "").strip()
+            d["email"] = request.form.get("email", "").strip()
+            d["region"] = request.form.get("region", "").strip()
             
             task_date = request.form.get("task_date")
             task_type = request.form.get("task_type")
@@ -561,8 +676,6 @@ def update(id):
                 
             d["title"] = client_name
             d["client"] = client_name
-            d["phone"] = request.form.get("phone")
-            d["region"] = request.form.get("region")
             break
             
     save_db(db)
