@@ -107,12 +107,12 @@ LOGIN_HTML = """
 </html>
 """
 
-LAYOUT_TEMPLATE = """
+BASE_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Ангар CRM</title>
+    <title>{{ page_title }} - Ангар CRM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background: #f8f9fa; font-family: Arial, sans-serif; overflow-x: hidden; }
@@ -139,7 +139,7 @@ LAYOUT_TEMPLATE = """
 <body>
 
 <div class="wrapper">
-    <!-- Левая панель навигации (Битрикс24 стиль) -->
+    <!-- Левая панель навигации -->
     <div class="sidebar">
         <div class="brand">🏗️ Ангар CRM</div>
         <div class="menu">
@@ -151,7 +151,7 @@ LAYOUT_TEMPLATE = """
         </div>
         <div class="p-3 bg-dark border-top border-secondary text-muted small">
             <div>👤 {{ user.name }}</div>
-            <a href="/logout" class="text-danger text-decoration-none mt-1 d-inline-block">🚪 Выйти из системы</a>
+            <a href="/logout" class="text-danger text-decoration-none mt-1 d-inline-block">🚪 Выйти</a>
         </div>
     </div>
 
@@ -183,13 +183,31 @@ LAYOUT_TEMPLATE = """
         </div>
 
         <div class="content-body">
-            {% block content %}{% endblock %}
+            {{ content|safe }}
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-{% block scripts %}{% endblock %}
+<script>
+function addPhoneField(id) {
+    var c = document.getElementById(id);
+    var d = document.createElement('div');
+    d.className = 'input-group mb-2';
+    d.innerHTML = '<input type="text" name="phones" class="form-control" placeholder="+7..."><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>';
+    c.appendChild(d);
+}
+function dragDeal(ev, id) { ev.dataTransfer.setData("dealId", id); }
+function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add("drag-over"); }
+function removeDragOver(ev) { ev.currentTarget.classList.remove("drag-over"); }
+function dropDeal(ev, stage) {
+    ev.preventDefault();
+    ev.currentTarget.classList.remove("drag-over");
+    var id = ev.dataTransfer.getData("dealId");
+    fetch('/move_deal', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: id, stage: stage})})
+    .then(res => res.json()).then(data => { if(data.success) location.reload(); });
+}
+</script>
 </body>
 </html>
 """
@@ -228,159 +246,182 @@ def index():
                 if t.get("date", "") < today_str:
                     overdue_count += 1
                     
-    kanban_html = """
-    {% extends layout %}
-    {% block content %}
+    # Генерация карточек и модалок для канбана
+    kanban_content = """
     <div class="kanban">
-        {% for s_key, s_name, s_color in stages %}
-        <div class="k-col" data-stage="{{ s_key }}">
-            <div class="k-header" style="background-color: {{ s_color }}; {% if s_key == 'stage_2' %}color: #000;{% endif %}">{{ s_name }}</div>
-            <div class="k-body" id="col-{{ s_key }}" ondragover="allowDrop(event)" ondragleave="removeDragOver(event)" ondrop="dropDeal(event, '{{ s_key }}')">
-                {% for d in deals %}
-                    {% if d.stage == s_key %}
-                    <div class="deal-card" id="card-{{ d.id }}" draggable="true" ondragstart="dragDeal(event, '{{ d.id }}')" data-bs-toggle="modal" data-bs-target="#cardModal{{ d.id }}">
-                        <div class="fw-bold text-primary mb-1" style="font-size: 13px;">{{ d.title }}</div>
-                        <div class="text-muted text-truncate">📍 {{ d.region or 'Регион не указан' }}</div>
-                        <div class="text-secondary text-truncate">👤 Директор: {{ d.director or 'Не указан' }}</div>
-                        <div class="text-dark text-truncate">📞 {{ d.phones[0] if d.phones else 'Нет телефона' }}</div>
-                        
-                        {% for t in d.tasks %}
-                            {% if not t.done %}
-                                {% if t.date < today_str %}
-                                <div class="mt-1"><span class="badge bg-danger">⚠️ Просрочено: {{ t.date }} ({{ t.type }})</span></div>
-                                {% else %}
-                                <div class="mt-1"><span class="badge bg-warning text-dark">⏰ {{ t.date }} ({{ t.type }})</span></div>
-                                {% endif %}
-                            {% endif %}
-                        {% endfor %}
+    """
+    
+    for s_key, s_name, s_color in STAGES:
+        color_style = f"background-color: {s_color};"
+        if s_key == 'stage_2': color_style += " color: #000;"
+        
+        kanban_content += f"""
+        <div class="k-col" data-stage="{s_key}">
+            <div class="k-header" style="{color_style}">{s_name}</div>
+            <div class="k-body" id="col-{s_key}" ondragover="allowDrop(event)" ondragleave="removeDragOver(event)" ondrop="dropDeal(event, '{s_key}')">
+        """
+        
+        for d in db["deals"]:
+            if d.get("stage") == s_key:
+                region_text = d.get('region') or 'Регион не указан'
+                dir_text = d.get('director') or 'Не указан'
+                phone_text = d.get('phones')[0] if d.get('phones') else 'Нет телефона'
+                sum_val = d.get('total_sum', 0)
+                sum_str = "{:,}".format(sum_val).replace(",", " ") if sum_val > 0 else "—"
+                manager_text = d.get('manager') or 'Не назначен'
+                
+                tasks_badge = ""
+                for t in d.get("tasks", []):
+                    if not t.get("done"):
+                        if t.get("date") < today_str:
+                            tasks_badge += f'<div class="mt-1"><span class="badge bg-danger">⚠️ Просрочено: {t.get("date")}</span></div>'
+                        else:
+                            tasks_badge += f'<div class="mt-1"><span class="badge bg-warning text-dark">⏰ {t.get("date")}</span></div>'
 
-                        <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 11px;">
-                            {% if loop.index0 >= 10 or d.total_sum > 0 %}
-                            <span>Сумма: {{ "{:,}".format(d.total_sum).replace(",", " ") }} ₸</span>
-                            {% else %}
-                            <span>Сумма: —</span>
-                            {% endif %}
-                            <span class="badge bg-light text-dark border">{{ d.manager or 'Не назначен' }}</span>
-                        </div>
+                kanban_content += f"""
+                <div class="deal-card" id="card-{d['id']}" draggable="true" ondragstart="dragDeal(event, '{d['id']}')" data-bs-toggle="modal" data-bs-target="#cardModal{d['id']}">
+                    <div class="fw-bold text-primary mb-1" style="font-size: 13px;">{d['title']}</div>
+                    <div class="text-muted text-truncate">📍 {region_text}</div>
+                    <div class="text-secondary text-truncate">👤 Директор: {dir_text}</div>
+                    <div class="text-dark text-truncate">📞 {phone_text}</div>
+                    {tasks_badge}
+                    <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 11px;">
+                        <span>Сумма: {sum_str} ₸</span>
+                        <span class="badge bg-light text-dark border">{manager_text}</span>
                     </div>
+                </div>
 
-                    <!-- Модальное окно карточки клиента -->
-                    <div class="modal fade" id="cardModal{{ d.id }}" tabindex="-1">
-                        <div class="modal-dialog modal-lg">
-                            <div class="modal-content">
-                                <form method="POST" action="/update/{{ d.id }}">
-                                    <div class="modal-header bg-primary text-white">
-                                        <h5 class="modal-title">Карточка клиента: {{ d.client }}</h5>
-                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="row g-3">
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-bold">ТОО / КХ (Название):</label>
-                                                <input type="text" name="client" class="form-control" value="{{ d.client }}" required>
+                <!-- Модалка карточки -->
+                <div class="modal fade" id="cardModal{d['id']}" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <form method="POST" action="/update/{d['id']}">
+                                <div class="modal-header bg-primary text-white">
+                                    <h5 class="modal-title">Карточка клиента: {d['client']}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">ТОО / КХ:</label>
+                                            <input type="text" name="client" class="form-control" value="{d['client']}" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Расположение:</label>
+                                            <input type="text" name="region" class="form-control" value="{d.get('region', '')}">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">ФИО Директора:</label>
+                                            <input type="text" name="director" class="form-control" value="{d.get('director', '')}">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Email:</label>
+                                            <input type="email" name="email" class="form-control" value="{d.get('email', '')}">
+                                        </div>
+                                        <div class="col-md-12">
+                                            <label class="form-label fw-bold">Телефоны:</label>
+                                            <div id="phones-container-{d['id']}">
+                """
+                for ph in d.get("phones", []):
+                    kanban_content += f"""
+                    <div class="input-group mb-2">
+                        <input type="text" name="phones" class="form-control" value="{ph}">
+                        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>
+                    </div>
+                    """
+                kanban_content += f"""
                                             </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-bold">Расположение:</label>
-                                                <input type="text" name="region" class="form-control" value="{{ d.region }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-bold">ФИО Директора:</label>
-                                                <input type="text" name="director" class="form-control" value="{{ d.director }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-bold">Email:</label>
-                                                <input type="email" name="email" class="form-control" value="{{ d.email }}">
-                                            </div>
-                                            <div class="col-md-12">
-                                                <label class="form-label fw-bold">Телефоны:</label>
-                                                <div id="phones-container-{{ d.id }}">
-                                                    {% if d.phones %}
-                                                        {% for phone in d.phones %}
-                                                        <div class="input-group mb-2">
-                                                            <input type="text" name="phones" class="form-control" value="{{ phone }}">
-                                                            <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>
-                                                        </div>
-                                                        {% endfor %}
-                                                    {% endif %}
+                                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="addPhoneField('phones-container-{d['id']}')">+ Телефон</button>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Этап воронки:</label>
+                                            <select name="stage" class="form-select">
+                """
+                for sk, sn, sc in STAGES:
+                    sel = "selected" if d['stage'] == sk else ""
+                    kanban_content += f'<option value="{sk}" {sel}>{sn}</option>'
+                
+                kanban_content += f"""
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Ответственный менеджер:</label>
+                """
+                if user["role"] in ["director", "rop"]:
+                    kanban_content += f"""
+                    <select name="manager" class="form-select">
+                        <option value="Не назначен" {'selected' if d.get('manager')=='Не назначен' else ''}>Не назначен</option>
+                        <option value="Менеджер 1" {'selected' if d.get('manager')=='Менеджер 1' else ''}>Менеджер 1</option>
+                        <option value="Менеджер 2" {'selected' if d.get('manager')=='Менеджер 2' else ''}>Менеджер 2</option>
+                        <option value="Уралбаев Ж.А. (Директор)" {'selected' if d.get('manager')=='Уралбаев Ж.А. (Директор)' else ''}>Уралбаев Ж.А. (Директор)</option>
+                        <option value="Лемперт А.С. (РОП)" {'selected' if d.get('manager')=='Лемперт А.С. (РОП)' else ''}>Лемперт А.С. (РОП)</option>
+                    </select>
+                    """
+                else:
+                    kanban_content += f"""
+                    <input type="text" class="form-control bg-light" value="{d.get('manager', '')}" readonly>
+                    <input type="hidden" name="manager" value="{d.get('manager', '')}">
+                    """
+
+                kanban_content += f"""
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Сумма сделки (₸):</label>
+                                            <input type="number" name="total_sum" class="form-control" value="{d.get('total_sum', 0)}">
+                                        </div>
+                                        <div class="col-12 bg-light p-3 border rounded">
+                                            <h6 class="fw-bold text-dark m-0 mb-2">⏰ Новая задача:</h6>
+                                            <div class="row g-2">
+                                                <div class="col-md-4"><input type="date" name="task_date" class="form-control form-control-sm"></div>
+                                                <div class="col-md-4">
+                                                    <select name="task_type" class="form-select form-select-sm">
+                                                        <option value="Звонок">📞 Звонок</option>
+                                                        <option value="Встреча">🤝 Встреча</option>
+                                                        <option value="Отправить КП">📄 Отправить КП</option>
+                                                    </select>
                                                 </div>
-                                                <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="addPhoneField('phones-container-{{ d.id }}')">+ Добавить телефон</button>
+                                                <div class="col-md-4"><input type="text" name="task_text" class="form-control form-control-sm" placeholder="Что сделать..."></div>
                                             </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-bold">Этап воронки:</label>
-                                                <select name="stage" class="form-select">
-                                                    {% for sk, sn, sc in stages %}
-                                                    <option value="{{ sk }}" {% if d.stage == sk %}selected{% endif %}>{{ sn }}</option>
-                                                    {% endfor %}
-                                                </select>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-bold">Ответственный менеджер:</label>
-                                                {% if user.role in ['director', 'rop'] %}
-                                                <select name="manager" class="form-select">
-                                                    <option value="Не назначен" {% if d.manager == 'Не назначен' %}selected{% endif %}>Не назначен</option>
-                                                    <option value="Менеджер 1" {% if d.manager == 'Менеджер 1' %}selected{% endif %}>Менеджер 1</option>
-                                                    <option value="Менеджер 2" {% if d.manager == 'Менеджер 2' %}selected{% endif %}>Менеджер 2</option>
-                                                    <option value="Уралбаев Ж.А. (Директор)" {% if d.manager == 'Уралбаев Ж.А. (Директор)' %}selected{% endif %}>Уралбаев Ж.А. (Директор)</option>
-                                                    <option value="Лемперт А.С. (РОП)" {% if d.manager == 'Лемперт А.С. (РОП)' %}selected{% endif %}>Лемперт А.С. (РОП)</option>
-                                                </select>
-                                                {% else %}
-                                                <input type="text" class="form-control bg-light" value="{{ d.manager }}" readonly>
-                                                <input type="hidden" name="manager" value="{{ d.manager }}">
-                                                {% endif %}
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-bold">Сумма сделки (₸):</label>
-                                                <input type="number" name="total_sum" class="form-control" value="{{ d.total_sum }}">
-                                            </div>
-                                            <div class="col-12 bg-light p-3 border rounded">
-                                                <h6 class="fw-bold text-dark m-0 mb-2">⏰ Поставить задачу:</h6>
-                                                <div class="row g-2">
-                                                    <div class="col-md-4"><input type="date" name="task_date" class="form-control form-control-sm"></div>
-                                                    <div class="col-md-4">
-                                                        <select name="task_type" class="form-select form-select-sm">
-                                                            <option value="Звонок">📞 Звонок</option>
-                                                            <option value="Встреча">🤝 Встреча</option>
-                                                            <option value="Отправить КП">📄 Отправить КП</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-md-4"><input type="text" name="task_text" class="form-control form-control-sm" placeholder="Что сделать..."></div>
-                                                </div>
-                                            </div>
-                                            <div class="col-12">
-                                                <label class="form-label fw-bold text-success">+ Комментарий:</label>
-                                                <textarea name="new_comment" class="form-control" rows="2"></textarea>
-                                            </div>
-                                            <div class="col-12">
-                                                <label class="form-label fw-bold text-secondary">📜 История:</label>
-                                                <div class="history-box">
-                                                    {% if d.history %}
-                                                        {% for h in d.history|reverse %}
-                                                        <div class="mb-1 border-bottom pb-1">
-                                                            <span class="text-primary fw-bold">[{{ h.date }}] {{ h.author }}:</span> 
-                                                            <span>{{ h.text }}</span>
-                                                        </div>
-                                                        {% endfor %}
-                                                    {% endif %}
-                                                </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-success">+ Комментарий:</label>
+                                            <textarea name="new_comment" class="form-control" rows="2"></textarea>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-secondary">📜 История:</label>
+                                            <div class="history-box">
+                """
+                for h in reversed(d.get("history", [])):
+                    kanban_content += f"""
+                    <div class="mb-1 border-bottom pb-1">
+                        <span class="text-primary fw-bold">[{h.get('date')}] {h.get('author')}:</span> 
+                        <span>{h.get('text')}</span>
+                    </div>
+                    """
+                kanban_content += f"""
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                                        <button type="submit" class="btn btn-primary">Сохранить</button>
-                                    </div>
-                                </form>
-                            </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
-                    {% endif %}
-                {% endfor %}
+                </div>
+                """
+        
+        kanban_content += """
             </div>
         </div>
-        {% endfor %}
-    </div>
-
-    <!-- Модалка задач -->
+        """
+    
+    kanban_content += "</div>"
+    
+    # Модалка задач
+    kanban_content += """
     <div class="modal fade" id="tasksListModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -390,42 +431,50 @@ def index():
                 </div>
                 <div class="modal-body">
                     <div class="list-group">
-                    {% for d in deals %}
-                        {% for t in d.tasks %}
-                        {% if not t.done %}
-                        <div class="list-group-item d-flex justify-content-between align-items-center {% if t.date < today_str %}list-group-item-danger{% endif %}">
-                            <div>
-                                {% if t.date < today_str %}
-                                <span class="badge bg-danger">⚠️ Просрочено ({{ t.date }})</span>
-                                {% else %}
-                                <span class="badge bg-primary">{{ t.date }}</span>
-                                {% endif %}
-                                <span class="badge bg-dark">{{ t.type }}</span>
-                                <strong class="ms-2">{{ d.client }}</strong>
-                                <div class="small mt-1">{{ t.text }}</div>
-                                <div class="small text-muted mt-1">Ответственный: <b>{{ d.manager }}</b></div>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <form method="POST" action="/complete_task/{{ d.id }}/{{ t.id }}">
-                                    <button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button>
-                                </form>
-                                {% if user.role in ['director', 'rop'] and t.date < today_str %}
-                                <form method="POST" action="/remind_task/{{ d.id }}/{{ t.id }}">
-                                    <button type="submit" class="btn btn-danger btn-sm fw-bold">⚡ Напомнить</button>
-                                </form>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% endfor %}
-                    {% endfor %}
+    """
+    for d in db["deals"]:
+        for t in d.get("tasks", []):
+            if not t.get("done", False):
+                is_overdue = t.get("date") < today_str
+                badge_class = "list-group-item-danger" if is_overdue else ""
+                date_badge = f'<span class="badge bg-danger">⚠️ Просрочено ({t.get("date")})</span>' if is_overdue else f'<span class="badge bg-primary">{t.get("date")}</span>'
+                
+                remind_btn = ""
+                if user["role"] in ["director", "rop"] and is_overdue:
+                    remind_btn = f'''
+                    <form method="POST" action="/remind_task/{d['id']}/{t['id']}">
+                        <button type="submit" class="btn btn-danger btn-sm fw-bold">⚡ Напомнить</button>
+                    </form>
+                    '''
+                
+                kanban_content += f'''
+                <div class="list-group-item d-flex justify-content-between align-items-center {badge_class}">
+                    <div>
+                        {date_badge}
+                        <span class="badge bg-dark">{t.get("type")}</span>
+                        <strong class="ms-2">{d['client']}</strong>
+                        <div class="small mt-1">{t.get("text")}</div>
+                        <div class="small text-muted mt-1">Ответственный: <b>{d.get('manager')}</b></div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <form method="POST" action="/complete_task/{d['id']}/{t['id']}">
+                            <button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button>
+                        </form>
+                        {remind_btn}
+                    </div>
+                </div>
+                '''
+    kanban_content += """
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    """
 
-    <!-- Модалка добавления сделки -->
+    # Модалка добавления сделки
+    stages_options = "".join([f'<option value="{sk}">{sn}</option>' for sk, sn, sc in STAGES])
+    kanban_content += f"""
     <div class="modal fade" id="addModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -439,14 +488,12 @@ def index():
                             <div class="col-md-6"><label class="form-label fw-bold">ТОО / КХ:</label><input type="text" name="client" class="form-control" required placeholder="ТОО Агро"></div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Этап:</label>
-                                <select name="stage" class="form-select">
-                                    {% for sk, sn, sc in stages %}<option value="{{ sk }}">{{ sn }}</option>{% endfor %}
-                                </select>
+                                <select name="stage" class="form-select">{stages_options}</select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Ответственный:</label>
                                 <select name="manager" class="form-select">
-                                    <option value="{{ user.name }}">{{ user.name }}</option>
+                                    <option value="{user['name']}">{user['name']}</option>
                                     <option value="Менеджер 1">Менеджер 1</option>
                                     <option value="Менеджер 2">Менеджер 2</option>
                                     <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
@@ -468,34 +515,9 @@ def index():
             </div>
         </div>
     </div>
-    {% endblock %}
-
-    {% block scripts %}
-    <script>
-    function addPhoneField(id) {
-        var c = document.getElementById(id);
-        var d = document.createElement('div');
-        d.className = 'input-group mb-2';
-        d.innerHTML = '<input type="text" name="phones" class="form-control" placeholder="+7..."><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>';
-        c.appendChild(d);
-    }
-    function dragDeal(ev, id) { ev.dataTransfer.setData("dealId", id); }
-    function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add("drag-over"); }
-    function removeDragOver(ev) { ev.currentTarget.classList.remove("drag-over"); }
-    function dropDeal(ev, stage) {
-        ev.preventDefault();
-        ev.currentTarget.classList.remove("drag-over");
-        var id = ev.dataTransfer.getData("dealId");
-        fetch('/move_deal', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: id, stage: stage})})
-        .then(res => res.json()).then(data => { if(data.success) location.reload(); });
-    }
-    </script>
-    {% endblock %}
     """
     
-    full_html = LAYOUT_TEMPLATE.replace("{% extends layout %}", "").replace("{% block content %}", "").replace("{% endblock %}", "").replace("{% block scripts %}", "").replace("{% endblock scripts %}", "")
-    # Рендерим через шаблон компоновки
-    return render_template_string(LAYOUT_TEMPLATE, active_page="kanban", user=user, stages=STAGES, deals=db["deals"], total_tasks_count=total_tasks, overdue_count=overdue_count, today_str=today_str)
+    return render_template_string(BASE_TEMPLATE, page_title="Воронка продаж", active_page="kanban", user=user, total_tasks_count=total_tasks, overdue_count=overdue_count, content=kanban_content)
 
 @app.route("/tz")
 def tz_page():
@@ -503,9 +525,7 @@ def tz_page():
     user = USERS[session["user"]]
     db = load_db()
     
-    TZ_TEMPLATE = """
-    {% extends layout %}
-    {% block content %}
+    tz_content = """
     <div class="container-fluid p-3">
         <div class="card shadow-sm border-0">
             <div class="card-body">
@@ -522,27 +542,29 @@ def tz_page():
                         </tr>
                     </thead>
                     <tbody>
-                        {% if tz_list %}
-                            {% for tz in tz_list %}
-                            <tr>
-                                <td class="fw-bold text-primary">{{ tz.client }}</td>
-                                <td>{{ tz.parameters }}</td>
-                                <td><span class="badge bg-secondary">{{ tz.author }}</span></td>
-                                <td><span class="badge bg-info text-dark">{{ tz.responsible }}</span></td>
-                                <td class="small text-muted">РОП: {{ tz.rop }}<br>Директор: {{ tz.director }}</td>
-                                <td><span class="badge bg-warning text-dark">{{ tz.status }}</span></td>
-                                <td class="small">{{ tz.date }}</td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr><td colspan="7" class="text-center text-muted py-4">Технические задания пока не создавались.</td></tr>
-                        {% endif %}
+    """
+    if db.get("tz_list"):
+        for tz in db["tz_list"]:
+            tz_content += f"""
+            <tr>
+                <td class="fw-bold text-primary">{tz['client']}</td>
+                <td>{tz['parameters']}</td>
+                <td><span class="badge bg-secondary">{tz['author']}</span></td>
+                <td><span class="badge bg-info text-dark">{tz['responsible']}</span></td>
+                <td class="small text-muted">РОП: {tz['rop']}<br>Директор: {tz['director']}</td>
+                <td><span class="badge bg-warning text-dark">{tz['status']}</span></td>
+                <td class="small">{tz['date']}</td>
+            </tr>
+            """
+    else:
+        tz_content += '<tr><td colspan="7" class="text-center text-muted py-4">Технические задания пока не создавались.</td></tr>'
+        
+    tz_content += """
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Модалка создания ТЗ -->
         <div class="modal fade" id="addTzModal" tabindex="-1">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
@@ -566,7 +588,7 @@ def tz_page():
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label fw-bold">Параметры ангара (размеры, утепление, тип каркаса):</label>
-                                    <textarea name="parameters" class="form-control" rows="3" required placeholder="Например: Прямостенный ангар 24х60х7м, с двумя воротами 4х4м, снеговой район III..."></textarea>
+                                    <textarea name="parameters" class="form-control" rows="3" required placeholder="Например: Прямостенный ангар 24х60х7м..."></textarea>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label text-muted small">Наблюдатель (РОП):</label>
@@ -587,16 +609,14 @@ def tz_page():
             </div>
         </div>
     </div>
-    {% endblock %}
     """
-    return render_template_string(TZ_TEMPLATE, active_page="tz", user=user, tz_list=db.get("tz_list", []))
+    return render_template_string(BASE_TEMPLATE, page_title="Технические задания", active_page="tz", user=user, content=tz_content)
 
 @app.route("/tz/add", methods=["POST"])
 def add_tz():
     if "user" not in session: return redirect(url_for("login"))
     user = USERS[session["user"]]
     db = load_db()
-    
     if "tz_list" not in db: db["tz_list"] = []
     
     db["tz_list"].append({
@@ -617,34 +637,34 @@ def add_tz():
 def analytics_page():
     if "user" not in session: return redirect(url_for("login"))
     user = USERS[session["user"]]
-    
-    # Защита: доступ только у РОПа и Директора
     if user["role"] not in ["director", "rop"]:
         return "<h3 style='color:red; text-align:center; margin-top:50px;'>⛔ Доступ запрещен! Эта страница доступна только РОПу и Директору.</h3><p style='text-align:center;'><a href='/'>Вернуться в CRM</a></p>"
     
     db = load_db()
+    total_deals = len(db["deals"])
+    total_contract_sum = sum(d.get("total_sum", 0) for d in db["deals"])
+    total_tz = len(db.get("tz_list", []))
+    sum_formatted = "{:,}".format(total_contract_sum).replace(",", " ")
     
-    ANALYTICS_TEMPLATE = """
-    {% extends layout %}
-    {% block content %}
+    analytics_content = f"""
     <div class="container-fluid p-4">
         <div class="row g-3">
             <div class="col-md-4">
                 <div class="card shadow-sm border-0 bg-primary text-white p-3">
                     <h5>📊 Всего сделок в работе</h5>
-                    <h3>{{ total_deals }}</h3>
+                    <h3>{total_deals}</h3>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card shadow-sm border-0 bg-success text-white p-3">
                     <h5>💰 Сумма по договорам</h5>
-                    <h3>{{ total_contract_sum | format_money }} ₸</h3>
+                    <h3>{sum_formatted} ₸</h3>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card shadow-sm border-0 bg-warning text-dark p-3">
                     <h5>📐 Активных ТЗ в ПТО</h5>
-                    <h3>{{ total_tz }}</h3>
+                    <h3>{total_tz}</h3>
                 </div>
             </div>
         </div>
@@ -653,17 +673,8 @@ def analytics_page():
             <p class="text-muted">Контроль конверсии и финансовых потоков строительства ангаров по регионам и менеджерам.</p>
         </div>
     </div>
-    {% endblock %}
     """
-    
-    # Фильтр для форматирования денег в шаблоне
-    app.jinja_env.filters['format_money'] = lambda val: "{:,}".format(val).replace(",", " ")
-    
-    total_deals = len(db["deals"])
-    total_contract_sum = sum(d.get("total_sum", 0) for d in db["deals"])
-    total_tz = len(db.get("tz_list", []))
-    
-    return render_template_string(ANALYTICS_TEMPLATE, active_page="analytics", user=user, total_deals=total_deals, total_contract_sum=total_contract_sum, total_tz=total_tz)
+    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", user=user, content=analytics_content)
 
 @app.route("/move_deal", methods=["POST"])
 def move_deal():
