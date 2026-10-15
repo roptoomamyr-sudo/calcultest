@@ -52,6 +52,19 @@ def load_db():
                 "history": [{"date": "15.10.2026 12:00", "author": "РОП", "text": "Создана сделка, скинул КП"}],
                 "tasks": []
             }
+        ],
+        "tz_list": [
+            {
+                "id": "tz_1",
+                "client": 'ТОО "МИРАМ"',
+                "parameters": "Арочный ангар 20х50х8м, утепленный, с двумя воротными проемами",
+                "author": "Менеджер 1",
+                "responsible": "Инженер ПТО",
+                "rop": "Лемперт А.С. (РОП)",
+                "director": "Уралбаев Ж.А. (Директор)",
+                "status": "В работе",
+                "date": "15.10.2026"
+            }
         ]
     }
     if not os.path.exists(DB_FILE):
@@ -63,6 +76,8 @@ def load_db():
             if not isinstance(data, dict) or "deals" not in data:
                 save_db(default_data)
                 return default_data
+            if "tz_list" not in data:
+                data["tz_list"] = []
             return data
     except:
         save_db(default_data)
@@ -92,17 +107,25 @@ LOGIN_HTML = """
 </html>
 """
 
-CRM_HTML = """
+LAYOUT_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>CRM Воронка Ангары (Bitrix24 Style)</title>
+    <title>Ангар CRM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; font-family: Arial, sans-serif; }
-        .top-bar { background: #ffffff; border-bottom: 1px solid #dee2e6; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .kanban { display: flex; overflow-x: auto; gap: 12px; padding: 15px; height: calc(100vh - 120px); }
+        body { background: #f8f9fa; font-family: Arial, sans-serif; overflow-x: hidden; }
+        .wrapper { display: flex; width: 100%; height: 100vh; }
+        .sidebar { width: 240px; background: #212529; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; }
+        .sidebar .brand { padding: 15px; font-size: 16px; font-weight: bold; background: #1a1e21; border-bottom: 1px solid #373b3e; text-align: center; }
+        .sidebar .menu { padding: 15px 10px; display: flex; flex-direction: column; gap: 8px; flex-grow: 1; }
+        .sidebar .menu a { color: #adb5bd; text-decoration: none; padding: 10px 12px; border-radius: 4px; font-size: 13px; transition: 0.2s; }
+        .sidebar .menu a:hover, .sidebar .menu a.active { background: #0d6efd; color: #fff; }
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .top-bar { background: #ffffff; border-bottom: 1px solid #dee2e6; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; height: 60px; flex-shrink: 0; }
+        .content-body { flex-grow: 1; overflow-y: auto; padding: 15px; background: #f8f9fa; }
+        .kanban { display: flex; overflow-x: auto; gap: 12px; height: 100%; padding-bottom: 10px; }
         .k-col { min-width: 280px; max-width: 280px; background: #e9ecef; border-radius: 6px; display: flex; flex-direction: column; max-height: 100%; }
         .k-header { padding: 10px; font-weight: bold; font-size: 13px; color: white; border-top-left-radius: 6px; border-top-right-radius: 6px; text-align: center; }
         .k-body { padding: 8px; overflow-y: auto; flex-grow: 1; min-height: 200px; }
@@ -115,351 +138,58 @@ CRM_HTML = """
 </head>
 <body>
 
-<div class="top-bar">
-    <div class="d-flex align-items-center gap-3">
-        <h5 class="m-0 fw-bold text-secondary">🗂️ CRM Воронка Ангары (Bitrix24)</h5>
-        <button class="btn btn-success btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addModal">+ Добавить сделку</button>
-        <button class="btn btn-warning btn-sm fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#tasksListModal">
-            🔔 Задачи <span class="badge bg-primary ms-1">{{ total_tasks_count }}</span>
-            {% if overdue_count > 0 %}
-            <span class="badge bg-danger ms-1">⚠️ Просрочено: {{ overdue_count }}</span>
+<div class="wrapper">
+    <!-- Левая панель навигации (Битрикс24 стиль) -->
+    <div class="sidebar">
+        <div class="brand">🏗️ Ангар CRM</div>
+        <div class="menu">
+            <a href="/" class="{% if active_page == 'kanban' %}active{% endif %}">📊 Канбан CRM</a>
+            <a href="/tz" class="{% if active_page == 'tz' %}active{% endif %}">📐 Технические задания</a>
+            {% if user.role in ['director', 'rop'] %}
+            <a href="/analytics" class="{% if active_page == 'analytics' %}active{% endif %}">📈 Воронка продаж (Отчеты)</a>
             {% endif %}
-        </button>
+        </div>
+        <div class="p-3 bg-dark border-top border-secondary text-muted small">
+            <div>👤 {{ user.name }}</div>
+            <a href="/logout" class="text-danger text-decoration-none mt-1 d-inline-block">🚪 Выйти из системы</a>
+        </div>
     </div>
-    <div class="d-flex align-items-center gap-3">
-        <span class="badge bg-success">Облачная CRM Активна</span>
-        <span class="text-dark small">👤 {{ user.name }}</span>
-        <a href="/logout" class="btn btn-outline-danger btn-sm py-0">Выйти</a>
-    </div>
-</div>
 
-<div class="kanban">
-    {% for s_key, s_name, s_color in stages %}
-    <div class="k-col" data-stage="{{ s_key }}">
-        <div class="k-header" style="background-color: {{ s_color }}; {% if s_key == 'stage_2' %}color: #000;{% endif %}">{{ s_name }}</div>
-        <div class="k-body" id="col-{{ s_key }}" ondragover="allowDrop(event)" ondragleave="removeDragOver(event)" ondrop="dropDeal(event, '{{ s_key }}')">
-            {% for d in deals %}
-                {% if d.stage == s_key %}
-                <div class="deal-card" id="card-{{ d.id }}" draggable="true" ondragstart="dragDeal(event, '{{ d.id }}')" data-bs-toggle="modal" data-bs-target="#cardModal{{ d.id }}">
-                    <div class="fw-bold text-primary mb-1" style="font-size: 13px;">{{ d.title }}</div>
-                    <div class="text-muted text-truncate">📍 {{ d.region or 'Регион не указан' }}</div>
-                    <div class="text-secondary text-truncate">👤 Директор: {{ d.director or 'Не указан' }}</div>
-                    <div class="text-dark text-truncate">📞 {{ d.phones[0] if d.phones else 'Нет телефона' }}</div>
-                    
-                    {% for t in d.tasks %}
-                        {% if not t.done %}
-                            {% if t.date < today_str %}
-                            <div class="mt-1"><span class="badge bg-danger">⚠️ Просрочено: {{ t.date }} ({{ t.type }})</span></div>
-                            {% else %}
-                            <div class="mt-1"><span class="badge bg-warning text-dark">⏰ {{ t.date }} ({{ t.type }})</span></div>
-                            {% endif %}
-                        {% endif %}
-                    {% endfor %}
-
-                    <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 11px;">
-                        {% if loop.index0 >= 10 or d.total_sum > 0 %}
-                        <span>Сумма: {{ "{:,}".format(d.total_sum).replace(",", " ") }} ₸</span>
-                        {% else %}
-                        <span>Сумма: —</span>
-                        {% endif %}
-                        <span class="badge bg-light text-dark border">{{ d.manager or 'Не назначен' }}</span>
-                    </div>
-                </div>
-
-                <!-- Модальное окно карточки клиента -->
-                <div class="modal fade" id="cardModal{{ d.id }}" tabindex="-1">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <form method="POST" action="/update/{{ d.id }}">
-                                <div class="modal-header bg-primary text-white">
-                                    <h5 class="modal-title">Карточка клиента: {{ d.client }}</h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold">ТОО / КХ (Название):</label>
-                                            <input type="text" name="client" class="form-control" value="{{ d.client }}" required>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold">Расположение (область, район, поселок):</label>
-                                            <input type="text" name="region" class="form-control" value="{{ d.region }}">
-                                        </div>
-                                        
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold">ФИО Директора:</label>
-                                            <input type="text" name="director" class="form-control" value="{{ d.director }}">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold">Email:</label>
-                                            <input type="email" name="email" class="form-control" value="{{ d.email }}">
-                                        </div>
-
-                                        <div class="col-md-12">
-                                            <label class="form-label fw-bold">Телефоны директора:</label>
-                                            <div id="phones-container-{{ d.id }}">
-                                                {% if d.phones %}
-                                                    {% for phone in d.phones %}
-                                                    <div class="input-group mb-2">
-                                                        <input type="text" name="phones" class="form-control" value="{{ phone }}">
-                                                        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>
-                                                    </div>
-                                                    {% endfor %}
-                                                {% else %}
-                                                    <div class="input-group mb-2">
-                                                        <input type="text" name="phones" class="form-control" placeholder="+7...">
-                                                    </div>
-                                                {% endif %}
-                                            </div>
-                                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="addPhoneField('phones-container-{{ d.id }}')">+ Добавить телефон</button>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold">Контактное лицо (бухгалтер, снабженец):</label>
-                                            <input type="text" name="contact_person" class="form-control" value="{{ d.contact_person }}">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold">Телефон контактного лица:</label>
-                                            <input type="text" name="contact_phone" class="form-control" value="{{ d.contact_phone }}">
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold">Этап воронки:</label>
-                                            <select name="stage" class="form-select">
-                                                {% for sk, sn, sc in stages %}
-                                                <option value="{{ sk }}" {% if d.stage == sk %}selected{% endif %}>{{ sn }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold">Ответственный менеджер:</label>
-                                            {% if user.role in ['director', 'rop'] %}
-                                            <select name="manager" class="form-select">
-                                                <option value="Не назначен" {% if d.manager == 'Не назначен' %}selected{% endif %}>Не назначен</option>
-                                                <option value="Менеджер 1" {% if d.manager == 'Менеджер 1' %}selected{% endif %}>Менеджер 1</option>
-                                                <option value="Менеджер 2" {% if d.manager == 'Менеджер 2' %}selected{% endif %}>Менеджер 2</option>
-                                                <option value="Уралбаев Ж.А. (Директор)" {% if d.manager == 'Уралбаев Ж.А. (Директор)' %}selected{% endif %}>Уралбаев Ж.А. (Директор)</option>
-                                                <option value="Лемперт А.С. (РОП)" {% if d.manager == 'Лемперт А.С. (РОП)' %}selected{% endif %}>Лемперт А.С. (РОП)</option>
-                                            </select>
-                                            {% else %}
-                                            <input type="text" class="form-control bg-light" value="{{ d.manager }}" readonly>
-                                            <input type="hidden" name="manager" value="{{ d.manager }}">
-                                            {% endif %}
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold">Сумма сделки (₸):</label>
-                                            <input type="number" name="total_sum" class="form-control" value="{{ d.total_sum }}">
-                                        </div>
-
-                                        <!-- Задачи -->
-                                        <div class="col-12 bg-light p-3 border rounded">
-                                            <h6 class="fw-bold text-dark m-0 mb-2">⏰ Новое напоминание / задача:</h6>
-                                            <div class="row g-2">
-                                                <div class="col-md-4"><input type="date" name="task_date" class="form-control form-control-sm"></div>
-                                                <div class="col-md-4">
-                                                    <select name="task_type" class="form-select form-select-sm">
-                                                        <option value="Звонок">📞 Звонок</option>
-                                                        <option value="Встреча">🤝 Встреча</option>
-                                                        <option value="Отправить КП">📄 Отправить КП</option>
-                                                        <option value="Отправить презентацию">📊 Отправить презентацию</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-4"><input type="text" name="task_text" class="form-control form-control-sm" placeholder="Что сделать..."></div>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-12">
-                                            <label class="form-label fw-bold text-success">+ Добавить комментарий:</label>
-                                            <textarea name="new_comment" class="form-control" rows="2"></textarea>
-                                        </div>
-
-                                        <div class="col-12">
-                                            <label class="form-label fw-bold text-secondary">📜 История:</label>
-                                            <div class="history-box">
-                                                {% if d.history %}
-                                                    {% for h in d.history|reverse %}
-                                                    <div class="mb-1 border-bottom pb-1">
-                                                        <span class="text-primary fw-bold">[{{ h.date }}] {{ h.author }}:</span> 
-                                                        <span>{{ h.text }}</span>
-                                                    </div>
-                                                    {% endfor %}
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                                    <button type="submit" class="btn btn-primary">Сохранить изменения</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+    <!-- Основная рабочая область -->
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="d-flex align-items-center gap-3">
+                {% if active_page == 'kanban' %}
+                <h5 class="m-0 fw-bold text-secondary">🗂️ Воронка продаж</h5>
+                <button class="btn btn-success btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addModal">+ Добавить сделку</button>
+                {% elif active_page == 'tz' %}
+                <h5 class="m-0 fw-bold text-secondary">📐 Технические задания на расчет ангаров</h5>
+                <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addTzModal">+ Создать ТЗ</button>
+                {% else %}
+                <h5 class="m-0 fw-bold text-secondary">📈 Управленческая воронка и аналитика</h5>
                 {% endif %}
-            {% endfor %}
-        </div>
-    </div>
-    {% endfor %}
-</div>
-
-<!-- Модальное окно «Все задачи и напоминания» -->
-<div class="modal fade" id="tasksListModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title fw-bold">🔔 Панель задач и контроля</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div class="list-group">
-                {% for d in deals %}
-                    {% for t in d.tasks %}
-                    {% if not t.done %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center {% if t.date < today_str %}list-group-item-danger{% endif %}">
-                        <div>
-                            {% if t.date < today_str %}
-                            <span class="badge bg-danger">⚠️ Просрочено (план: {{ t.date }})</span>
-                            {% else %}
-                            <span class="badge bg-primary">{{ t.date }}</span>
-                            {% endif %}
-                            <span class="badge bg-dark">{{ t.type }}</span>
-                            <strong class="ms-2">{{ d.client }}</strong>
-                            <div class="small mt-1">{{ t.text }}</div>
-                            <div class="small text-muted mt-1">Ответственный: <b>{{ d.manager }}</b></div>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <form method="POST" action="/complete_task/{{ d.id }}/{{ t.id }}">
-                                <button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button>
-                            </form>
-                            
-                            {% if user.role in ['director', 'rop'] and t.date < today_str %}
-                            <form method="POST" action="/remind_task/{{ d.id }}/{{ t.id }}">
-                                <button type="submit" class="btn btn-danger btn-sm fw-bold">⚡ Напомнить менеджеру</button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </div>
+            <div class="d-flex align-items-center gap-3">
+                {% if active_page == 'kanban' %}
+                <button class="btn btn-warning btn-sm fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#tasksListModal">
+                    🔔 Задачи <span class="badge bg-primary ms-1">{{ total_tasks_count }}</span>
+                    {% if overdue_count > 0 %}
+                    <span class="badge bg-danger ms-1">⚠️ Просрочено: {{ overdue_count }}</span>
                     {% endif %}
-                    {% endfor %}
-                {% endfor %}
-                </div>
+                </button>
+                {% endif %}
+                <span class="badge bg-success">Render Cloud Активен</span>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- Модальное окно добавления сделки -->
-<div class="modal fade" id="addModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <form method="POST" action="/add">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title fw-bold">➕ Новая заявка / Сделка</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">ТОО / КХ (Название):</label>
-                            <input type="text" name="client" class="form-control" required placeholder="ТОО Агро">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Стартовый этап воронки:</label>
-                            <select name="stage" class="form-select">
-                                {% for sk, sn, sc in stages %}
-                                <option value="{{ sk }}">{{ sn }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Ответственный менеджер:</label>
-                            <select name="manager" class="form-select">
-                                <option value="{{ user.name }}">{{ user.name }} (Текущий)</option>
-                                <option value="Менеджер 1">Менеджер 1</option>
-                                <option value="Менеджер 2">Менеджер 2</option>
-                                <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
-                                <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Расположение (область, район, поселок):</label>
-                            <input type="text" name="region" class="form-control" placeholder="Костанайская область, п. Заречный">
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">ФИО Директора:</label>
-                            <input type="text" name="director" class="form-control" placeholder="Иванов И.И.">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Email:</label>
-                            <input type="email" name="email" class="form-control" placeholder="client@mail.kz">
-                        </div>
-
-                        <div class="col-md-12">
-                            <label class="form-label fw-bold">Телефоны директора:</label>
-                            <div id="new-phones-container">
-                                <div class="input-group mb-2">
-                                    <input type="text" name="phones" class="form-control" placeholder="+7...">
-                                </div>
-                            </div>
-                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="addPhoneField('new-phones-container')">+ Добавить телефон</button>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Контактное лицо (бухгалтер, снабженец):</label>
-                            <input type="text" name="contact_person" class="form-control" placeholder="Бухгалтер Светлана">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Телефон контактного лица:</label>
-                            <input type="text" name="contact_phone" class="form-control" placeholder="+7...">
-                        </div>
-
-                        <div class="col-12">
-                            <label class="form-label fw-bold">Комментарий / Описание задачи:</label>
-                            <textarea name="comment" class="form-control" rows="2" placeholder="Первичный комментарий..."></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" class="btn btn-success btn-sm fw-bold">Создать сделку</button>
-                </div>
-            </form>
+        <div class="content-body">
+            {% block content %}{% endblock %}
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-function addPhoneField(containerId) {
-    var container = document.getElementById(containerId);
-    var div = document.createElement('div');
-    div.className = 'input-group mb-2';
-    div.innerHTML = '<input type="text" name="phones" class="form-control" placeholder="+7...">' +
-                    '<button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>';
-    container.appendChild(div);
-}
-
-function dragDeal(ev, dealId) { ev.dataTransfer.setData("dealId", dealId); }
-function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add("drag-over"); }
-function removeDragOver(ev) { ev.currentTarget.classList.remove("drag-over"); }
-function dropDeal(ev, targetStage) {
-    ev.preventDefault();
-    ev.currentTarget.classList.remove("drag-over");
-    var dealId = ev.dataTransfer.getData("dealId");
-    fetch('/move_deal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: dealId, stage: targetStage })
-    }).then(res => res.json()).then(data => { if(data.success) location.reload(); });
-}
-</script>
+{% block scripts %}{% endblock %}
 </body>
 </html>
 """
@@ -498,57 +228,442 @@ def index():
                 if t.get("date", "") < today_str:
                     overdue_count += 1
                     
-    return render_template_string(
-        CRM_HTML, 
-        user=user, 
-        stages=STAGES, 
-        deals=db["deals"], 
-        total_tasks_count=total_tasks, 
-        overdue_count=overdue_count,
-        today_str=today_str
-    )
-
-@app.route("/complete_task/<deal_id>/<task_id>", methods=["POST"])
-def complete_task(deal_id, task_id):
-    if "user" not in session: return redirect(url_for("login"))
-    user = USERS[session["user"]]
-    db = load_db()
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
-    
-    for d in db["deals"]:
-        if d["id"] == deal_id:
-            for t in d.get("tasks", []):
-                if t.get("id") == task_id:
-                    t["done"] = True
-                    task_date = t.get("date", "")
-                    
-                    if task_date < today_str:
-                        history_text = f"✓ Выполнил задачу с просрочкой (план: {task_date}, факт: {datetime.now().strftime('%Y-%m-%d')}): [{t['type']}] {t['text']}"
-                    else:
-                        history_text = f"✓ Выполнил задачу вовремя: [{t['type']}] {t['text']}"
+    kanban_html = """
+    {% extends layout %}
+    {% block content %}
+    <div class="kanban">
+        {% for s_key, s_name, s_color in stages %}
+        <div class="k-col" data-stage="{{ s_key }}">
+            <div class="k-header" style="background-color: {{ s_color }}; {% if s_key == 'stage_2' %}color: #000;{% endif %}">{{ s_name }}</div>
+            <div class="k-body" id="col-{{ s_key }}" ondragover="allowDrop(event)" ondragleave="removeDragOver(event)" ondrop="dropDeal(event, '{{ s_key }}')">
+                {% for d in deals %}
+                    {% if d.stage == s_key %}
+                    <div class="deal-card" id="card-{{ d.id }}" draggable="true" ondragstart="dragDeal(event, '{{ d.id }}')" data-bs-toggle="modal" data-bs-target="#cardModal{{ d.id }}">
+                        <div class="fw-bold text-primary mb-1" style="font-size: 13px;">{{ d.title }}</div>
+                        <div class="text-muted text-truncate">📍 {{ d.region or 'Регион не указан' }}</div>
+                        <div class="text-secondary text-truncate">👤 Директор: {{ d.director or 'Не указан' }}</div>
+                        <div class="text-dark text-truncate">📞 {{ d.phones[0] if d.phones else 'Нет телефона' }}</div>
                         
-                    d["history"].append({"date": now_str, "author": user["name"], "text": history_text})
-                    break
-    save_db(db)
-    return redirect(url_for("index"))
+                        {% for t in d.tasks %}
+                            {% if not t.done %}
+                                {% if t.date < today_str %}
+                                <div class="mt-1"><span class="badge bg-danger">⚠️ Просрочено: {{ t.date }} ({{ t.type }})</span></div>
+                                {% else %}
+                                <div class="mt-1"><span class="badge bg-warning text-dark">⏰ {{ t.date }} ({{ t.type }})</span></div>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
 
-@app.route("/remind_task/<deal_id>/<task_id>", methods=["POST"])
-def remind_task(deal_id, task_id):
+                        <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 11px;">
+                            {% if loop.index0 >= 10 or d.total_sum > 0 %}
+                            <span>Сумма: {{ "{:,}".format(d.total_sum).replace(",", " ") }} ₸</span>
+                            {% else %}
+                            <span>Сумма: —</span>
+                            {% endif %}
+                            <span class="badge bg-light text-dark border">{{ d.manager or 'Не назначен' }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Модальное окно карточки клиента -->
+                    <div class="modal fade" id="cardModal{{ d.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <form method="POST" action="/update/{{ d.id }}">
+                                    <div class="modal-header bg-primary text-white">
+                                        <h5 class="modal-title">Карточка клиента: {{ d.client }}</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">ТОО / КХ (Название):</label>
+                                                <input type="text" name="client" class="form-control" value="{{ d.client }}" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Расположение:</label>
+                                                <input type="text" name="region" class="form-control" value="{{ d.region }}">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">ФИО Директора:</label>
+                                                <input type="text" name="director" class="form-control" value="{{ d.director }}">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Email:</label>
+                                                <input type="email" name="email" class="form-control" value="{{ d.email }}">
+                                            </div>
+                                            <div class="col-md-12">
+                                                <label class="form-label fw-bold">Телефоны:</label>
+                                                <div id="phones-container-{{ d.id }}">
+                                                    {% if d.phones %}
+                                                        {% for phone in d.phones %}
+                                                        <div class="input-group mb-2">
+                                                            <input type="text" name="phones" class="form-control" value="{{ phone }}">
+                                                            <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>
+                                                        </div>
+                                                        {% endfor %}
+                                                    {% endif %}
+                                                </div>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="addPhoneField('phones-container-{{ d.id }}')">+ Добавить телефон</button>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Этап воронки:</label>
+                                                <select name="stage" class="form-select">
+                                                    {% for sk, sn, sc in stages %}
+                                                    <option value="{{ sk }}" {% if d.stage == sk %}selected{% endif %}>{{ sn }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Ответственный менеджер:</label>
+                                                {% if user.role in ['director', 'rop'] %}
+                                                <select name="manager" class="form-select">
+                                                    <option value="Не назначен" {% if d.manager == 'Не назначен' %}selected{% endif %}>Не назначен</option>
+                                                    <option value="Менеджер 1" {% if d.manager == 'Менеджер 1' %}selected{% endif %}>Менеджер 1</option>
+                                                    <option value="Менеджер 2" {% if d.manager == 'Менеджер 2' %}selected{% endif %}>Менеджер 2</option>
+                                                    <option value="Уралбаев Ж.А. (Директор)" {% if d.manager == 'Уралбаев Ж.А. (Директор)' %}selected{% endif %}>Уралбаев Ж.А. (Директор)</option>
+                                                    <option value="Лемперт А.С. (РОП)" {% if d.manager == 'Лемперт А.С. (РОП)' %}selected{% endif %}>Лемперт А.С. (РОП)</option>
+                                                </select>
+                                                {% else %}
+                                                <input type="text" class="form-control bg-light" value="{{ d.manager }}" readonly>
+                                                <input type="hidden" name="manager" value="{{ d.manager }}">
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Сумма сделки (₸):</label>
+                                                <input type="number" name="total_sum" class="form-control" value="{{ d.total_sum }}">
+                                            </div>
+                                            <div class="col-12 bg-light p-3 border rounded">
+                                                <h6 class="fw-bold text-dark m-0 mb-2">⏰ Поставить задачу:</h6>
+                                                <div class="row g-2">
+                                                    <div class="col-md-4"><input type="date" name="task_date" class="form-control form-control-sm"></div>
+                                                    <div class="col-md-4">
+                                                        <select name="task_type" class="form-select form-select-sm">
+                                                            <option value="Звонок">📞 Звонок</option>
+                                                            <option value="Встреча">🤝 Встреча</option>
+                                                            <option value="Отправить КП">📄 Отправить КП</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-4"><input type="text" name="task_text" class="form-control form-control-sm" placeholder="Что сделать..."></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label fw-bold text-success">+ Комментарий:</label>
+                                                <textarea name="new_comment" class="form-control" rows="2"></textarea>
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label fw-bold text-secondary">📜 История:</label>
+                                                <div class="history-box">
+                                                    {% if d.history %}
+                                                        {% for h in d.history|reverse %}
+                                                        <div class="mb-1 border-bottom pb-1">
+                                                            <span class="text-primary fw-bold">[{{ h.date }}] {{ h.author }}:</span> 
+                                                            <span>{{ h.text }}</span>
+                                                        </div>
+                                                        {% endfor %}
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Модалка задач -->
+    <div class="modal fade" id="tasksListModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold">🔔 Панель задач и контроля</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="list-group">
+                    {% for d in deals %}
+                        {% for t in d.tasks %}
+                        {% if not t.done %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center {% if t.date < today_str %}list-group-item-danger{% endif %}">
+                            <div>
+                                {% if t.date < today_str %}
+                                <span class="badge bg-danger">⚠️ Просрочено ({{ t.date }})</span>
+                                {% else %}
+                                <span class="badge bg-primary">{{ t.date }}</span>
+                                {% endif %}
+                                <span class="badge bg-dark">{{ t.type }}</span>
+                                <strong class="ms-2">{{ d.client }}</strong>
+                                <div class="small mt-1">{{ t.text }}</div>
+                                <div class="small text-muted mt-1">Ответственный: <b>{{ d.manager }}</b></div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <form method="POST" action="/complete_task/{{ d.id }}/{{ t.id }}">
+                                    <button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button>
+                                </form>
+                                {% if user.role in ['director', 'rop'] and t.date < today_str %}
+                                <form method="POST" action="/remind_task/{{ d.id }}/{{ t.id }}">
+                                    <button type="submit" class="btn btn-danger btn-sm fw-bold">⚡ Напомнить</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка добавления сделки -->
+    <div class="modal fade" id="addModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form method="POST" action="/add">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title fw-bold">➕ Новая сделка</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6"><label class="form-label fw-bold">ТОО / КХ:</label><input type="text" name="client" class="form-control" required placeholder="ТОО Агро"></div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Этап:</label>
+                                <select name="stage" class="form-select">
+                                    {% for sk, sn, sc in stages %}<option value="{{ sk }}">{{ sn }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Ответственный:</label>
+                                <select name="manager" class="form-select">
+                                    <option value="{{ user.name }}">{{ user.name }}</option>
+                                    <option value="Менеджер 1">Менеджер 1</option>
+                                    <option value="Менеджер 2">Менеджер 2</option>
+                                    <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
+                                    <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6"><label class="form-label fw-bold">Расположение:</label><input type="text" name="region" class="form-control"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold">Директор:</label><input type="text" name="director" class="form-control"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold">Email:</label><input type="email" name="email" class="form-control"></div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Телефон:</label>
+                                <div id="new-phones-container"><div class="input-group mb-2"><input type="text" name="phones" class="form-control" placeholder="+7..."></div></div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('new-phones-container')">+ Телефон</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button type="submit" class="btn btn-success">Создать</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+
+    {% block scripts %}
+    <script>
+    function addPhoneField(id) {
+        var c = document.getElementById(id);
+        var d = document.createElement('div');
+        d.className = 'input-group mb-2';
+        d.innerHTML = '<input type="text" name="phones" class="form-control" placeholder="+7..."><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>';
+        c.appendChild(d);
+    }
+    function dragDeal(ev, id) { ev.dataTransfer.setData("dealId", id); }
+    function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add("drag-over"); }
+    function removeDragOver(ev) { ev.currentTarget.classList.remove("drag-over"); }
+    function dropDeal(ev, stage) {
+        ev.preventDefault();
+        ev.currentTarget.classList.remove("drag-over");
+        var id = ev.dataTransfer.getData("dealId");
+        fetch('/move_deal', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: id, stage: stage})})
+        .then(res => res.json()).then(data => { if(data.success) location.reload(); });
+    }
+    </script>
+    {% endblock %}
+    """
+    
+    full_html = LAYOUT_TEMPLATE.replace("{% extends layout %}", "").replace("{% block content %}", "").replace("{% endblock %}", "").replace("{% block scripts %}", "").replace("{% endblock scripts %}", "")
+    # Рендерим через шаблон компоновки
+    return render_template_string(LAYOUT_TEMPLATE, active_page="kanban", user=user, stages=STAGES, deals=db["deals"], total_tasks_count=total_tasks, overdue_count=overdue_count, today_str=today_str)
+
+@app.route("/tz")
+def tz_page():
     if "user" not in session: return redirect(url_for("login"))
     user = USERS[session["user"]]
     db = load_db()
     
-    for d in db["deals"]:
-        if d["id"] == deal_id:
-            for t in d.get("tasks", []):
-                if t.get("id") == task_id:
-                    t["reminded"] = True
-                    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
-                    d["history"].append({"date": now_str, "author": user["name"], "text": f"⚡ РОП напомнил менеджеру о просроченной задаче!"})
-                    break
+    TZ_TEMPLATE = """
+    {% extends layout %}
+    {% block content %}
+    <div class="container-fluid p-3">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Клиент / ТОО</th>
+                            <th>Параметры ангара (ТЗ)</th>
+                            <th>Менеджер</th>
+                            <th>Инженер (Ответственный)</th>
+                            <th>Наблюдатели</th>
+                            <th>Статус</th>
+                            <th>Дата</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if tz_list %}
+                            {% for tz in tz_list %}
+                            <tr>
+                                <td class="fw-bold text-primary">{{ tz.client }}</td>
+                                <td>{{ tz.parameters }}</td>
+                                <td><span class="badge bg-secondary">{{ tz.author }}</span></td>
+                                <td><span class="badge bg-info text-dark">{{ tz.responsible }}</span></td>
+                                <td class="small text-muted">РОП: {{ tz.rop }}<br>Директор: {{ tz.director }}</td>
+                                <td><span class="badge bg-warning text-dark">{{ tz.status }}</span></td>
+                                <td class="small">{{ tz.date }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="7" class="text-center text-muted py-4">Технические задания пока не создавались.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Модалка создания ТЗ -->
+        <div class="modal fade" id="addTzModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <form method="POST" action="/tz/add">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title fw-bold">📐 Новое техническое задание на расчет ангара</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Клиент / ТОО:</label>
+                                    <input type="text" name="client" class="form-control" required placeholder="ТОО Агро">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Ответственный за расчет (Инженер ПТО):</label>
+                                    <select name="responsible" class="form-select">
+                                        <option value="Инженер ПТО (Иван)">Инженер ПТО (Иван)</option>
+                                        <option value="Главный конструктор">Главный конструктор</option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold">Параметры ангара (размеры, утепление, тип каркаса):</label>
+                                    <textarea name="parameters" class="form-control" rows="3" required placeholder="Например: Прямостенный ангар 24х60х7м, с двумя воротами 4х4м, снеговой район III..."></textarea>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small">Наблюдатель (РОП):</label>
+                                    <input type="text" class="form-control form-control-sm bg-light" value="Лемперт А.С. (РОП)" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small">Наблюдатель (Директор):</label>
+                                    <input type="text" class="form-control form-control-sm bg-light" value="Уралбаев Ж.А. (Директор)" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Отмена</button>
+                            <button type="submit" class="btn btn-primary btn-sm fw-bold">Отправить в ПТО</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+    """
+    return render_template_string(TZ_TEMPLATE, active_page="tz", user=user, tz_list=db.get("tz_list", []))
+
+@app.route("/tz/add", methods=["POST"])
+def add_tz():
+    if "user" not in session: return redirect(url_for("login"))
+    user = USERS[session["user"]]
+    db = load_db()
+    
+    if "tz_list" not in db: db["tz_list"] = []
+    
+    db["tz_list"].append({
+        "id": f"tz_{len(db['tz_list'])+1}",
+        "client": request.form.get("client"),
+        "parameters": request.form.get("parameters"),
+        "author": user["name"],
+        "responsible": request.form.get("responsible"),
+        "rop": "Лемперт А.С. (РОП)",
+        "director": "Уралбаев Ж.А. (Директор)",
+        "status": "В работе",
+        "date": datetime.now().strftime("%d.%m.%Y %H:%M")
+    })
     save_db(db)
-    return redirect(url_for("index"))
+    return redirect(url_for("tz_page"))
+
+@app.route("/analytics")
+def analytics_page():
+    if "user" not in session: return redirect(url_for("login"))
+    user = USERS[session["user"]]
+    
+    # Защита: доступ только у РОПа и Директора
+    if user["role"] not in ["director", "rop"]:
+        return "<h3 style='color:red; text-align:center; margin-top:50px;'>⛔ Доступ запрещен! Эта страница доступна только РОПу и Директору.</h3><p style='text-align:center;'><a href='/'>Вернуться в CRM</a></p>"
+    
+    db = load_db()
+    
+    ANALYTICS_TEMPLATE = """
+    {% extends layout %}
+    {% block content %}
+    <div class="container-fluid p-4">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 bg-primary text-white p-3">
+                    <h5>📊 Всего сделок в работе</h5>
+                    <h3>{{ total_deals }}</h3>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 bg-success text-white p-3">
+                    <h5>💰 Сумма по договорам</h5>
+                    <h3>{{ total_contract_sum | format_money }} ₸</h3>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 bg-warning text-dark p-3">
+                    <h5>📐 Активных ТЗ в ПТО</h5>
+                    <h3>{{ total_tz }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="card shadow-sm border-0 mt-4 p-4">
+            <h5 class="fw-bold text-secondary">📈 Управленческий срез по воронке</h5>
+            <p class="text-muted">Контроль конверсии и финансовых потоков строительства ангаров по регионам и менеджерам.</p>
+        </div>
+    </div>
+    {% endblock %}
+    """
+    
+    # Фильтр для форматирования денег в шаблоне
+    app.jinja_env.filters['format_money'] = lambda val: "{:,}".format(val).replace(",", " ")
+    
+    total_deals = len(db["deals"])
+    total_contract_sum = sum(d.get("total_sum", 0) for d in db["deals"])
+    total_tz = len(db.get("tz_list", []))
+    
+    return render_template_string(ANALYTICS_TEMPLATE, active_page="analytics", user=user, total_deals=total_deals, total_contract_sum=total_contract_sum, total_tz=total_tz)
 
 @app.route("/move_deal", methods=["POST"])
 def move_deal():
@@ -585,38 +700,22 @@ def add():
     selected_manager = request.form.get("manager", user["name"])
     director = request.form.get("director", "").strip()
     phones = [p.strip() for p in request.form.getlist("phones") if p.strip()]
-    contact_person = request.form.get("contact_person", "").strip()
-    contact_phone = request.form.get("contact_phone", "").strip()
-    email = request.form.get("email", "").strip()
     region = request.form.get("region", "").strip()
-    initial_comment = request.form.get("comment", "").strip()
+    email = request.form.get("email", "").strip()
     
     now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
-    history_list = []
-    
-    stage_name = selected_stage
-    for sk, sn, sc in STAGES:
-        if sk == selected_stage: stage_name = sn
-
-    if initial_comment:
-        history_list.append({"date": now_str, "author": user["name"], "text": f"Создана заявка (этап: {stage_name}, ответственный: {selected_manager}). Комментарий: {initial_comment}"})
-    else:
-        history_list.append({"date": now_str, "author": user["name"], "text": f"Создана новая заявка на этапе: {stage_name}, ответственный: {selected_manager}"})
-
     db["deals"].append({
         "id": str(len(db["deals"]) + 1),
         "title": client_name,
         "client": client_name,
         "director": director,
         "phones": phones,
-        "contact_person": contact_person,
-        "contact_phone": contact_phone,
         "email": email,
         "region": region,
         "stage": selected_stage,
         "manager": selected_manager,
         "total_sum": 0,
-        "history": history_list,
+        "history": [{"date": now_str, "author": user["name"], "text": f"Создана новая заявка"}],
         "tasks": []
     })
     save_db(db)
@@ -635,42 +734,16 @@ def update(id):
             new_sum = int(request.form.get("total_sum") or 0)
             new_comment = request.form.get("new_comment", "").strip()
             
-            new_director = request.form.get("director", "").strip()
-            new_phones = [p.strip() for p in request.form.getlist("phones") if p.strip()]
-            new_region = request.form.get("region", "").strip()
-            new_email = request.form.get("email", "").strip()
-            
-            now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
-            
-            # Контроль удаления или изменения телефонов
-            old_phones = d.get("phones", [])
-            removed_phones = [p for p in old_phones if p not in new_phones]
-            if removed_phones:
-                d["history"].append({
-                    "date": now_str, 
-                    "author": current_user["name"], 
-                    "text": f"🗑️ Удалил номера телефонов: {', '.join(removed_phones)}"
-                })
-            
-            added_phones = [p for p in new_phones if p not in old_phones]
-            if added_phones:
-                d["history"].append({
-                    "date": now_str, 
-                    "author": current_user["name"], 
-                    "text": f"➕ Добавил номера телефонов: {', '.join(added_phones)}"
-                })
-
-            d["director"] = new_director
-            d["phones"] = new_phones
-            d["contact_person"] = request.form.get("contact_person", "").strip()
-            d["contact_phone"] = request.form.get("contact_phone", "").strip()
-            d["email"] = new_email
-            d["region"] = new_region
+            d["director"] = request.form.get("director", "").strip()
+            d["phones"] = [p.strip() for p in request.form.getlist("phones") if p.strip()]
+            d["region"] = request.form.get("region", "").strip()
+            d["email"] = request.form.get("email", "").strip()
             
             task_date = request.form.get("task_date")
             task_type = request.form.get("task_type")
             task_text = request.form.get("task_text", "").strip()
             
+            now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
             if task_date and task_text:
                 if "tasks" not in d: d["tasks"] = []
                 task_id = f"t_{len(d['tasks'])+1}_{int(datetime.now().timestamp())}"
@@ -679,8 +752,7 @@ def update(id):
 
             if current_user["role"] in ["director", "rop"]:
                 requested_manager = request.form.get("manager")
-                if requested_manager:
-                    d["manager"] = requested_manager
+                if requested_manager: d["manager"] = requested_manager
             
             if d["stage"] != new_stage:
                 stage_name = new_stage
@@ -700,6 +772,44 @@ def update(id):
             d["client"] = client_name
             break
             
+    save_db(db)
+    return redirect(url_for("index"))
+
+@app.route("/complete_task/<deal_id>/<task_id>", methods=["POST"])
+def complete_task(deal_id, task_id):
+    if "user" not in session: return redirect(url_for("login"))
+    user = USERS[session["user"]]
+    db = load_db()
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    
+    for d in db["deals"]:
+        if d["id"] == deal_id:
+            for t in d.get("tasks", []):
+                if t.get("id") == task_id:
+                    t["done"] = True
+                    task_date = t.get("date", "")
+                    if task_date < today_str:
+                        history_text = f"✓ Выполнил задачу с просрочкой (план: {task_date}): [{t['type']}] {t['text']}"
+                    else:
+                        history_text = f"✓ Выполнил задачу вовремя: [{t['type']}] {t['text']}"
+                    d["history"].append({"date": now_str, "author": user["name"], "text": history_text})
+                    break
+    save_db(db)
+    return redirect(url_for("index"))
+
+@app.route("/remind_task/<deal_id>/<task_id>", methods=["POST"])
+def remind_task(deal_id, task_id):
+    if "user" not in session: return redirect(url_for("login"))
+    user = USERS[session["user"]]
+    db = load_db()
+    for d in db["deals"]:
+        if d["id"] == deal_id:
+            for t in d.get("tasks", []):
+                if t.get("id") == task_id:
+                    t["reminded"] = True
+                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user["name"], "text": "⚡ РОП напомнил менеджеру о просроченной задаче!"})
+                    break
     save_db(db)
     return redirect(url_for("index"))
 
