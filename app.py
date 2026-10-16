@@ -12,13 +12,12 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Базовые данные пользователей (теперь с расширенными полями профиля)
 DEFAULT_USERS = {
-    "director": {"pass": "dir123", "name": "Уралбаев Ж.А.", "role": "director", "phone": "", "whatsapp": "", "email": "", "avatar": ""},
-    "rop": {"pass": "rop123", "name": "Лемперт Александр Сергеевич", "role": "rop", "phone": "", "whatsapp": "", "email": "", "avatar": ""},
-    "manager1": {"pass": "man123", "name": "Менеджер 1", "role": "manager", "phone": "", "whatsapp": "", "email": "", "avatar": ""},
-    "manager2": {"pass": "man223", "name": "Менеджер 2", "role": "manager", "phone": "", "whatsapp": "", "email": "", "avatar": ""},
-    "manager3": {"pass": "man323", "name": "Менеджер 3", "role": "manager", "phone": "", "whatsapp": "", "email": "", "avatar": ""}
+    "director": {"pass": "dir123", "name": "Уралбаев Ж.А.", "role": "director", "position": "Генеральный директор", "phone": "", "whatsapp": "", "email": "", "avatar": ""},
+    "rop": {"pass": "rop123", "name": "Лемперт Александр Сергеевич", "role": "rop", "position": "Руководитель отдела продаж (РОП)", "phone": "", "whatsapp": "", "email": "", "avatar": ""},
+    "manager1": {"pass": "man123", "name": "Менеджер 1", "role": "manager", "position": "Менеджер по продажам", "phone": "", "whatsapp": "", "email": "", "avatar": ""},
+    "manager2": {"pass": "man223", "name": "Менеджер 2", "role": "manager", "position": "Менеджер по продажам", "phone": "", "whatsapp": "", "email": "", "avatar": ""},
+    "manager3": {"pass": "man323", "name": "Менеджер 3", "role": "manager", "position": "Менеджер по продажам", "phone": "", "whatsapp": "", "email": "", "avatar": ""}
 }
 
 STAGES = [
@@ -45,7 +44,8 @@ def load_db():
     default_data = {
         "deals": [],
         "tz_list": [],
-        "users": DEFAULT_USERS
+        "users": DEFAULT_USERS,
+        "chats": []
     }
     if not os.path.exists(DB_FILE):
         save_db(default_data)
@@ -60,6 +60,8 @@ def load_db():
                 data["users"] = DEFAULT_USERS
             if "tz_list" not in data:
                 data["tz_list"] = []
+            if "chats" not in data:
+                data["chats"] = []
             return data
     except:
         save_db(default_data)
@@ -68,10 +70,6 @@ def load_db():
 def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
-
-def get_all_users():
-    db = load_db()
-    return db.get("users", DEFAULT_USERS)
 
 LOGIN_HTML = """
 <!DOCTYPE html>
@@ -147,11 +145,17 @@ BASE_TEMPLATE = """
             {% if current_user_data.role in ['director', 'rop'] %}
             <a href="/analytics" class="{% if active_page == 'analytics' %}active{% endif %}"><i>📈</i> <span>Воронка (Отчеты)</span></a>
             {% endif %}
-            <a href="/profile" class="{% if active_page == 'profile' %}active{% endif %}"><i>👤</i> <span>Мой профиль</span></a>
+            <a href="/chat" class="{% if active_page == 'chat' %}active{% endif %}"><i>💬</i> <span>Чат сотрудников</span></a>
         </div>
-        <div class="p-3 bg-dark border-top border-secondary text-muted small">
-            <div class="text-truncate">👤 <b>{{ current_user_data.name }}</b></div>
-            <a href="/logout" class="text-danger text-decoration-none mt-1 d-inline-block">🚪 <span>Выйти</span></a>
+        
+        <!-- Нижняя панель с профилем прямо над кнопкой Выйти -->
+        <div class="p-3 bg-dark border-top border-secondary text-muted small d-flex flex-direction-column gap-2">
+            <a href="/profile" class="text-white text-decoration-none d-flex align-items-center gap-2 {% if active_page == 'profile' %}fw-bold text-primary{% endif %}">
+                <i>👤</i> <span class="text-truncate">{{ current_user_data.name }}</span>
+            </a>
+            <a href="/logout" class="text-danger text-decoration-none d-flex align-items-center gap-2 mt-1">
+                <i>🚪</i> <span>Выйти</span>
+            </a>
         </div>
     </div>
 
@@ -164,6 +168,8 @@ BASE_TEMPLATE = """
                 {% elif active_page == 'tz' %}
                 <h5 class="m-0 fw-bold text-secondary">📐 Технические задания</h5>
                 <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addTzModal">+ Создать ТЗ</button>
+                {% elif active_page == 'chat' %}
+                <h5 class="m-0 fw-bold text-secondary">💬 Внутренний чат сотрудников</h5>
                 {% elif active_page == 'profile' %}
                 <h5 class="m-0 fw-bold text-secondary">👤 Настройки профиля</h5>
                 {% else %}
@@ -244,6 +250,7 @@ def profile_page():
     
     if request.method == "POST":
         new_name = request.form.get("name", "").strip()
+        new_position = request.form.get("position", "").strip()
         new_phone = request.form.get("phone", "").strip()
         new_whatsapp = request.form.get("whatsapp", "").strip()
         new_email = request.form.get("email", "").strip()
@@ -256,8 +263,8 @@ def profile_page():
             avatar_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename_str))
             user_data["avatar"] = filename_str
 
-        if new_name:
-            user_data["name"] = new_name
+        if new_name: user_data["name"] = new_name
+        user_data["position"] = new_position
         user_data["phone"] = new_phone
         user_data["whatsapp"] = new_whatsapp
         user_data["email"] = new_email
@@ -275,12 +282,12 @@ def profile_page():
         db["users"] = users
         save_db(db)
 
-    avatar_html = f'<img src="/uploads/{user_data["avatar"]}" class="rounded-circle border" width="100" height="100" style="object-fit: cover;">' if user_data.get("avatar") else '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-2" style="width: 100px; height: 100px;">👤</div>'
+    avatar_html = f'<img src="/uploads/{user_data["avatar"]}" class="rounded-circle border" width="90" height="90" style="object-fit: cover;">' if user_data.get("avatar") else '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-2" style="width: 90px; height: 90px;">👤</div>'
 
     profile_content = f"""
-    <div class="container-fluid p-4" style="max-width: 700px;">
+    <div class="container-fluid p-3" style="max-width: 750px;">
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-primary text-white fw-bold">⚙️ Редактирование профиля сотрудника</div>
+            <div class="card-header bg-primary text-white fw-bold">⚙️ Настройки профиля</div>
             <div class="card-body">
                 {f'<div class="alert alert-success">{success_msg}</div>' if success_msg else ''}
                 {f'<div class="alert alert-danger">{error_msg}</div>' if error_msg else ''}
@@ -292,41 +299,178 @@ def profile_page():
                             <input type="file" name="avatar" class="form-control form-control-sm">
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">ФИО сотрудника:</label>
-                        <input type="text" name="name" class="form-control" value="{user_data.get('name', '')}" required>
-                    </div>
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Прямый номер телефона:</label>
+                            <label class="form-label fw-bold">ФИО сотрудника:</label>
+                            <input type="text" name="name" class="form-control" value="{user_data.get('name', '')}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Должность:</label>
+                            <input type="text" name="position" class="form-control" value="{user_data.get('position', '')}" placeholder="Например: РОП / Менеджер">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Прямой телефон:</label>
                             <input type="text" name="phone" class="form-control" value="{user_data.get('phone', '')}" placeholder="+7...">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Номер WhatsApp:</label>
+                            <label class="form-label fw-bold">WhatsApp:</label>
                             <input type="text" name="whatsapp" class="form-control" value="{user_data.get('whatsapp', '')}" placeholder="+7...">
                         </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Email:</label>
-                        <input type="email" name="email" class="form-control" value="{user_data.get('email', '')}" placeholder="example@mail.kz">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Email:</label>
+                            <input type="email" name="email" class="form-control" value="{user_data.get('email', '')}">
+                        </div>
                     </div>
                     <hr class="my-4">
-                    <h6 class="fw-bold text-secondary mb-3">🔒 Смена пароля (если требуется)</h6>
-                    <div class="mb-3">
-                        <label class="form-label">Текущий пароль:</label>
-                        <input type="password" name="old_pass" class="form-control">
+                    <h6 class="fw-bold text-secondary mb-3">🔒 Безопасность и смена пароля</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6"><label class="form-label">Текущий пароль:</label><input type="password" name="old_pass" class="form-control"></div>
+                        <div class="col-md-6"><label class="form-label">Новый пароль:</label><input type="password" name="new_pass" class="form-control"></div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Новый пароль:</label>
-                        <input type="password" name="new_pass" class="form-control">
-                    </div>
-                    <button type="submit" class="btn btn-primary fw-bold w-100">Сохранить изменения</button>
+                    <button type="submit" class="btn btn-primary fw-bold w-100">Сохранить профиль</button>
                 </form>
             </div>
         </div>
     </div>
     """
     return render_template_string(BASE_TEMPLATE, page_title="Профиль", active_page="profile", current_user_data=user_data, content=profile_content)
+
+@app.route("/chat", methods=["GET", "POST"])
+@app.route("/chat/<chat_id>", methods=["GET", "POST"])
+def chat_page(chat_id=None):
+    if "user" not in session: return redirect(url_for("login"))
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "create_chat":
+            selected_members = request.form.getlist("members")
+            selected_members.append(uname)
+            selected_members = list(set(selected_members))
+            
+            chat_title = request.form.get("title", "").strip()
+            if not chat_title:
+                member_names = [users[m]["name"] for m in selected_members if m in users]
+                chat_title = ", ".join(member_names)
+                
+            new_chat_id = f"chat_{len(db['chats']) + 1}"
+            db["chats"].append({
+                "id": new_chat_id,
+                "title": chat_title,
+                "members": selected_members,
+                "messages": []
+            })
+            save_db(db)
+            return redirect(f"/chat/{new_chat_id}")
+            
+        elif action == "send_message" and chat_id:
+            msg_text = request.form.get("message", "").strip()
+            if msg_text:
+                for c in db["chats"]:
+                    if c["id"] == chat_id:
+                        c["messages"].append({
+                            "author_key": uname,
+                            "author_name": user_data["name"],
+                            "text": msg_text,
+                            "time": datetime.now().strftime("%d.%m %H:%M")
+                        })
+                        break
+                save_db(db)
+                return redirect(f"/chat/{chat_id}")
+
+    user_chats = [c for c in db.get("chats", []) if uname in c.get("members", [])]
+    
+    active_chat = None
+    if chat_id:
+        for c in user_chats:
+            if c["id"] == chat_id:
+                active_chat = c
+                break
+                
+    chat_list_html = ""
+    for c in user_chats:
+        active_class = "active bg-primary text-white" if active_chat and c["id"] == active_chat["id"] else "bg-white"
+        chat_list_html += f'<a href="/chat/{c["id"]}" class="list-group-item list-group-item-action {active_class} d-flex justify-content-between align-items-center"><div><strong>{c["title"]}</strong></div></a>'
+
+    messages_html = ""
+    if active_chat:
+        for m in active_chat.get("messages", []):
+            is_me = m.get("author_key") == uname
+            align = "text-end" if is_me else "text-start"
+            badge = "bg-primary text-white" if is_me else "bg-light border text-dark"
+            messages_html += f'<div class="mb-2 {align}"><div class="d-inline-block p-2 rounded {badge}" style="max-width: 70%;"><div class="fw-bold small">{m.get("author_name")}</div><div>{m.get("text")}</div><div class="small opacity-75 text-end mt-1" style="font-size: 10px;">{m.get("time")}</div></div></div>'
+    else:
+        messages_html = '<div class="text-center text-muted my-auto">Выберите чат или создайте новый диалог</div>'
+
+    members_checkboxes = ""
+    for u_key, u_val in users.items():
+        if u_key != uname:
+            members_checkboxes += f'''
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="members" value="{u_key}" id="usr_{u_key}">
+                <label class="form-check-label" for="usr_{u_key}">
+                    <b>{u_val['name']}</b> <span class="text-muted">({u_val.get('position', 'Сотрудник')})</span>
+                </label>
+            </div>
+            '''
+
+    content_html = f"""
+    <div class="container-fluid h-100 p-0">
+        <div class="row g-0 h-100">
+            <div class="col-md-4 border-end bg-white d-flex flex-column h-100">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 fw-bold">💬 Ваши диалоги</h6>
+                    <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#newChatModal">+ Новый чат</button>
+                </div>
+                <div class="list-group list-group-flush overflow-auto flex-grow-1">
+                    {chat_list_html if chat_list_html else '<div class="p-3 text-muted text-center">Чатов пока нет</div>'}
+                </div>
+            </div>
+            <div class="col-md-8 d-flex flex-column h-100 bg-light">
+                {f'''
+                <div class="p-3 border-bottom bg-white fw-bold">{active_chat["title"]}</div>
+                <div class="p-3 overflow-auto flex-grow-1 d-flex flex-column">{messages_html}</div>
+                <div class="p-3 bg-white border-top">
+                    <form method="POST">
+                        <input type="hidden" name="action" value="send_message">
+                        <div class="input-group">
+                            <input type="text" name="message" class="form-control" placeholder="Напишите сообщение..." required autofocus>
+                            <button type="submit" class="btn btn-primary fw-bold">Отправить</button>
+                        </div>
+                    </form>
+                </div>
+                ''' if active_chat else f'<div class="d-flex h-100 align-items-center justify-content-center text-muted">{messages_html}</div>'}
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка создания чата -->
+    <div class="modal fade" id="newChatModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST">
+                    <input type="hidden" name="action" value="create_chat">
+                    <div class="modal-header bg-primary text-white"><h5 class="modal-title fw-bold">👥 Создать чат</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Название чата (необязательно):</label>
+                            <input type="text" name="title" class="form-control" placeholder="Например: Обсуждение договора ТОО Агро">
+                        </div>
+                        <label class="form-label fw-bold">Выберите сотрудников:</label>
+                        <div class="p-2 border rounded bg-light" style="max-height: 200px; overflow-y: auto;">
+                            {members_checkboxes}
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button type="submit" class="btn btn-primary fw-bold">Создать чат</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+    """
+    return render_template_string(BASE_TEMPLATE, page_title="Чат сотрудников", active_page="chat", current_user_data=user_data, content=content_html)
 
 @app.route("/")
 def index():
@@ -353,7 +497,6 @@ def index():
                 if t.get("reminded", False):
                     has_reminders = True
 
-    # Формируем список менеджеров для фильтра и селектов на основе реальных имен
     manager_names_list = [u_info["name"] for u_info in users.values()]
 
     filter_html = f"""
