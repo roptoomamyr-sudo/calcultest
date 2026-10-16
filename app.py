@@ -343,24 +343,24 @@ def generator_page():
         .btn-generate:hover { background: #996d09; }
         
         #pdfTemplateWrapper { position: absolute; left: -9999px; top: 0; width: 210mm; }
-        .pdf-page { width: 210mm; height: 296mm; padding: 8mm 12mm 15mm 12mm; background: #fff; font-size: 10pt; color: #000; box-sizing: border-box; position: relative; font-family: 'Calibri', 'Arial', sans-serif; overflow: hidden; page-break-after: always; page-break-inside: avoid; }
-        .pdf-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #b8860b; padding-bottom: 4px; margin-bottom: 6px; }
-        .pdf-header-text { font-size: 8.5pt; line-height: 1.15; }
-        .pdf-logo-img { height: 42px; object-fit: contain; }
-        .kp-title { font-size: 14pt; font-weight: bold; color: #b8860b; text-align: center; margin: 4px 0 6px 0; text-transform: uppercase; }
-        .kp-meta { font-size: 10pt; margin-bottom: 6px; line-height: 1.25; }
-        .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
-        .kp-table th, .kp-table td { border: 1px solid #000; padding: 4px 6px; font-size: 10pt; vertical-align: top; line-height: 1.15; }
-        .kp-table th { background: #1a1e21; color: #fff; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 9.5pt; }
-        .total-row { background: #b8860b; color: #fff; font-weight: bold; font-size: 10.5pt; }
-        .total-row-discount { background: #8b6508; color: #fff; font-weight: bold; font-size: 10.5pt; }
-        .conditions-box { font-size: 9pt; line-height: 1.15; margin-top: 6px; }
-        .conditions-box h4 { margin: 3px 0 1px 0; font-size: 9.5pt; text-decoration: underline; color: #b8860b; }
-        .footer-line { position: absolute; bottom: 6mm; left: 12mm; right: 12mm; font-size: 8pt; border-top: 1px solid #ccc; padding-top: 4px; text-align: center; color: #222; line-height: 1.15; }
-        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 5px 8px; margin-bottom: 5px; font-size: 9.5pt; line-height: 1.15; }
-        .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 1px; font-size: 10pt; }
-        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
-        .photo-card { width: 100%; height: 110px; background: #f0f4f8; border: 1px solid #cbd5e0; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 9.5pt; font-weight: bold; text-align: center; overflow: hidden; position: relative; }
+        .pdf-page { width: 210mm; height: 296mm; padding: 5mm 10mm 10mm 10mm; background: #fff; font-size: 9pt; color: #000; box-sizing: border-box; position: relative; font-family: 'Calibri', 'Arial', sans-serif; overflow: hidden; page-break-after: always; page-break-inside: avoid; }
+        .pdf-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #b8860b; padding-bottom: 2px; margin-bottom: 3px; }
+        .pdf-header-text { font-size: 7.5pt; line-height: 1.1; }
+        .pdf-logo-img { height: 35px; object-fit: contain; }
+        .kp-title { font-size: 12pt; font-weight: bold; color: #b8860b; text-align: center; margin: 2px 0 3px 0; text-transform: uppercase; }
+        .kp-meta { font-size: 9pt; margin-bottom: 3px; line-height: 1.15; }
+        .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
+        .kp-table th, .kp-table td { border: 1px solid #000; padding: 2px 5px; font-size: 9pt; vertical-align: top; line-height: 1.1; }
+        .kp-table th { background: #1a1e21; color: #fff; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 8.5pt; }
+        .total-row { background: #b8860b; color: #fff; font-weight: bold; font-size: 9.5pt; }
+        .total-row-discount { background: #8b6508; color: #fff; font-weight: bold; font-size: 9.5pt; }
+        .conditions-box { font-size: 8pt; line-height: 1.1; margin-top: 3px; }
+        .conditions-box h4 { margin: 2px 0 1px 0; font-size: 8.5pt; text-decoration: underline; color: #b8860b; }
+        .footer-line { position: absolute; bottom: 4mm; left: 10mm; right: 10mm; font-size: 7.5pt; border-top: 1px solid #ccc; padding-top: 2px; text-align: center; color: #222; line-height: 1.05; }
+        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 4px 7px; margin-bottom: 4px; font-size: 9pt; line-height: 1.12; }
+        .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 1px; font-size: 9.5pt; }
+        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 4px; }
+        .photo-card { width: 100%; height: 100px; background: #f0f4f8; border: 1px solid #cbd5e0; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 9pt; font-weight: bold; text-align: center; overflow: hidden; position: relative; }
     </style>
 
     <div class="gen-container">
@@ -544,7 +544,9 @@ def generator_page():
                     - 25% перед отгрузкой готового комплекта ангара.<br>
                     - 25% после подписания АВР и накладной.
                     <h4>Сроки реализации:</h4>
-                    - Изготовление МК: <span id="pdfTermMan">30 дней</span> | Фундамент: <span id="pdfTermFound">20 дней</span> | Монтаж: <span id="pdfTermInst">30 дней</span>
+                    - Изготовление МК: <span id="pdfTermMan">30 дней</span><br>
+                    - Фундаментные работы: <span id="pdfTermFound">20 дней</span><br>
+                    - Монтажные работы: <span id="pdfTermInst">30 дней</span>
                 </div>
                 <div class="footer-line">
                     <b>ТОО «Мамыр»</b> | Республика Казахстан, 110000, г. Костанай, ул. Узкоколейная, д. 9 | БИН 011240003418<br>
@@ -735,9 +737,6 @@ def generator_page():
                     fundDesc = "Подготовка фундамента Заказчиком";
                 }
 
-                // Точный расчет монтажа по вашему правилу:
-                // Тент: (каркас + ворота + решетки) * 21%
-                // Профлист: (каркас + ворота) * 23%
                 var montagePrice = 0;
                 if (montageType === 'include') {
                     if (isProf) {
@@ -755,7 +754,9 @@ def generator_page():
                 var kpNum = Math.floor(100 + Math.random() * 900);
 
                 var buildingTypeTitle = isProf ? "Быстровозводимый металлический ангар" : "Быстровозводимый металлотентовый ангар";
-                document.getElementById('pdfKpNum').innerText = "КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ № " + kpNum;
+                
+                document.getElementById('pdfKpNum').innerText = "КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ: " + client.toUpperCase();
+                
                 document.getElementById('pdfObjectTitle').innerText = buildingTypeTitle + " " + w.toFixed(1) + " × " + l.toFixed(1) + " × " + (isProf ? wallH : (w/2).toFixed(1)) + " м (" + area + "м2)";
                 document.getElementById('pdfPurpose').innerText = purpose;
                 document.getElementById('pdfTermMan').innerText = termMan;
@@ -779,7 +780,9 @@ def generator_page():
 
                 rows += "<tr><td><b>Транспортные расходы и логистика</b> 1000 тг/км от г. Костанай.</td><td style='text-align:center;'>" + truckCount + " рейса</td><td style='text-align:right;'>" + deliveryPrice.toLocaleString('ru-RU') + "</td><td>*Возможен самовывоз со склада.</td></tr>";
                 rows += "<tr class='total-row'><td colspan='2'>ИТОГО С УЧЕТОМ НДС 16%:</td><td style='text-align:right;'>" + totalBase.toLocaleString('ru-RU') + "</td><td>₸</td></tr>";
-                if (discountPercent > 0) rows += "<tr class='total-row-discount'><td colspan='2'>ИТОГО СО УЧЕТОМ СКИДКИ (" + discountPercent + "%):</td><td style='text-align:right;'>" + totalFinal.toLocaleString('ru-RU') + "</td><td>₸</td></tr>";
+                if (discountPercent > 0) {
+                    rows += "<tr class='total-row-discount'><td colspan='2'>ИТОГО СО УЧЕТОМ СКИДКИ (" + discountPercent + "%):</td><td style='text-align:right;'>" + totalFinal.toLocaleString('ru-RU') + "</td><td>₸</td></tr>";
+                }
 
                 document.getElementById('pdfTableBody').innerHTML = rows;
                 document.getElementById('pdfSignManager').innerText = signerDisplay;
@@ -802,7 +805,7 @@ def generator_page():
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        id: "KP-" + kpNum,
+                        id: "КП: " + client,
                         date: new Date().toLocaleDateString('ru-RU') + " " + new Date().toLocaleTimeString('ru-RU'),
                         author: sessionAuthor.name,
                         manager: signer.name + " (" + signer.position + ")",
