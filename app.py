@@ -586,7 +586,7 @@ def tz_page():
             </div>
         </div>
 
-        <!-- Модалка создания ТЗ (С возможностью прикрепления файла) -->
+        <!-- Модалка создания ТЗ -->
         <div class="modal fade" id="addTzModal" tabindex="-1">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
@@ -856,25 +856,48 @@ def update(id):
         if d["id"] == id:
             client_name = request.form.get("client")
             new_stage = request.form.get("stage")
+            new_comment = request.form.get("new_comment", "").strip()
+            
+            new_director = request.form.get("director", "").strip()
+            new_phones = [p.strip() for p in request.form.getlist("phones") if p.strip()]
+            new_region = request.form.get("region", "").strip()
+            new_email = request.form.get("email", "").strip()
+            
+            now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+            
+            # Контроль изменения телефонов
+            old_phones = d.get("phones", [])
+            removed_phones = [p for p in old_phones if p not in new_phones]
+            if removed_phones:
+                d["history"].append({
+                    "date": now_str, 
+                    "author": current_user["name"], 
+                    "text": f"🗑️ Удалил номера телефонов: {', '.join(removed_phones)}"
+                })
+            
+            added_phones = [p for p in new_phones if p not in old_phones]
+            if added_phones:
+                d["history"].append({
+                    "date": now_str, 
+                    "author": current_user["name"], 
+                    "text": f"➕ Добавил номера телефонов: {', '.join(added_phones)}"
+                })
+
+            d["director"] = new_director
+            d["phones"] = new_phones
+            d["region"] = new_region
+            d["email"] = new_email
             
             if new_stage in CONTRACT_STAGES:
                 new_sum = int(request.form.get("total_sum") or 0)
                 if d["total_sum"] != new_sum:
-                    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
                     d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Изменил сумму на: {new_sum:,} ₸"})
                     d["total_sum"] = new_sum
 
-            new_comment = request.form.get("new_comment", "").strip()
-            d["director"] = request.form.get("director", "").strip()
-            d["phones"] = [p.strip() for p in request.form.getlist("phones") if p.strip()]
-            d["region"] = request.form.get("region", "").strip()
-            d["email"] = request.form.get("email", "").strip()
-            
             task_date = request.form.get("task_date")
             task_type = request.form.get("task_type")
             task_text = request.form.get("task_text", "").strip()
             
-            now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
             if task_date and task_text:
                 if "tasks" not in d: d["tasks"] = []
                 task_id = f"t_{len(d['tasks'])+1}_{int(datetime.now().timestamp())}"
@@ -883,7 +906,9 @@ def update(id):
 
             if current_user["role"] in ["director", "rop"]:
                 requested_manager = request.form.get("manager")
-                if requested_manager: d["manager"] = requested_manager
+                if requested_manager and d["manager"] != requested_manager:
+                    d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Изменил ответственного на: {requested_manager}"})
+                    d["manager"] = requested_manager
             
             if d["stage"] != new_stage:
                 stage_name = new_stage
