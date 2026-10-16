@@ -343,24 +343,24 @@ def generator_page():
         .btn-generate:hover { background: #996d09; }
         
         #pdfTemplateWrapper { position: absolute; left: -9999px; top: 0; width: 210mm; }
-        .pdf-page { width: 210mm; height: 296mm; padding: 5mm 10mm 10mm 10mm; background: #fff; font-size: 9pt; color: #000; box-sizing: border-box; position: relative; font-family: 'Calibri', 'Arial', sans-serif; overflow: hidden; page-break-after: always; page-break-inside: avoid; }
-        .pdf-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #b8860b; padding-bottom: 2px; margin-bottom: 3px; }
-        .pdf-header-text { font-size: 7.5pt; line-height: 1.1; }
-        .pdf-logo-img { height: 35px; object-fit: contain; }
-        .kp-title { font-size: 12pt; font-weight: bold; color: #b8860b; text-align: center; margin: 2px 0 3px 0; text-transform: uppercase; }
-        .kp-meta { font-size: 9pt; margin-bottom: 3px; line-height: 1.15; }
-        .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
-        .kp-table th, .kp-table td { border: 1px solid #000; padding: 2px 5px; font-size: 9pt; vertical-align: top; line-height: 1.1; }
-        .kp-table th { background: #1a1e21; color: #fff; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 8.5pt; }
-        .total-row { background: #b8860b; color: #fff; font-weight: bold; font-size: 9.5pt; }
-        .total-row-discount { background: #8b6508; color: #fff; font-weight: bold; font-size: 9.5pt; }
-        .conditions-box { font-size: 8pt; line-height: 1.1; margin-top: 3px; }
-        .conditions-box h4 { margin: 2px 0 1px 0; font-size: 8.5pt; text-decoration: underline; color: #b8860b; }
-        .footer-line { position: absolute; bottom: 4mm; left: 10mm; right: 10mm; font-size: 7.5pt; border-top: 1px solid #ccc; padding-top: 2px; text-align: center; color: #222; line-height: 1.05; }
-        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 4px 7px; margin-bottom: 4px; font-size: 9pt; line-height: 1.12; }
-        .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 1px; font-size: 9.5pt; }
-        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 4px; }
-        .photo-card { width: 100%; height: 100px; background: #f0f4f8; border: 1px solid #cbd5e0; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 9pt; font-weight: bold; text-align: center; overflow: hidden; position: relative; }
+        .pdf-page { width: 210mm; height: 296mm; padding: 10mm 12mm 15mm 12mm; background: #fff; font-size: 10.5pt; color: #000; box-sizing: border-box; position: relative; font-family: 'Calibri', 'Arial', sans-serif; overflow: hidden; page-break-after: always; page-break-inside: avoid; }
+        .pdf-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #b8860b; padding-bottom: 5px; margin-bottom: 8px; }
+        .pdf-header-text { font-size: 8.5pt; line-height: 1.2; }
+        .pdf-logo-img { height: 42px; object-fit: contain; }
+        .kp-title { font-size: 14pt; font-weight: bold; color: #b8860b; text-align: center; margin: 6px 0 8px 0; text-transform: uppercase; }
+        .kp-meta { font-size: 10.5pt; margin-bottom: 8px; line-height: 1.3; }
+        .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        .kp-table th, .kp-table td { border: 1px solid #000; padding: 5px 7px; font-size: 10pt; vertical-align: top; line-height: 1.2; }
+        .kp-table th { background: #1a1e21; color: #fff; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 9.5pt; }
+        .total-row { background: #b8860b; color: #fff; font-weight: bold; font-size: 10.5pt; }
+        .total-row-discount { background: #8b6508; color: #fff; font-weight: bold; font-size: 10.5pt; }
+        .conditions-box { font-size: 9.5pt; line-height: 1.25; margin-top: 8px; }
+        .conditions-box h4 { margin: 6px 0 3px 0; font-size: 10pt; text-decoration: underline; color: #b8860b; }
+        .footer-line { position: absolute; bottom: 6mm; left: 12mm; right: 12mm; font-size: 8pt; border-top: 1px solid #ccc; padding-top: 4px; text-align: center; color: #222; line-height: 1.15; }
+        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 6px 10px; margin-bottom: 8px; font-size: 10pt; line-height: 1.2; }
+        .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 2px; font-size: 10.5pt; }
+        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .photo-card { width: 100%; height: 130px; background: #f0f4f8; border: 1px solid #cbd5e0; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 10pt; font-weight: bold; text-align: center; overflow: hidden; position: relative; }
     </style>
 
     <div class="gen-container">
@@ -592,7 +592,7 @@ def generator_page():
                     <div class="photo-card"><img id="pdfImg4" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Готовый объект</span></div>
                 </div>
                 
-                <div style="margin-top: 10px; font-size: 10pt; font-weight: bold;" id="pdfSignManager"></div>
+                <div style="margin-top: 10px; font-size: 10.5pt; font-weight: bold;" id="pdfSignManager"></div>
                 
                 <div class="footer-line">
                     <b>ТОО «Мамыр»</b> | Республика Казахстан, 110000, г. Костанай, ул. Узкоколейная, д. 9 | БИН 011240003418<br>
@@ -659,7 +659,7 @@ def generator_page():
 
             try {
                 var signer = getCurrentSigner();
-                var signerDisplay = "С уважением, руководство отдела продаж " + signer.name + " " + signer.phone;
+                var signerDisplay = "С уважением, " + (signer.position || "Руководитель отдела продаж") + " " + signer.name + " " + signer.phone;
 
                 var client = document.getElementById('clientName').value || 'Заказчик';
                 var phone = document.getElementById('clientPhone').value || '—';
