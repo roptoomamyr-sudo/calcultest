@@ -214,6 +214,10 @@ def index():
     user = USERS[session["user"]]
     db = load_db()
     
+    # Получаем параметры поиска и фильтра менеджера
+    search_query = request.args.get("q", "").strip().lower()
+    selected_manager = request.args.get("manager_filter", "all")
+    
     today_str = datetime.now().strftime("%Y-%m-%d")
     total_tasks = 0
     overdue_count = 0
@@ -227,8 +231,46 @@ def index():
                     overdue_count += 1
                 if t.get("reminded", False):
                     has_reminders = True
+
+    # Панель поиска и фильтрации над воронкой
+    filter_html = f"""
+    <div class="card shadow-sm border-0 mb-3 p-3 bg-white">
+        <form method="GET" action="/" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-light">🔍 Поиск:</span>
+                    <input type="text" name="q" class="form-control" value="{search_query}" placeholder="Компания, ФИО директора, контакт или телефон...">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-light">👤 Менеджер:</span>
+                    <select name="manager_filter" class="form-select">
+    """
+    
+    if user["role"] in ["director", "rop"]:
+        filter_html += f'<option value="all" {"selected" if selected_manager=="all" else ""}>Все менеджеры</option>'
+        for m_name in ["Менеджер 1", "Менеджер 2", "Менеджер 3", "Уралбаев Ж.А. (Директор)", "Лемперт А.С. (РОП)"]:
+            sel = "selected" if selected_manager == m_name else ""
+            filter_html += f'<option value="{m_name}" {sel}>{m_name}</option>'
+    else:
+        # Обычный менеджер может выбирать либо свои, либо все
+        filter_html += f'<option value="{user["name"]}" {"selected" if selected_manager==user["name"] else ""}>Только мои сделки</option>'
+        filter_html += f'<option value="all" {"selected" if selected_manager=="all" else ""}>Все клиенты компании</option>'
+
+    filter_html += f"""
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm fw-bold w-50">Найти</button>
+                <a href="/" class="btn btn-outline-secondary btn-sm w-50">Сбросить</a>
+            </div>
+        </form>
+    </div>
+    """
                     
-    kanban_content = '<div class="kanban">'
+    kanban_content = filter_html + '<div class="kanban">'
     for s_key, s_name, s_color in STAGES:
         color_style = f"background-color: {s_color};"
         if s_key == 'stage_2': color_style += " color: #000;"
@@ -240,13 +282,32 @@ def index():
         """
         for d in db["deals"]:
             if d.get("stage") == s_key:
+                # Проверка фильтра по менеджеру
+                deal_mgr = d.get("manager", "")
+                if user["role"] not in ["director", "rop"]:
+                    if selected_manager != "all" and deal_mgr != user["name"]:
+                        continue
+                else:
+                    if selected_manager != "all" and deal_mgr != selected_manager:
+                        continue
+
+                # Проверка поискового запроса (Компания, Директор, Контакт, Телефон)
+                if search_query:
+                    c_title = d.get("client", "").lower()
+                    c_dir = d.get("director", "").lower()
+                    c_pers = d.get("contact_person", "").lower()
+                    c_ph = "".join(d.get("phones", [])) + d.get("contact_phone", "")
+                    match = (search_query in c_title) or (search_query in c_dir) or (search_query in c_pers) or (search_query in c_ph)
+                    if not match:
+                        continue
+
                 region_text = d.get('region') or 'Регион не указан'
                 dir_text = d.get('director') or 'Не указан'
                 contact_p_text = d.get('contact_person') or '—'
                 phone_text = d.get('phones')[0] if d.get('phones') else 'Нет телефона'
                 sum_val = d.get('total_sum', 0)
                 sum_str = "{:,}".format(sum_val).replace(",", " ") if d.get('stage') in CONTRACT_STAGES else "—"
-                manager_text = d.get('manager') or 'Не назначен'
+                manager_text = deal_text = deal_mgr or 'Не назначен'
                 
                 tasks_badge = ""
                 for t in d.get("tasks", []):
@@ -403,7 +464,7 @@ def index():
                 '''
     kanban_content += '</div></div></div></div></div>'
 
-    # Модалка добавления сделки с контактным лицом и комментарием
+    # Модалка добавления сделки
     stages_opts = "".join([f'<option value="{sk}">{sn}</option>' for sk, sn, sc in STAGES])
     kanban_content += f"""
     <div class="modal fade" id="addModal" tabindex="-1">
@@ -886,11 +947,9 @@ def update(id):
             
             now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
             
-            # Логирование правки контактных лиц
             if d.get("contact_person") != new_contact_person:
                 d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Обновил контактное лицо: {new_contact_person}"})
             
-            # Логирование изменения телефонов
             old_phones = d.get("phones", [])
             removed_phones = [p for p in old_phones if p not in new_phones]
             if removed_phones:
@@ -963,7 +1022,7 @@ def complete_task(deal_id, task_id):
                     if task_date < today_str:
                         history_text = f"✓ Выполнил задачу с просрочкой (план: {task_date}): [{t['type']}] {t['text']}"
                     else:
-                        history_text = f"✓ Выполнил задачу вовремя: [{t['type']}] {t['text']}"
+                        history_text = f"✓ Выполнил задачу вовремя: [{t['type']}] {t['text']} с прикрепленным файлом"
                     d["history"].append({"date": now_str, "author": user["name"], "text": history_text})
                     break
     save_db(db)
