@@ -561,8 +561,8 @@ def generator_page():
 
     <script>
         var VAT = 1.16;
-        var sessionAuthor = %s;
-        var allUsers = %s;
+        var sessionAuthor = """ + current_user_json + """;
+        var allUsers = """ + users_json + """;
 
         document.getElementById('sessionAuthorName').innerText = sessionAuthor.name + " (" + sessionAuthor.position + ")";
 
@@ -757,7 +757,7 @@ def generator_page():
             }
         }
     </script>
-    """ % (current_user_json, users_json)
+    """
     
     return render_template_string(BASE_TEMPLATE, page_title="Генератор КП", active_page="generator", current_user_data=user_data, content=gen_html)
 
@@ -840,7 +840,7 @@ def registry_page():
     </div>
 
     <script>
-        var rawDeals = %s;
+        var rawDeals = """ + raw_deals_json + """;
 
         function filterTable() {
             var mFilter = document.getElementById('managerFilter').value;
@@ -903,7 +903,7 @@ def registry_page():
 
         window.onload = filterTable;
     </script>
-    """ % raw_deals_json
+    """
     
     return render_template_string(BASE_TEMPLATE, page_title="Реестр КП", active_page="registry", current_user_data=user_data, content=reg_html)
 
@@ -1475,14 +1475,9 @@ def update_deal(id):
             old_dir_phones = d.get("director_phones", [])
             new_dir_phones = [p.strip() for p in request.form.getlist("director_phones") if p.strip()]
             if old_dir_phones != new_dir_phones:
-                # Умный анализ изменения телефонов директора
                 added_dp = [p for p in new_dir_phones if p not in old_dir_phones]
                 removed_dp = [p for p in old_dir_phones if p not in new_dir_phones]
-                if len(added_dp) == 1 and len(removed_dp) == 0 and len(old_dir_phones) == len(new_dir_phones):
-                    # Похоже на редактирование (замена элемента на той же позиции или поштучно)
-                    pass # Обработаем ниже или через обход
                 
-                # Детальная фиксация добавлений/удалений/изменений
                 for p in added_dp:
                     d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Добавлен номер директора: {p}"})
                 for p in removed_dp:
