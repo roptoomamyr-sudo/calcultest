@@ -150,7 +150,7 @@ BASE_TEMPLATE = """
         <div class="p-2 bg-dark border-top border-secondary text-muted small flex-shrink-0">
             <a href="/profile" class="text-white text-decoration-none d-flex align-items-center gap-2 p-2 rounded {% if active_page == 'profile' %}bg-primary text-white{% endif %}">
                 {% if current_user_data.get('avatar') %}
-                <img src="{{ url_for('static', filename='uploads/' + current_user_data['avatar']) }}" style="width:28px; height:28px; border-radius:50%; object-fit:cover;">
+                <img src="{{ url_for('uploaded_file', filename=current_user_data['avatar']) }}" style="width:28px; height:28px; border-radius:50%; object-fit:cover;">
                 {% else %}
                 <i>👤</i>
                 {% endif %}
@@ -203,11 +203,11 @@ BASE_TEMPLATE = """
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-function addPhoneField(id, val="") {
-    var c = document.getElementById(id);
+function addPhoneField(containerId, inputName, val="") {
+    var c = document.getElementById(containerId);
     var d = document.createElement('div');
     d.className = 'input-group mb-2';
-    d.innerHTML = '<input type="text" name="phones" class="form-control" value="' + val + '" placeholder="+7..."><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>';
+    d.innerHTML = '<input type="text" name="' + inputName + '" class="form-control" value="' + val + '" placeholder="+7..."><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>';
     c.appendChild(d);
 }
 function dragDeal(ev, id) { ev.dataTransfer.setData("dealId", id); }
@@ -1061,7 +1061,7 @@ def index():
                 
                 kanban_content += f"""
                                 </div>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('edit-dir-phones-{d['id']}')">+ Телефон директора</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('edit-dir-phones-{d['id']}', 'director_phones')">+ Телефон директора</button>
                             </div>
                             <div class="col-md-6"><label class="form-label fw-bold">Контактное лицо:</label><input type="text" name="contact_person" class="form-control" value="{d.get('contact_person', '')}"></div>
                             <div class="col-md-6"><label class="form-label fw-bold">Телефоны контактного лица:</label>
@@ -1076,7 +1076,7 @@ def index():
                 
                 kanban_content += f"""
                                 </div>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('edit-contact-phones-{d['id']}')">+ Телефон контактного лица</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('edit-contact-phones-{d['id']}', 'contact_phones')">+ Телефон контактного лица</button>
                             </div>
                             <div class="col-md-6"><label class="form-label fw-bold">Этап воронки:</label><select name="stage" class="form-select">{"".join([f'<option value="{sk}" {"selected" if d["stage"] == sk else ""}>{sn}</option>' for sk, sn, sc in STAGES])}</select></div>
                             <div class="col-md-6"><label class="form-label fw-bold">Ответственный:</label>
@@ -1121,9 +1121,13 @@ def index():
             if not t.get("done", False):
                 is_overdue = t.get("date") < today_str
                 remind_btn = ""
+                # Кнопку «Напомнить» видит ТОЛЬКО РОП или Директор
                 if user_data["role"] in ["director", "rop"] and is_overdue and not t.get("reminded"):
                     remind_btn = f'<form method="POST" action="{url_for("remind_task", deal_id=d["id"], task_id=t["id"])}" class="d-inline"><button type="submit" class="btn btn-outline-danger btn-sm">⚠️ Напомнить</button></form>'
-                kanban_content += f'<div class="list-group-item d-flex justify-content-between align-items-center {"list-group-item-danger" if is_overdue else ""}"><div><span class="badge {"bg-danger" if is_overdue else "bg-primary"}">{"⚠️ Просрочено (" + t.get("date") + ")" if is_overdue else t.get("date")}</span><strong class="ms-2">{d["client"]}</strong><div class="small mt-1"><b>{t.get("type")}</b> {("(РОП напоминает!)" if t.get("reminded") else "")}</div></div><div class="d-flex gap-2">{remind_btn}<form method="POST" action="{url_for("complete_task", deal_id=d["id"], task_id=t["id"])}"><button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button></form></div></div>'
+                
+                remind_status_text = '<span class="badge bg-danger text-white blink-remind ms-2">⚡ РОП НАПОМИНАЕТ!</span>' if t.get("reminded") else ''
+                
+                kanban_content += f'<div class="list-group-item d-flex justify-content-between align-items-center {"list-group-item-danger" if is_overdue else ""}"><div><span class="badge {"bg-danger" if is_overdue else "bg-primary"}">{"⚠️ Просрочено (" + t.get("date") + ")" if is_overdue else t.get("date")}</span><strong class="ms-2">{d["client"]}</strong>{remind_status_text}<div class="small mt-1"><b>{t.get("type")}</b> (Ответственный: {d.get("manager", "Не назначен")})</div></div><div class="d-flex gap-2">{remind_btn}<form method="POST" action="{url_for("complete_task", deal_id=d["id"], task_id=t["id"])}"><button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button></form></div></div>'
     kanban_content += '</div></div></div></div></div>'
 
     kanban_content += f"""
@@ -1137,13 +1141,13 @@ def index():
                 <div class="col-md-6"><label class="form-label fw-bold">Расположение:</label><input type="text" name="region" class="form-control" placeholder="Костанай"></div>
                 <div class="col-md-6"><label class="form-label fw-bold">Директор (ЛПР):</label><input type="text" name="director" class="form-control" placeholder="ФИО директора"></div>
                 <div class="col-md-6"><label class="form-label fw-bold">Телефоны директора:</label>
-                    <div id="new-dir-phones"><div class="input-group mb-2"><input type="text" name="director_phones" class="form-control" placeholder="+7..."><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button></div></div>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('new-dir-phones')">+ Телефон директора</button>
+                    <div id="new-dir-phones"><div class="input-group mb-2"><input type="text" name="director_phones" class="form-control" placeholder="+7..."></div></div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('new-dir-phones', 'director_phones')">+ Телефон директора</button>
                 </div>
                 <div class="col-md-6"><label class="form-label fw-bold">Контактное лицо:</label><input type="text" name="contact_person" class="form-control" placeholder="ФИО менеджера / агронома"></div>
                 <div class="col-md-6"><label class="form-label fw-bold">Телефоны контактного лица:</label>
-                    <div id="new-contact-phones"><div class="input-group mb-2"><input type="text" name="contact_phones" class="form-control" placeholder="+7..."><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button></div></div>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('new-contact-phones')">+ Телефон контактного лица</button>
+                    <div id="new-contact-phones"><div class="input-group mb-2"><input type="text" name="contact_phones" class="form-control" placeholder="+7..."></div></div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('new-contact-phones', 'contact_phones')">+ Телефон контактного лица</button>
                 </div>
             </div></div>
             <div class="modal-footer"><button type="submit" class="btn btn-success">Создать сделку</button></div>
@@ -1542,13 +1546,18 @@ def remind_task(deal_id, task_id):
     db = load_db()
     uname = session["user"]
     user_data = db["users"][uname]
+    
+    # Только РОП или Директор могут нажимать кнопку напоминания
+    if user_data["role"] not in ["director", "rop"]:
+        return redirect(url_for("index"))
+
     for d in db["deals"]:
         if d["id"] == deal_id:
             for t in d.get("tasks", []):
                 if t.get("id") == task_id:
                     t["reminded"] = True
                     if "history" not in d: d["history"] = []
-                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"РОП напомнил по задаче: {t.get('type')}"})
+                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"РОП ({user_data['name']}) напомнил менеджеру по просроченной задаче: {t.get('type')}"})
     save_db(db)
     return redirect(url_for("index"))
 
