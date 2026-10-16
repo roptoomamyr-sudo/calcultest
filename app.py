@@ -93,8 +93,8 @@ BASE_TEMPLATE = """
     <title>{{ page_title }} - Ангар CRM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; font-family: Arial, sans-serif; overflow: hidden; height: 100vh; }
-        .wrapper { display: flex; width: 100%; height: 100vh; }
+        body { background: #f8f9fa; font-family: Arial, sans-serif; overflow-x: hidden; }
+        .wrapper { display: flex; width: 100%; height: 100vh; overflow: hidden; }
         .sidebar { width: 60px; background: #212529; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.25s ease-in-out; overflow: hidden; white-space: nowrap; z-index: 1000; }
         .sidebar:hover { width: 240px; }
         .sidebar .brand { padding: 15px; font-size: 16px; font-weight: bold; background: #1a1e21; border-bottom: 1px solid #373b3e; text-align: left; }
@@ -108,19 +108,18 @@ BASE_TEMPLATE = """
         
         .content-body { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding: 15px; background: #f8f9fa; }
         
-        /* Улучшенный скроллборд для воронки */
-        .kanban-wrapper { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .kanban { display: flex; overflow-x: auto; gap: 12px; height: 100%; padding-bottom: 12px; }
-        
-        /* Стилизация полосы прокрутки для удобства */
-        .kanban::-webkit-scrollbar { height: 12px; }
-        .kanban::-webkit-scrollbar-track { background: #e9ecef; border-radius: 6px; }
-        .kanban::-webkit-scrollbar-thumb { background: #0d6efd; border-radius: 6px; }
-        .kanban::-webkit-scrollbar-thumb:hover { background: #0b5ed7; }
+        /* Исправленная горизонтальная воронка */
+        .kanban-outer { flex-grow: 1; overflow-x: auto; overflow-y: hidden; white-space: nowrap; padding-bottom: 10px; }
+        .kanban { display: inline-flex; gap: 12px; height: 100%; align-items: flex-start; }
 
-        .k-col { min-width: 280px; max-width: 280px; background: #e9ecef; border-radius: 6px; display: flex; flex-direction: column; height: 100%; }
+        /* Красивая видимая полоса скролла */
+        .kanban-outer::-webkit-scrollbar { height: 12px; }
+        .kanban-outer::-webkit-scrollbar-track { background: #dee2e6; border-radius: 6px; }
+        .kanban-outer::-webkit-scrollbar-thumb { background: #0d6efd; border-radius: 6px; }
+
+        .k-col { width: 280px; min-width: 280px; max-width: 280px; background: #e9ecef; border-radius: 6px; display: flex; flex-direction: column; max-height: 100%; white-space: normal; }
         .k-header { padding: 10px; font-weight: bold; font-size: 13px; color: white; border-top-left-radius: 6px; border-top-right-radius: 6px; text-align: center; flex-shrink: 0; }
-        .k-body { padding: 8px; overflow-y: auto; flex-grow: 1; }
+        .k-body { padding: 8px; overflow-y: auto; flex-grow: 1; min-height: 150px; }
         
         .deal-card { background: #ffffff; border-radius: 4px; padding: 10px; margin-bottom: 8px; font-size: 12px; border: 1px solid #ced4da; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: grab; transition: 0.15s; }
         .deal-card:active { cursor: grabbing; opacity: 0.7; }
@@ -244,7 +243,7 @@ def index():
                 if t.get("reminded", False):
                     has_reminders = True
 
-    # Закрепленная верхняя панель поиска
+    # Панель поиска сверху
     filter_html = f"""
     <div class="card shadow-sm border-0 mb-3 p-3 bg-white flex-shrink-0">
         <form method="GET" action="/" class="row g-2 align-items-center">
@@ -281,7 +280,7 @@ def index():
     </div>
     """
                     
-    kanban_content = filter_html + '<div class="kanban-wrapper"><div class="kanban">'
+    kanban_content = filter_html + '<div class="kanban-outer"><div class="kanban">'
     for s_key, s_name, s_color in STAGES:
         color_style = f"background-color: {s_color};"
         if s_key == 'stage_2': color_style += " color: #000;"
@@ -442,7 +441,8 @@ def index():
                     </div>
                 </div>
                 """
-        kanban_content += '</div></div></div>'
+        kanban_content += '</div></div>'
+    kanban_content += '</div>'
 
     # Модалка задач
     kanban_content += '<div class="modal fade" id="tasksListModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-warning text-dark"><h5 class="modal-title fw-bold">🔔 Панель задач и контроля</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="list-group">'
