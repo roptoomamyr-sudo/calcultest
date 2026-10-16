@@ -1025,4 +1025,300 @@ def add_tz():
 
 @app.route("/tz/update/<tz_id>", methods=["POST"])
 def update_tz(tz_id):
-    if "user" not in session: return redirect(url
+    if "user" not in session: return redirect(url_for("login"))
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    
+    for tz in db.get("tz_list", []):
+        if tz["id"] == tz_id:
+            if user_data["name"] != tz.get("author") and user_data["role"] not in ["director", "rop"]:
+                return redirect(url_for("tz_page"))
+                
+            new_title = request.form.get("title")
+            new_desc = request.form.get("description")
+            
+            changes = []
+            if tz["title"] != new_title:
+                changes.append(f"Изменил название с '{tz['title']}' на '{new_title}'")
+                tz["title"] = new_title
+            if tz["description"] != new_desc:
+                changes.append("Обновил описание ТЗ")
+                tz["description"] = new_desc
+                
+            file = request.files.get("file")
+            if file and file.filename:
+                filename_str = secure_filename(f"{int(datetime.now().timestamp())}_{file.filename}")
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename_str))
+                tz["filename"] = filename_str
+                changes.append(f"Загрузил новый файл: {file.filename}")
+
+            if changes:
+                if "history" not in tz: tz["history"] = []
+                for change in changes:
+                    tz["history"].append({"date": now_str, "author": user_data["name"], "text": change})
+            break
+            
+    save_db(db)
+    return redirect(url_for("tz_page"))
+
+@app.route("/tz/remind/<tz_id>", methods=["POST"])
+def remind_tz(tz_id):
+    if "user" not in session: return redirect(url_for("login"))
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    for tz in db.get("tz_list", []):
+        if tz["id"] == tz_id:
+            tz["reminded"] = True
+            if "history" not in tz: tz["history"] = []
+            tz["history"].append({"date": now_str, "author": user_data["name"], "text": "⚡ РОП напомнил ответственному по ТЗ!"})
+            break
+    save_db(db)
+    return redirect(url_for("tz_page"))
+
+@app.route("/tz/complete/<tz_id>", methods=["POST"])
+def complete_tz(tz_id):
+    if "user" not in session: return redirect(url_for("login"))
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    for tz in db.get("tz_list", []):
+        if tz["id"] == tz_id:
+            tz["done"] = True
+            tz["reminded"] = False
+            if "history" not in tz: tz["history"] = []
+            tz["history"].append({"date": now_str, "author": user_data["name"], "text": "✓ ТЗ выполнено"})
+            break
+    save_db(db)
+    return redirect(url_for("tz_page"))
+
+@app.route("/analytics")
+def analytics_page():
+    if "user" not in session: return redirect(url_for("login"))
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    if user_data["role"] not in ["director", "rop"]:
+        return "<h3 style='color:red; text-align:center; margin-top:50px;'>⛔ Доступ запрещен! Доступно только РОПу и Директору.</h3><p style='text-align:center;'><a href='/'>Вернуться в CRM</a></p>"
+    
+    total_deals = len(db["deals"])
+    total_contract_sum = sum(d.get("total_sum", 0) for d in db["deals"])
+    total_tz = len(db.get("tz_list", []))
+    sum_formatted = "{:,}".format(total_contract_sum).replace(",", " ")
+    
+    analytics_content = f"""
+    <div class="container-fluid p-4">
+        <div class="row g-3">
+            <div class="col-md-4"><div class="card shadow-sm border-0 bg-primary text-white p-3"><h5>📊 Всего сделок в работе</h5><h3>{total_deals}</h3></div></div>
+            <div class="col-md-4"><div class="card shadow-sm border-0 bg-success text-white p-3"><h5>💰 Сумма по договорам</h5><h3>{sum_formatted} ₸</h3></div></div>
+            <div class="col-md-4"><div class="card shadow-sm border-0 bg-warning text-dark p-3"><h5>📐 Активных ТЗ</h5><h3>{total_tz}</h3></div></div>
+        </div>
+        <div class="card shadow-sm border-0 mt-4 p-4">
+            <h5 class="fw-bold text-secondary">📈 Управленческий срез по воронке</h5>
+            <p class="text-muted">Контроль показателей эффективности и движения сделок по этапам.</p>
+        </div>
+    </div>
+    """
+    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", current_user_data=user_data, content=analytics_content)
+
+@app.route("/move_deal", methods=["POST"])
+def move_deal():
+    if "user" not in session: return jsonify({"success": False})
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    data = request.get_json()
+    deal_id = data.get("id")
+    target_stage = data.get("stage")
+    
+    for d in db["deals"]:
+        if d["id"] == deal_id:
+            old_stage = d["stage"]
+            if old_stage != target_stage:
+                stage_name = target_stage
+                for sk, sn, sc in STAGES:
+                    if sk == target_stage: stage_name = sn
+                now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+                d["stage"] = target_stage
+                d["history"].append({"date": now_str, "author": user_data["name"], "text": f"Перетащил карточку на этап: {stage_name}"})
+                save_db(db)
+                return jsonify({"success": True})
+    return jsonify({"success": False})
+
+@app.route("/add", methods=["POST"])
+def add_deal():
+    if "user" not in session: return redirect(url_for("login"))
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    
+    client_name = request.form.get("client")
+    selected_stage = request.form.get("stage", "stage_1")
+    selected_manager = request.form.get("manager", user_data["name"])
+    director = request.form.get("director", "").strip()
+    contact_person = request.form.get("contact_person", "").strip()
+    contact_phone = request.form.get("contact_phone", "").strip()
+    phones = [p.strip() for p in request.form.getlist("phones") if p.strip()]
+    region = request.form.get("region", "").strip()
+    email = request.form.get("email", "").strip()
+    comment = request.form.get("comment", "").strip()
+    
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    history_entries = [{"date": now_str, "author": user_data["name"], "text": "Создана новая заявка"}]
+    if comment:
+        history_entries.append({"date": now_str, "author": user_data["name"], "text": f"💬 Первичный комментарий: {comment}"})
+
+    db["deals"].append({
+        "id": str(len(db["deals"]) + 1),
+        "title": client_name,
+        "client": client_name,
+        "director": director,
+        "contact_person": contact_person,
+        "contact_phone": contact_phone,
+        "phones": phones,
+        "email": email,
+        "region": region,
+        "stage": selected_stage,
+        "manager": selected_manager,
+        "total_sum": 0,
+        "history": history_entries,
+        "tasks": []
+    })
+    save_db(db)
+    return redirect(url_for("index"))
+
+@app.route("/update/<id>", methods=["POST"])
+def update_deal(id):
+    if "user" not in session: return redirect(url_for("login"))
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    current_user_data = users[uname]
+    
+    for d in db["deals"]:
+        if d["id"] == id:
+            client_name = request.form.get("client")
+            new_stage = request.form.get("stage")
+            new_comment = request.form.get("new_comment", "").strip()
+            
+            new_director = request.form.get("director", "").strip()
+            new_contact_person = request.form.get("contact_person", "").strip()
+            new_contact_phone = request.form.get("contact_phone", "").strip()
+            new_phones = [p.strip() for p in request.form.getlist("phones") if p.strip()]
+            new_region = request.form.get("region", "").strip()
+            new_email = request.form.get("email", "").strip()
+            
+            now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+            
+            if d.get("contact_person") != new_contact_person:
+                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Обновил контактное лицо: {new_contact_person}"})
+            
+            old_phones = d.get("phones", [])
+            removed_phones = [p for p in old_phones if p not in new_phones]
+            if removed_phones:
+                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"🗑️ Удалил номера телефонов: {', '.join(removed_phones)}"})
+            
+            added_phones = [p for p in new_phones if p not in old_phones]
+            if added_phones:
+                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"➕ Добавил номера телефонов: {', '.join(added_phones)}"})
+
+            d["director"] = new_director
+            d["contact_person"] = new_contact_person
+            d["contact_phone"] = new_contact_phone
+            d["phones"] = new_phones
+            d["region"] = new_region
+            d["email"] = new_email
+            
+            if new_stage in CONTRACT_STAGES:
+                new_sum = int(request.form.get("total_sum") or 0)
+                if d["total_sum"] != new_sum:
+                    d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Изменил сумму на: {new_sum:,} ₸"})
+                    d["total_sum"] = new_sum
+
+            task_date = request.form.get("task_date")
+            task_type = request.form.get("task_type")
+            task_text = request.form.get("task_text", "").strip()
+            
+            if task_date and task_text:
+                if "tasks" not in d: d["tasks"] = []
+                task_id = f"t_{len(d['tasks'])+1}_{int(datetime.now().timestamp())}"
+                d["tasks"].append({"id": task_id, "date": task_date, "type": task_type, "text": task_text, "done": False, "reminded": False})
+                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Поставил задачу ({task_type} на {task_date}): {task_text}"})
+
+            if current_user_data["role"] in ["director", "rop"]:
+                requested_manager = request.form.get("manager")
+                if requested_manager and d["manager"] != requested_manager:
+                    d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Изменил ответственного на: {requested_manager}"})
+                    d["manager"] = requested_manager
+            
+            if d["stage"] != new_stage:
+                stage_name = new_stage
+                for sk, sn, sc in STAGES:
+                    if sk == new_stage: stage_name = sn
+                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Сменил этап на: {stage_name}"})
+                d["stage"] = new_stage
+                
+            if new_comment:
+                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"💬 {new_comment}"})
+                
+            d["title"] = client_name
+            d["client"] = client_name
+            break
+            
+    save_db(db)
+    return redirect(url_for("index"))
+
+@app.route("/complete_task/<deal_id>/<task_id>", methods=["POST"])
+def complete_task(deal_id, task_id):
+    if "user" not in session: return redirect(url_for("login"))
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    
+    for d in db["deals"]:
+        if d["id"] == deal_id:
+            for t in d.get("tasks", []):
+                if t.get("id") == task_id:
+                    t["done"] = True
+                    task_date = t.get("date", "")
+                    if task_date < today_str:
+                        history_text = f"✓ Выполнил задачу с просрочкой (план: {task_date}): [{t['type']}] {t['text']}"
+                    else:
+                        history_text = f"✓ Выполнил задачу вовремя: [{t['type']}] {t['text']}"
+                    d["history"].append({"date": now_str, "author": user_data["name"], "text": history_text})
+                    break
+    save_db(db)
+    return redirect(url_for("index"))
+
+@app.route("/remind_task/<deal_id>/<task_id>", methods=["POST"])
+def remind_task(deal_id, task_id):
+    if "user" not in session: return redirect(url_for("login"))
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    for d in db["deals"]:
+        if d["id"] == deal_id:
+            for t in d.get("tasks", []):
+                if t.get("id") == task_id:
+                    t["reminded"] = True
+                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": "⚡ РОП напомнил менеджеру о просроченной задаче!"})
+                    break
+    save_db(db)
+    return redirect(url_for("index"))
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
