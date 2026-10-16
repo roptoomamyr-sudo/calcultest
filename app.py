@@ -99,12 +99,12 @@ BASE_TEMPLATE = """
     <title>{{ page_title }} - Ангар CRM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; font-family: Arial, sans-serif; overflow-x: hidden; }
+        body { background: #f8f9fa; font-family: Arial, sans-serif; overflow: hidden; height: 100vh; }
         .wrapper { display: flex; width: 100%; height: 100vh; overflow: hidden; }
         .sidebar { width: 60px; background: #212529; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.25s ease-in-out; overflow: hidden; white-space: nowrap; z-index: 1000; }
         .sidebar:hover { width: 240px; }
         .sidebar .brand { padding: 15px; font-size: 16px; font-weight: bold; background: #1a1e21; border-bottom: 1px solid #373b3e; text-align: left; }
-        .sidebar .menu { padding: 15px 5px; display: flex; flex-direction: column; gap: 8px; flex-grow: 1; }
+        .sidebar .menu { padding: 15px 5px; display: flex; flex-direction: column; gap: 8px; flex-grow: 1; overflow-y: auto; }
         .sidebar .menu a { color: #adb5bd; text-decoration: none; padding: 10px 12px; border-radius: 4px; font-size: 13px; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
         .sidebar .menu a:hover, .sidebar .menu a.active { background: #0d6efd; color: #fff; }
         .sidebar .menu a i { font-size: 16px; min-width: 24px; text-align: center; font-style: normal; }
@@ -112,7 +112,7 @@ BASE_TEMPLATE = """
         .main-content { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         .top-bar { background: #ffffff; border-bottom: 1px solid #dee2e6; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; height: 60px; flex-shrink: 0; }
         
-        .content-body { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding: 15px; background: #f8f9fa; }
+        .content-body { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 15px; background: #f8f9fa; }
         
         .kanban-outer { flex-grow: 1; overflow-x: auto; overflow-y: hidden; white-space: nowrap; padding-bottom: 10px; }
         .kanban { display: inline-flex; gap: 12px; height: 100%; align-items: flex-start; }
@@ -148,12 +148,12 @@ BASE_TEMPLATE = """
             <a href="/chat" class="{% if active_page == 'chat' %}active{% endif %}"><i>💬</i> <span>Чат сотрудников</span></a>
         </div>
         
-        <!-- Нижняя панель с профилем прямо над кнопкой Выйти -->
-        <div class="p-3 bg-dark border-top border-secondary text-muted small d-flex flex-direction-column gap-2">
-            <a href="/profile" class="text-white text-decoration-none d-flex align-items-center gap-2 {% if active_page == 'profile' %}fw-bold text-primary{% endif %}">
-                <i>👤</i> <span class="text-truncate">{{ current_user_data.name }}</span>
+        <!-- Нижняя панель с профилем над кнопкой Выйти -->
+        <div class="p-2 bg-dark border-top border-secondary text-muted small flex-shrink-0">
+            <a href="/profile" class="text-white text-decoration-none d-flex align-items-center gap-2 p-2 rounded {% if active_page == 'profile' %}bg-primary text-white{% endif %}">
+                <i>👤</i> <span class="text-truncate"><b>{{ current_user_data.name }}</b></span>
             </a>
-            <a href="/logout" class="text-danger text-decoration-none d-flex align-items-center gap-2 mt-1">
+            <a href="/logout" class="text-danger text-decoration-none d-flex align-items-center gap-2 p-2 mt-1">
                 <i>🚪</i> <span>Выйти</span>
             </a>
         </div>
@@ -285,8 +285,8 @@ def profile_page():
     avatar_html = f'<img src="/uploads/{user_data["avatar"]}" class="rounded-circle border" width="90" height="90" style="object-fit: cover;">' if user_data.get("avatar") else '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-2" style="width: 90px; height: 90px;">👤</div>'
 
     profile_content = f"""
-    <div class="container-fluid p-3" style="max-width: 750px;">
-        <div class="card shadow-sm border-0">
+    <div class="container-fluid p-3" style="max-width: 750px; padding-bottom: 50px;">
+        <div class="card shadow-sm border-0 mb-4">
             <div class="card-header bg-primary text-white fw-bold">⚙️ Настройки профиля</div>
             <div class="card-body">
                 {f'<div class="alert alert-success">{success_msg}</div>' if success_msg else ''}
@@ -327,7 +327,7 @@ def profile_page():
                         <div class="col-md-6"><label class="form-label">Текущий пароль:</label><input type="password" name="old_pass" class="form-control"></div>
                         <div class="col-md-6"><label class="form-label">Новый пароль:</label><input type="password" name="new_pass" class="form-control"></div>
                     </div>
-                    <button type="submit" class="btn btn-primary fw-bold w-100">Сохранить профиль</button>
+                    <button type="submit" class="btn btn-primary fw-bold w-100 py-2">💾 Сохранить изменения</button>
                 </form>
             </div>
         </div>
@@ -1194,132 +1194,3 @@ def add():
         "total_sum": 0,
         "history": history_entries,
         "tasks": []
-    })
-    save_db(db)
-    return redirect(url_for("index"))
-
-@app.route("/update/<id>", methods=["POST"])
-def update(id):
-    if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    users = db.get("users", DEFAULT_USERS)
-    current_user_data = users[uname]
-    
-    for d in db["deals"]:
-        if d["id"] == id:
-            client_name = request.form.get("client")
-            new_stage = request.form.get("stage")
-            new_comment = request.form.get("new_comment", "").strip()
-            
-            new_director = request.form.get("director", "").strip()
-            new_contact_person = request.form.get("contact_person", "").strip()
-            new_contact_phone = request.form.get("contact_phone", "").strip()
-            new_phones = [p.strip() for p in request.form.getlist("phones") if p.strip()]
-            new_region = request.form.get("region", "").strip()
-            new_email = request.form.get("email", "").strip()
-            
-            now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
-            
-            if d.get("contact_person") != new_contact_person:
-                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Обновил контактное лицо: {new_contact_person}"})
-            
-            old_phones = d.get("phones", [])
-            removed_phones = [p for p in old_phones if p not in new_phones]
-            if removed_phones:
-                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"🗑️ Удалил номера телефонов: {', '.join(removed_phones)}"})
-            
-            added_phones = [p for p in new_phones if p not in old_phones]
-            if added_phones:
-                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"➕ Добавил номера телефонов: {', '.join(added_phones)}"})
-
-            d["director"] = new_director
-            d["contact_person"] = new_contact_person
-            d["contact_phone"] = new_contact_phone
-            d["phones"] = new_phones
-            d["region"] = new_region
-            d["email"] = new_email
-            
-            if new_stage in CONTRACT_STAGES:
-                new_sum = int(request.form.get("total_sum") or 0)
-                if d["total_sum"] != new_sum:
-                    d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Изменил сумму на: {new_sum:,} ₸"})
-                    d["total_sum"] = new_sum
-
-            task_date = request.form.get("task_date")
-            task_type = request.form.get("task_type")
-            task_text = request.form.get("task_text", "").strip()
-            
-            if task_date and task_text:
-                if "tasks" not in d: d["tasks"] = []
-                task_id = f"t_{len(d['tasks'])+1}_{int(datetime.now().timestamp())}"
-                d["tasks"].append({"id": task_id, "date": task_date, "type": task_type, "text": task_text, "done": False, "reminded": False})
-                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Поставил задачу ({task_type} на {task_date}): {task_text}"})
-
-            if current_user_data["role"] in ["director", "rop"]:
-                requested_manager = request.form.get("manager")
-                if requested_manager and d["manager"] != requested_manager:
-                    d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Изменил ответственного на: {requested_manager}"})
-                    d["manager"] = requested_manager
-            
-            if d["stage"] != new_stage:
-                stage_name = new_stage
-                for sk, sn, sc in STAGES:
-                    if sk == new_stage: stage_name = sn
-                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Сменил этап на: {stage_name}"})
-                d["stage"] = new_stage
-                
-            if new_comment:
-                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"💬 {new_comment}"})
-                
-            d["title"] = client_name
-            d["client"] = client_name
-            break
-            
-    save_db(db)
-    return redirect(url_for("index"))
-
-@app.route("/complete_task/<deal_id>/<task_id>", methods=["POST"])
-def complete_task(deal_id, task_id):
-    if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    users = db.get("users", DEFAULT_USERS)
-    user_data = users[uname]
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
-    
-    for d in db["deals"]:
-        if d["id"] == deal_id:
-            for t in d.get("tasks", []):
-                if t.get("id") == task_id:
-                    t["done"] = True
-                    task_date = t.get("date", "")
-                    if task_date < today_str:
-                        history_text = f"✓ Выполнил задачу с просрочкой (план: {task_date}): [{t['type']}] {t['text']}"
-                    else:
-                        history_text = f"✓ Выполнил задачу вовремя: [{t['type']}] {t['text']}"
-                    d["history"].append({"date": now_str, "author": user_data["name"], "text": history_text})
-                    break
-    save_db(db)
-    return redirect(url_for("index"))
-
-@app.route("/remind_task/<deal_id>/<task_id>", methods=["POST"])
-def remind_task(deal_id, task_id):
-    if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    users = db.get("users", DEFAULT_USERS)
-    user_data = users[uname]
-    for d in db["deals"]:
-        if d["id"] == deal_id:
-            for t in d.get("tasks", []):
-                if t.get("id") == task_id:
-                    t["reminded"] = True
-                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": "⚡ РОП напомнил менеджеру о просроченной задаче!"})
-                    break
-    save_db(db)
-    return redirect(url_for("index"))
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
