@@ -242,6 +242,7 @@ def index():
             if d.get("stage") == s_key:
                 region_text = d.get('region') or 'Регион не указан'
                 dir_text = d.get('director') or 'Не указан'
+                contact_p_text = d.get('contact_person') or '—'
                 phone_text = d.get('phones')[0] if d.get('phones') else 'Нет телефона'
                 sum_val = d.get('total_sum', 0)
                 sum_str = "{:,}".format(sum_val).replace(",", " ") if d.get('stage') in CONTRACT_STAGES else "—"
@@ -262,6 +263,7 @@ def index():
                     <div class="fw-bold text-primary mb-1" style="font-size: 13px;">{d['title']}</div>
                     <div class="text-muted text-truncate">📍 {region_text}</div>
                     <div class="text-secondary text-truncate">👤 Директор: {dir_text}</div>
+                    <div class="text-secondary text-truncate">🤝 Контакт: {contact_p_text}</div>
                     <div class="text-dark text-truncate">📞 {phone_text}</div>
                     {tasks_badge}
                     <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 11px;">
@@ -285,8 +287,10 @@ def index():
                                         <div class="col-md-6"><label class="form-label fw-bold">Расположение:</label><input type="text" name="region" class="form-control" value="{d.get('region', '')}"></div>
                                         <div class="col-md-6"><label class="form-label fw-bold">ФИО Директора:</label><input type="text" name="director" class="form-control" value="{d.get('director', '')}"></div>
                                         <div class="col-md-6"><label class="form-label fw-bold">Email:</label><input type="email" name="email" class="form-control" value="{d.get('email', '')}"></div>
+                                        <div class="col-md-6"><label class="form-label fw-bold">Контактное лицо (ЛПР/Представитель):</label><input type="text" name="contact_person" class="form-control" value="{d.get('contact_person', '')}"></div>
+                                        <div class="col-md-6"><label class="form-label fw-bold">Телефон контактного лица:</label><input type="text" name="contact_phone" class="form-control" value="{d.get('contact_phone', '')}"></div>
                                         <div class="col-md-12">
-                                            <label class="form-label fw-bold">Телефоны:</label>
+                                            <label class="form-label fw-bold">Телефоны ТОО/КХ:</label>
                                             <div id="phones-container-{d['id']}">
                 """
                 for ph in d.get("phones", []):
@@ -347,11 +351,11 @@ def index():
                                             </div>
                                         </div>
                                         <div class="col-12">
-                                            <label class="form-label fw-bold text-success">+ Комментарий:</label>
-                                            <textarea name="new_comment" class="form-control" rows="2"></textarea>
+                                            <label class="form-label fw-bold text-success">+ Добавить комментарий:</label>
+                                            <textarea name="new_comment" class="form-control" rows="2" placeholder="Введите примечание / детали диалога..."></textarea>
                                         </div>
                                         <div class="col-12">
-                                            <label class="form-label fw-bold text-secondary">📜 История:</label>
+                                            <label class="form-label fw-bold text-secondary">📜 История и комментарии:</label>
                                             <div class="history-box">
                 """
                 for h in reversed(d.get("history", [])):
@@ -399,7 +403,7 @@ def index():
                 '''
     kanban_content += '</div></div></div></div></div>'
 
-    # Модалка добавления сделки
+    # Модалка добавления сделки с контактным лицом и комментарием
     stages_opts = "".join([f'<option value="{sk}">{sn}</option>' for sk, sn, sc in STAGES])
     kanban_content += f"""
     <div class="modal fade" id="addModal" tabindex="-1">
@@ -422,13 +426,19 @@ def index():
                                     <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
                                 </select>
                             </div>
-                            <div class="col-md-6"><label class="form-label fw-bold">Расположение:</label><input type="text" name="region" class="form-control"></div>
-                            <div class="col-md-6"><label class="form-label fw-bold">Директор:</label><input type="text" name="director" class="form-control"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold">Расположение:</label><input type="text" name="region" class="form-control" placeholder="Костанай"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold">Директор:</label><input type="text" name="director" class="form-control" placeholder="Иванов И.И."></div>
                             <div class="col-md-6"><label class="form-label fw-bold">Email:</label><input type="email" name="email" class="form-control"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold">Контактное лицо (ЛПР):</label><input type="text" name="contact_person" class="form-control" placeholder="Бухгалтер Светлана"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold">Телефон контактного лица:</label><input type="text" name="contact_phone" class="form-control" placeholder="+7 701..."></div>
                             <div class="col-12">
-                                <label class="form-label fw-bold">Телефон:</label>
+                                <label class="form-label fw-bold">Телефон ТОО/КХ:</label>
                                 <div id="new-phones-container"><div class="input-group mb-2"><input type="text" name="phones" class="form-control" placeholder="+7..."></div></div>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('new-phones-container')">+ Телефон</button>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Первичный комментарий:</label>
+                                <textarea name="comment" class="form-control" rows="2" placeholder="Опишите первые детали обращения..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -824,23 +834,32 @@ def add():
     selected_stage = request.form.get("stage", "stage_1")
     selected_manager = request.form.get("manager", user["name"])
     director = request.form.get("director", "").strip()
+    contact_person = request.form.get("contact_person", "").strip()
+    contact_phone = request.form.get("contact_phone", "").strip()
     phones = [p.strip() for p in request.form.getlist("phones") if p.strip()]
     region = request.form.get("region", "").strip()
     email = request.form.get("email", "").strip()
+    comment = request.form.get("comment", "").strip()
     
     now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    history_entries = [{"date": now_str, "author": user["name"], "text": "Создана новая заявка"}]
+    if comment:
+        history_entries.append({"date": now_str, "author": user["name"], "text": f"💬 Первичный комментарий: {comment}"})
+
     db["deals"].append({
         "id": str(len(db["deals"]) + 1),
         "title": client_name,
         "client": client_name,
         "director": director,
+        "contact_person": contact_person,
+        "contact_phone": contact_phone,
         "phones": phones,
         "email": email,
         "region": region,
         "stage": selected_stage,
         "manager": selected_manager,
         "total_sum": 0,
-        "history": [{"date": now_str, "author": user["name"], "text": f"Создана новая заявка"}],
+        "history": history_entries,
         "tasks": []
     })
     save_db(db)
@@ -859,31 +878,31 @@ def update(id):
             new_comment = request.form.get("new_comment", "").strip()
             
             new_director = request.form.get("director", "").strip()
+            new_contact_person = request.form.get("contact_person", "").strip()
+            new_contact_phone = request.form.get("contact_phone", "").strip()
             new_phones = [p.strip() for p in request.form.getlist("phones") if p.strip()]
             new_region = request.form.get("region", "").strip()
             new_email = request.form.get("email", "").strip()
             
             now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
             
-            # Контроль изменения телефонов
+            # Логирование правки контактных лиц
+            if d.get("contact_person") != new_contact_person:
+                d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Обновил контактное лицо: {new_contact_person}"})
+            
+            # Логирование изменения телефонов
             old_phones = d.get("phones", [])
             removed_phones = [p for p in old_phones if p not in new_phones]
             if removed_phones:
-                d["history"].append({
-                    "date": now_str, 
-                    "author": current_user["name"], 
-                    "text": f"🗑️ Удалил номера телефонов: {', '.join(removed_phones)}"
-                })
+                d["history"].append({"date": now_str, "author": current_user["name"], "text": f"🗑️ Удалил номера телефонов: {', '.join(removed_phones)}"})
             
             added_phones = [p for p in new_phones if p not in old_phones]
             if added_phones:
-                d["history"].append({
-                    "date": now_str, 
-                    "author": current_user["name"], 
-                    "text": f"➕ Добавил номера телефонов: {', '.join(added_phones)}"
-                })
+                d["history"].append({"date": now_str, "author": current_user["name"], "text": f"➕ Добавил номера телефонов: {', '.join(added_phones)}"})
 
             d["director"] = new_director
+            d["contact_person"] = new_contact_person
+            d["contact_phone"] = new_contact_phone
             d["phones"] = new_phones
             d["region"] = new_region
             d["email"] = new_email
@@ -918,7 +937,7 @@ def update(id):
                 d["stage"] = new_stage
                 
             if new_comment:
-                d["history"].append({"date": now_str, "author": current_user["name"], "text": new_comment})
+                d["history"].append({"date": now_str, "author": current_user["name"], "text": f"💬 {new_comment}"})
                 
             d["title"] = client_name
             d["client"] = client_name
