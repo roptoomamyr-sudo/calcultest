@@ -197,13 +197,6 @@ BASE_TEMPLATE = """
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-function addPhoneField(id) {
-    var c = document.getElementById(id);
-    var d = document.createElement('div');
-    d.className = 'input-group mb-2';
-    d.innerHTML = '<input type="text" name="phones" class="form-control" placeholder="+7..."><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>';
-    c.appendChild(d);
-}
 function dragDeal(ev, id) { ev.dataTransfer.setData("dealId", id); }
 function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add("drag-over"); }
 function removeDragOver(ev) { ev.currentTarget.classList.remove("drag-over"); }
@@ -237,6 +230,46 @@ def login():
 def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
+
+@app.route("/profile", methods=["GET", "POST"])
+def profile_page():
+    if "user" not in session: return redirect(url_for("login"))
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    
+    message = None
+    if request.method == "POST":
+        user_data["name"] = request.form.get("name", user_data["name"])
+        user_data["position"] = request.form.get("position", user_data.get("position", ""))
+        user_data["phone"] = request.form.get("phone", user_data.get("phone", ""))
+        user_data["whatsapp"] = request.form.get("whatsapp", user_data.get("whatsapp", ""))
+        user_data["email"] = request.form.get("email", user_data.get("email", ""))
+        new_pass = request.form.get("new_password", "").strip()
+        if new_pass:
+            user_data["pass"] = new_pass
+        save_db(db)
+        message = "Профиль успешно обновлен!"
+
+    profile_html = f"""
+    <div class="container" style="max-width: 600px; margin: 0 auto;">
+        <div class="card shadow-sm border-0 p-4 bg-white">
+            <h4 class="mb-3 text-primary fw-bold">👤 Личный кабинет сотрудника</h4>
+            {f'<div class="alert alert-success py-2">{message}</div>' if message else ''}
+            <form method="POST">
+                <div class="mb-3"><label class="form-label fw-bold">ФИО:</label><input type="text" name="name" class="form-control" value="{user_data['name']}" required></div>
+                <div class="mb-3"><label class="form-label fw-bold">Должность:</label><input type="text" name="position" class="form-control" value="{user_data.get('position', '')}"></div>
+                <div class="mb-3"><label class="form-label fw-bold">Телефон:</label><input type="text" name="phone" class="form-control" value="{user_data.get('phone', '')}"></div>
+                <div class="mb-3"><label class="form-label fw-bold">WhatsApp:</label><input type="text" name="whatsapp" class="form-control" value="{user_data.get('whatsapp', '')}"></div>
+                <div class="mb-3"><label class="form-label fw-bold">Email:</label><input type="email" name="email" class="form-control" value="{user_data.get('email', '')}"></div>
+                <div class="mb-3"><label class="form-label fw-bold">Новый пароль (оставьте пустым, если не нужно менять):</label><input type="password" name="new_password" class="form-control" placeholder="Новый пароль..."></div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold">Сохранить изменения</button>
+            </form>
+        </div>
+    </div>
+    """
+    return render_template_string(BASE_TEMPLATE, page_title="Профиль", active_page="profile", current_user_data=user_data, content=profile_html)
 
 @app.route("/generator")
 def generator_page():
@@ -949,20 +982,20 @@ def index():
 
                 region_text = d.get('region') or 'Регион не указан'
                 dir_text = d.get('director') or 'Не указан'
+                dir_phone = d.get('director_phone') or ''
                 contact_p_text = d.get('contact_person') or '—'
-                phone_text = d.get('phones')[0] if d.get('phones') else 'Нет телефона'
+                contact_phone = d.get('contact_phone') or ''
                 sum_val = d.get('total_sum', 0)
                 sum_str = "{:,}".format(sum_val).replace(",", " ") if d.get('stage') in CONTRACT_STAGES else "—"
                 
-                tasks_badge = "".join([f'<div class="mt-1"><span class="badge {"bg-danger" if t.get("date") < today_str else "bg-warning text-dark"}">{"⚠️ Просрочено: " if t.get("date") < today_str else "⏰ "}{t.get("date")}</span></div>' + ('<div class="mt-1"><span class="badge bg-danger text-white blink-remind">⚡ РОП ТРЕБУЕТ!</span></div>' if t.get("reminded") else '') for t in d.get("tasks", []) if not t.get("done")])
+                tasks_badge = "".join([f'<div class="mt-1"><span class="badge {"bg-danger" if t.get("date") < today_str else "bg-warning text-dark"}">{"⚠️ Просрочено: " if t.get("date") < today_str else "⏰ "}{t.get("type")} ({t.get("date")})</span></div>' + ('<div class="mt-1"><span class="badge bg-danger text-white blink-remind">⚡ РОП ТРЕБУЕТ!</span></div>' if t.get("reminded") else '') for t in d.get("tasks", []) if not t.get("done")])
 
                 kanban_content += f"""
                 <div class="deal-card" id="card-{d['id']}" draggable="true" ondragstart="dragDeal(event, '{d['id']}')" data-bs-toggle="modal" data-bs-target="#cardModal{d['id']}">
                     <div class="fw-bold text-primary mb-1" style="font-size: 13px;">{d['title']}</div>
                     <div class="text-muted text-truncate">📍 {region_text}</div>
-                    <div class="text-secondary text-truncate">👤 Директор: {dir_text}</div>
-                    <div class="text-secondary text-truncate">н.л.: {contact_p_text}</div>
-                    <div class="text-dark text-truncate">📞 {phone_text}</div>
+                    <div class="text-secondary text-truncate">👤 Директор: {dir_text} {dir_phone}</div>
+                    <div class="text-secondary text-truncate">н.л.: {contact_p_text} {contact_phone}</div>
                     {tasks_badge}
                     <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 11px;"><span>Сумма: {sum_str} ₸</span><span class="badge bg-light text-dark border">{deal_mgr}</span></div>
                 </div>
@@ -973,19 +1006,9 @@ def index():
                             <div class="col-md-6"><label class="form-label fw-bold">ТОО / КХ:</label><input type="text" name="client" class="form-control" value="{d['client']}" required></div>
                             <div class="col-md-6"><label class="form-label fw-bold">Расположение:</label><input type="text" name="region" class="form-control" value="{d.get('region', '')}"></div>
                             <div class="col-md-6"><label class="form-label fw-bold">Директор (ЛПР):</label><input type="text" name="director" class="form-control" value="{d.get('director', '')}"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold">Телефон директора:</label><input type="text" name="director_phone" class="form-control" value="{d.get('director_phone', '')}" placeholder="+7..."></div>
                             <div class="col-md-6"><label class="form-label fw-bold">Контактное лицо:</label><input type="text" name="contact_person" class="form-control" value="{d.get('contact_person', '')}"></div>
-                            <div class="col-md-12"><label class="form-label fw-bold">Телефоны:</label>
-                                <div id="edit-phones-container-{d['id']}">
-                """
-                phones_list = d.get('phones', [])
-                if not phones_list: phones_list = ['']
-                for p_idx, p_val in enumerate(phones_list):
-                    kanban_content += f'<div class="input-group mb-2"><input type="text" name="phones" class="form-control" value="{p_val}" placeholder="+7...">' + ('<button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>' if p_idx > 0 else '') + '</div>'
-                
-                kanban_content += f"""
-                                </div>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('edit-phones-container-{d['id']}')">+ Телефон</button>
-                            </div>
+                            <div class="col-md-6"><label class="form-label fw-bold">Телефон контактного лица:</label><input type="text" name="contact_phone" class="form-control" value="{d.get('contact_phone', '')}" placeholder="+7..."></div>
                             <div class="col-md-6"><label class="form-label fw-bold">Этап воронки:</label><select name="stage" class="form-select">{"".join([f'<option value="{sk}" {"selected" if d["stage"] == sk else ""}>{sn}</option>' for sk, sn, sc in STAGES])}</select></div>
                             <div class="col-md-6"><label class="form-label fw-bold">Ответственный:</label>
                 """
@@ -999,10 +1022,19 @@ def index():
                 
                 kanban_content += f"""</div>
                             <div class="col-md-6"><label class="form-label fw-bold">Сумма сделки (₸):</label><input type="number" name="total_sum" class="form-control {"border-success fw-bold" if d['stage'] in CONTRACT_STAGES else "bg-light"}" value="{d.get('total_sum', 0)}" {"readonly" if d['stage'] not in CONTRACT_STAGES else ""}></div>
-                            <div class="col-12"><label class="form-label fw-bold text-success">+ Комментарий и задача:</label><textarea name="new_comment" class="form-control mb-2" rows="2" placeholder="Детали диалога..."></textarea>
+                            <div class="col-12"><label class="form-label fw-bold text-success">+ Комментарий:</label><textarea name="new_comment" class="form-control mb-2" rows="2" placeholder="Детали диалога..."></textarea>
+                                <label class="form-label fw-bold text-primary">📌 Поставить задачу:</label>
                                 <div class="row g-2">
-                                    <div class="col-md-8"><input type="text" name="new_task_text" class="form-control form-control-sm" placeholder="Текст задачи для менеджера..."></div>
-                                    <div class="col-md-4"><input type="date" name="new_task_date" class="form-control form-control-sm"></div>
+                                    <div class="col-md-6">
+                                        <select name="new_task_type" class="form-select form-select-sm">
+                                            <option value="Звонок">📞 Звонок</option>
+                                            <option value="Встреча">🤝 Встреча</option>
+                                            <option value="Отправить презентацию / КП">📄 Отправить презентацию / КП</option>
+                                            <option value="Согласовать ТЗ">📐 Согласовать ТЗ</option>
+                                            <option value="Заключить договор">📝 Заключить договор</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6"><input type="date" name="new_task_date" class="form-control form-control-sm"></div>
                                 </div>
                             </div>
                             <div class="col-12"><label class="form-label fw-bold text-secondary">📜 История:</label><div class="history-box">{"".join([f'<div class="mb-1 border-bottom pb-1"><span class="text-primary fw-bold">[{h.get("date")}] {h.get("author")}:</span> <span>{h.get("text")}</span></div>' for h in reversed(d.get("history", []))])}</div></div>
@@ -1019,7 +1051,7 @@ def index():
         for t in d.get("tasks", []):
             if not t.get("done", False):
                 is_overdue = t.get("date") < today_str
-                kanban_content += f'<div class="list-group-item d-flex justify-content-between align-items-center {"list-group-item-danger" if is_overdue else ""}"><div><span class="badge {"bg-danger" if is_overdue else "bg-primary"}">{"⚠️ Просрочено (" + t.get("date") + ")" if is_overdue else t.get("date")}</span><strong class="ms-2">{d["client"]}</strong><div class="small mt-1">{t.get("text")}</div></div><div class="d-flex gap-2"><form method="POST" action="{url_for("complete_task", deal_id=d["id"], task_id=t["id"])}"><button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button></form></div></div>'
+                kanban_content += f'<div class="list-group-item d-flex justify-content-between align-items-center {"list-group-item-danger" if is_overdue else ""}"><div><span class="badge {"bg-danger" if is_overdue else "bg-primary"}">{"⚠️ Просрочено (" + t.get("date") + ")" if is_overdue else t.get("date")}</span><strong class="ms-2">{d["client"]}</strong><div class="small mt-1"><b>{t.get("type")}</b></div></div><div class="d-flex gap-2"><form method="POST" action="{url_for("complete_task", deal_id=d["id"], task_id=t["id"])}"><button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button></form></div></div>'
     kanban_content += '</div></div></div></div></div>'
 
     kanban_content += f"""
@@ -1031,11 +1063,12 @@ def index():
                 <div class="col-md-6"><label class="form-label fw-bold">Этап:</label><select name="stage" class="form-select">{"".join([f'<option value="{sk}">{sn}</option>' for sk, sn, sc in STAGES])}</select></div>
                 <div class="col-md-6"><label class="form-label fw-bold">Ответственный:</label><select name="manager" class="form-select"><option value="Не назначен">📌 Не назначен</option><option value="{user_data['name']}" selected>{user_data['name']} (Себе)</option>{"".join([f'<option value="{m}">{m}</option>' for m in manager_names_list if m != user_data["name"]])}</select></div>
                 <div class="col-md-6"><label class="form-label fw-bold">Расположение:</label><input type="text" name="region" class="form-control" placeholder="Костанай"></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Директор (ЛПР):</label><input type="text" name="director" class="form-control"></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Контактное лицо:</label><input type="text" name="contact_person" class="form-control"></div>
-                <div class="col-12"><label class="form-label fw-bold">Телефон:</label><div id="new-phones-container"><div class="input-group mb-2"><input type="text" name="phones" class="form-control" placeholder="+7..."></div></div><button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('new-phones-container')">+ Телефон</button></div>
+                <div class="col-md-6"><label class="form-label fw-bold">Директор (ЛПР):</label><input type="text" name="director" class="form-control" placeholder="ФИО директора"></div>
+                <div class="col-md-6"><label class="form-label fw-bold">Телефон директора:</label><input type="text" name="director_phone" class="form-control" placeholder="+7..."></div>
+                <div class="col-md-6"><label class="form-label fw-bold">Контактное лицо:</label><input type="text" name="contact_person" class="form-control" placeholder="ФИО менеджера / агронома"></div>
+                <div class="col-md-6"><label class="form-label fw-bold">Телефон контактного лица:</label><input type="text" name="contact_phone" class="form-control" placeholder="+7..."></div>
             </div></div>
-            <div class="modal-footer"><button type="submit" class="btn btn-success">Создать</button></div>
+            <div class="modal-footer"><button type="submit" class="btn btn-success">Создать сделку</button></div>
         </form>
     </div></div></div>
     """
@@ -1125,7 +1158,12 @@ def move_deal():
     data = request.get_json()
     for d in db["deals"]:
         if d["id"] == data.get("id"):
-            d["stage"] = data.get("stage")
+            old_stage = d["stage"]
+            new_stage = data.get("stage")
+            if old_stage != new_stage:
+                d["stage"] = new_stage
+                if "history" not in d: d["history"] = []
+                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": "Система", "text": f"Перенес сделку на этап"})
             save_db(db)
             return jsonify({"success": True})
     return jsonify({"success": False})
@@ -1135,16 +1173,27 @@ def add_deal():
     if "user" not in session: return redirect(url_for("login"))
     db = load_db()
     user_data = db["users"][session["user"]]
+    
+    client_name = request.form.get("client")
+    director = request.form.get("director", "").strip()
+    director_phone = request.form.get("director_phone", "").strip()
+    contact_person = request.form.get("contact_person", "").strip()
+    contact_phone = request.form.get("contact_phone", "").strip()
+    region = request.form.get("region", "").strip()
+    stage = request.form.get("stage", "stage_1")
+    manager = request.form.get("manager", user_data["name"])
+
     db["deals"].append({
         "id": str(len(db["deals"]) + 1),
-        "title": request.form.get("client"),
-        "client": request.form.get("client"),
-        "director": request.form.get("director", "").strip(),
-        "contact_person": request.form.get("contact_person", "").strip(),
-        "phones": [p.strip() for p in request.form.getlist("phones") if p.strip()],
-        "region": request.form.get("region", "").strip(),
-        "stage": request.form.get("stage", "stage_1"),
-        "manager": request.form.get("manager", user_data["name"]),
+        "title": client_name,
+        "client": client_name,
+        "director": director,
+        "director_phone": director_phone,
+        "contact_person": contact_person,
+        "contact_phone": contact_phone,
+        "region": region,
+        "stage": stage,
+        "manager": manager,
         "total_sum": 0,
         "history": [{"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": "Создана сделка"}],
         "tasks": []
@@ -1161,34 +1210,57 @@ def update_deal(id):
     
     for d in db["deals"]:
         if d["id"] == id:
-            d["client"] = request.form.get("client")
-            d["title"] = request.form.get("client")
-            d["stage"] = request.form.get("stage")
+            if "history" not in d: d["history"] = []
+            
+            old_client = d.get("client")
+            new_client = request.form.get("client")
+            if old_client != new_client:
+                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил название с «{old_client}» на «{new_client}»"})
+
+            d["client"] = new_client
+            d["title"] = new_client
+            
+            old_stage = d.get("stage")
+            new_stage = request.form.get("stage")
+            if old_stage != new_stage:
+                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил этап воронки"})
+            d["stage"] = new_stage
+
             d["region"] = request.form.get("region", "").strip()
             d["director"] = request.form.get("director", "").strip()
+            d["director_phone"] = request.form.get("director_phone", "").strip()
             d["contact_person"] = request.form.get("contact_person", "").strip()
-            d["phones"] = [p.strip() for p in request.form.getlist("phones") if p.strip()]
-            d["manager"] = request.form.get("manager", d["manager"])
+            d["contact_phone"] = request.form.get("contact_phone", "").strip()
             
+            old_mgr = d.get("manager")
+            new_mgr = request.form.get("manager", old_mgr)
+            if old_mgr != new_mgr:
+                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил ответственного с «{old_mgr}» на «{new_mgr}»"})
+            d["manager"] = new_mgr
+
             if d["stage"] in CONTRACT_STAGES:
-                d["total_sum"] = int(request.form.get("total_sum") or 0)
+                old_sum = d.get("total_sum", 0)
+                new_sum = int(request.form.get("total_sum") or 0)
+                if old_sum != new_sum:
+                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил сумму договора: {old_sum} ₸ ➔ {new_sum} ₸"})
+                d["total_sum"] = new_sum
             
             new_comment = request.form.get("new_comment", "").strip()
             if new_comment:
-                if "history" not in d: d["history"] = []
                 d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": new_comment})
             
-            task_text = request.form.get("new_task_text", "").strip()
+            task_type = request.form.get("new_task_type")
             task_date = request.form.get("new_task_date", "").strip()
-            if task_text and task_date:
+            if task_type and task_date:
                 if "tasks" not in d: d["tasks"] = []
                 d["tasks"].append({
                     "id": f"t_{len(d['tasks'])+1}",
-                    "text": task_text,
+                    "type": task_type,
                     "date": task_date,
                     "done": False,
                     "reminded": (user_data["role"] == "rop")
                 })
+                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Поставлена задача: {task_type} на {task_date}"})
             break
     save_db(db)
     return redirect(url_for("index"))
@@ -1197,10 +1269,15 @@ def update_deal(id):
 def complete_task(deal_id, task_id):
     if "user" not in session: return redirect(url_for("login"))
     db = load_db()
+    uname = session["user"]
+    user_data = db["users"][uname]
     for d in db["deals"]:
         if d["id"] == deal_id:
             for t in d.get("tasks", []):
-                if t.get("id") == task_id: t["done"] = True
+                if t.get("id") == task_id:
+                    t["done"] = True
+                    if "history" not in d: d["history"] = []
+                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Выполнил задачу: {t.get('type')}"})
     save_db(db)
     return redirect(url_for("index"))
 
