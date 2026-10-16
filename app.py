@@ -363,7 +363,7 @@ def chat_page(chat_id=None):
                 "messages": []
             })
             save_db(db)
-            return redirect(f"/chat/{new_chat_id}")
+            return redirect(url_for("chat_page", chat_id=new_chat_id))
             
         elif action == "send_message" and chat_id:
             msg_text = request.form.get("message", "").strip()
@@ -378,7 +378,7 @@ def chat_page(chat_id=None):
                         })
                         break
                 save_db(db)
-                return redirect(f"/chat/{chat_id}")
+                return redirect(url_for("chat_page", chat_id=chat_id))
 
     user_chats = [c for c in db.get("chats", []) if uname in c.get("members", [])]
     
@@ -392,7 +392,7 @@ def chat_page(chat_id=None):
     chat_list_html = ""
     for c in user_chats:
         active_class = "active bg-primary text-white" if active_chat and c["id"] == active_chat["id"] else "bg-white"
-        chat_list_html += f'<a href="/chat/{c["id"]}" class="list-group-item list-group-item-action {active_class} d-flex justify-content-between align-items-center"><div><strong>{c["title"]}</strong></div></a>'
+        chat_list_html += f'<a href="{url_for("chat_page", chat_id=c["id"])}" class="list-group-item list-group-item-action {active_class} d-flex justify-content-between align-items-center"><div><strong>{c["title"]}</strong></div></a>'
 
     messages_html = ""
     if active_chat:
@@ -509,17 +509,19 @@ def index():
             </div>
             <div class="col-md-4">
                 <div class="input-group">
-                    <span class="input-group-text bg-light">👤 Менеджер:</span>
+                    <span class="input-group-text bg-light">👤 Ответственный:</span>
                     <select name="manager_filter" class="form-select">
     """
     
     if user_data["role"] in ["director", "rop"]:
-        filter_html += f'<option value="all" {"selected" if selected_manager=="all" else ""}>Все менеджеры</option>'
+        filter_html += f'<option value="all" {"selected" if selected_manager=="all" else ""}>Все ответственные</option>'
+        filter_html += f'<option value="Не назначен" {"selected" if selected_manager=="Не назначен" else ""}>📌 Не назначен</option>'
         for m_name in manager_names_list:
             sel = "selected" if selected_manager == m_name else ""
             filter_html += f'<option value="{m_name}" {sel}>{m_name}</option>'
     else:
         filter_html += f'<option value="{user_data["name"]}" {"selected" if selected_manager==user_data["name"] else ""}>Только мои сделки</option>'
+        filter_html += f'<option value="Не назначен" {"selected" if selected_manager=="Не назначен" else ""}>📌 Не назначен</option>'
         filter_html += f'<option value="all" {"selected" if selected_manager=="all" else ""}>Все клиенты компании</option>'
 
     filter_html += f"""
@@ -546,9 +548,9 @@ def index():
         """
         for d in db["deals"]:
             if d.get("stage") == s_key:
-                deal_mgr = d.get("manager", "")
+                deal_mgr = d.get("manager", "Не назначен")
                 if user_data["role"] not in ["director", "rop"]:
-                    if selected_manager != "all" and deal_mgr != user_data["name"]:
+                    if selected_manager != "all" and deal_mgr != user_data["name"] and deal_mgr != selected_manager:
                         continue
                 else:
                     if selected_manager != "all" and deal_mgr != selected_manager:
@@ -599,7 +601,7 @@ def index():
                 <div class="modal fade" id="cardModal{d['id']}" tabindex="-1">
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
-                            <form method="POST" action="/update/{d['id']}">
+                            <form method="POST" action="{url_for('update_deal', id=d['id'])}">
                                 <div class="modal-header bg-primary text-white">
                                     <h5 class="modal-title">Карточка клиента: {d['client']}</h5>
                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -649,7 +651,16 @@ def index():
                         kanban_content += f'<option value="{m_name}" {sel_m}>{m_name}</option>'
                     kanban_content += '</select>'
                 else:
-                    kanban_content += f'<input type="text" class="form-control bg-light" value="{d.get("manager", "")}" readonly><input type="hidden" name="manager" value="{d.get("manager", "")}">'
+                    # Обычный менеджер может взять не назначенную сделку себе
+                    if d.get("manager", "Не назначен") == "Не назначен":
+                        kanban_content += f"""
+                        <select name="manager" class="form-select border-success">
+                            <option value="Не назначен">📌 Не назначен (Свободен)</option>
+                            <option value="{user_data['name']}">Взять себе ({user_data['name']})</option>
+                        </select>
+                        """
+                    else:
+                        kanban_content += f'<input type="text" class="form-control bg-light" value="{d.get("manager", "")}" readonly><input type="hidden" name="manager" value="{d.get("manager", "")}">'
 
                 kanban_content += f"""
                                         </div>
@@ -705,7 +716,7 @@ def index():
                 badge_class = "list-group-item-danger" if is_overdue else ""
                 date_badge = f'<span class="badge bg-danger">⚠️ Просрочено ({t.get("date")})</span>' if is_overdue else f'<span class="badge bg-primary">{t.get("date")}</span>'
                 remind_badge = '<span class="badge bg-danger text-white blink-remind ms-1">⚡ РОП НАПОМИНАЕТ!</span>' if t.get("reminded") else ''
-                remind_btn = f'<form method="POST" action="/remind_task/{d["id"]}/{t["id"]}"><button type="submit" class="btn btn-danger btn-sm fw-bold">⚡ Напомнить</button></form>' if user_data["role"] in ["director", "rop"] and is_overdue else ''
+                remind_btn = f'<form method="POST" action="{url_for("remind_task", deal_id=d["id"], task_id=t["id"])}"><button type="submit" class="btn btn-danger btn-sm fw-bold">⚡ Напомнить</button></form>' if user_data["role"] in ["director", "rop"] and is_overdue else ''
                 
                 kanban_content += f'''
                 <div class="list-group-item d-flex justify-content-between align-items-center {badge_class}">
@@ -717,7 +728,7 @@ def index():
                         <div class="small text-muted mt-1">Ответственный: <b>{d.get('manager')}</b></div>
                     </div>
                     <div class="d-flex gap-2">
-                        <form method="POST" action="/complete_task/{d['id']}/{t['id']}"><button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button></form>
+                        <form method="POST" action="{url_for("complete_task", deal_id=d['id'], task_id=t['id'])}"><button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button></form>
                         {remind_btn}
                     </div>
                 </div>
@@ -727,7 +738,8 @@ def index():
     # Модалка добавления сделки
     stages_opts = "".join([f'<option value="{sk}">{sn}</option>' for sk, sn, sc in STAGES])
     
-    manager_options_add = f'<option value="{user_data["name"]}">{user_data["name"]}</option>'
+    manager_options_add = f'<option value="Не назначен">📌 Не назначен</option>'
+    manager_options_add += f'<option value="{user_data["name"]}" selected>{user_data["name"]} (Себе)</option>'
     for m_name in manager_names_list:
         if m_name != user_data["name"]:
             manager_options_add += f'<option value="{m_name}">{m_name}</option>'
@@ -736,7 +748,7 @@ def index():
     <div class="modal fade" id="addModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <form method="POST" action="/add">
+                <form method="POST" action="{url_for("add_deal")}">
                     <div class="modal-header bg-success text-white"><h5 class="modal-title fw-bold">➕ Новая сделка</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                     <div class="modal-body">
                         <div class="row g-3">
@@ -827,13 +839,13 @@ def tz_page():
             if not tz.get("done"):
                 if user_data["name"] == tz.get("responsible") or user_data["role"] in ["director", "rop"]:
                     action_btn += f'''
-                    <form method="POST" action="/tz/complete/{tz['id']}" class="d-inline">
+                    <form method="POST" action="{url_for("complete_tz", tz_id=tz['id'])}" class="d-inline">
                         <button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button>
                     </form>
                     '''
                 if is_overdue and (user_data["role"] in ["director", "rop"] or user_data["name"] == tz.get("observer")):
                     action_btn += f'''
-                    <form method="POST" action="/tz/remind/{tz['id']}" class="d-inline ms-1">
+                    <form method="POST" action="{url_for("remind_tz", tz_id=tz['id'])}" class="d-inline ms-1">
                         <button type="submit" class="btn btn-danger btn-sm fw-bold">⚡ Напомнить</button>
                     </form>
                     '''
@@ -860,13 +872,13 @@ def tz_page():
 
             file_section = ""
             if tz.get("filename"):
-                file_section = f'<div class="alert alert-secondary py-2 mt-2">📎 Прикрепленный файл: <a href="/uploads/{tz["filename"]}" target="_blank" class="fw-bold text-decoration-none">📥 Скачать файл</a></div>'
+                file_section = f'<div class="alert alert-secondary py-2 mt-2">📎 Прикрепленный файл: <a href="{url_for("downloaded_file", filename=tz["filename"])}" target="_blank" class="fw-bold text-decoration-none">📥 Скачать файл</a></div>'
 
             tz_content += f"""
             <div class="modal fade" id="tzModal{tz['id']}" tabindex="-1">
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content">
-                        <form method="POST" action="/tz/update/{tz['id']}" enctype="multipart/form-data">
+                        <form method="POST" action="{url_for("update_tz", tz_id=tz['id'])}" enctype="multipart/form-data">
                             <div class="modal-header bg-primary text-white">
                                 <h5 class="modal-title fw-bold">📐 ТЗ: {tz['title']}</h5>
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -923,7 +935,7 @@ def tz_page():
         <div class="modal fade" id="addTzModal" tabindex="-1">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
-                    <form method="POST" action="/tz/add" enctype="multipart/form-data">
+                    <form method="POST" action="{url_for("add_tz")}" enctype="multipart/form-data">
                         <div class="modal-header bg-primary text-white">
                             <h5 class="modal-title fw-bold">📐 Новое техническое задание</h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -1164,7 +1176,7 @@ def add_deal():
     
     client_name = request.form.get("client")
     selected_stage = request.form.get("stage", "stage_1")
-    selected_manager = request.form.get("manager", user_data["name"])
+    selected_manager = request.form.get("manager", "Не назначен")
     director = request.form.get("director", "").strip()
     contact_person = request.form.get("contact_person", "").strip()
     contact_phone = request.form.get("contact_phone", "").strip()
@@ -1174,7 +1186,7 @@ def add_deal():
     comment = request.form.get("comment", "").strip()
     
     now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
-    history_entries = [{"date": now_str, "author": user_data["name"], "text": "Создана новая заявка"}]
+    history_entries = [{"date": now_str, "author": user_data["name"], "text": "Создана новая заявка" + (f" (Ответственный: {selected_manager})" if selected_manager != "Не назначен" else " (Не назначена)")}]
     if comment:
         history_entries.append({"date": now_str, "author": user_data["name"], "text": f"💬 Первичный комментарий: {comment}"})
 
@@ -1255,11 +1267,10 @@ def update_deal(id):
                 d["tasks"].append({"id": task_id, "date": task_date, "type": task_type, "text": task_text, "done": False, "reminded": False})
                 d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Поставил задачу ({task_type} на {task_date}): {task_text}"})
 
-            if current_user_data["role"] in ["director", "rop"]:
-                requested_manager = request.form.get("manager")
-                if requested_manager and d["manager"] != requested_manager:
-                    d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Изменил ответственного на: {requested_manager}"})
-                    d["manager"] = requested_manager
+            requested_manager = request.form.get("manager")
+            if requested_manager and d.get("manager") != requested_manager:
+                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Изменил ответственного на: {requested_manager}"})
+                d["manager"] = requested_manager
             
             if d["stage"] != new_stage:
                 stage_name = new_stage
