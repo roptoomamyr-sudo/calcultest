@@ -246,7 +246,6 @@ def generator_page():
     users = db.get("users", DEFAULT_USERS)
     user_data = users[uname]
     
-    # Формируем список сотрудников для выбора в КП
     users_json = json.dumps([{
         "key": u_key,
         "name": u_val["name"],
@@ -298,7 +297,7 @@ def generator_page():
             <div>💻 Вы вошли как: <b><span id="sessionAuthorName"></span></b></div>
             <div style="width: 320px;">
                 <label style="margin:0; font-size:11px;">Чью подпись использовать в КП?</label>
-                <select id="kpSignerSelect" class="form-select form-select-sm" onchange="updateSignerInfo()"></select>
+                <select id="kpSignerSelect" class="form-select form-select-sm"></select>
             </div>
         </div>
 
@@ -521,10 +520,6 @@ def generator_page():
             return found || sessionAuthor;
         }
 
-        function updateSignerInfo() {
-            // Можно использовать при необходимости
-        }
-
         document.getElementById('buildingType').addEventListener('change', function() {
             document.getElementById('wallHBox').style.display = (this.value.indexOf('straight') !== -1) ? 'block' : 'none';
         });
@@ -675,7 +670,6 @@ def generator_page():
                     btn.innerText = "📄 Сформировать и скачать КП (PDF)";
                 });
 
-                // Отправляем в реестр с разделением автора и ответственного (подписанта)
                 fetch('/save_kp', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -967,6 +961,7 @@ def index():
                     <div class="fw-bold text-primary mb-1" style="font-size: 13px;">{d['title']}</div>
                     <div class="text-muted text-truncate">📍 {region_text}</div>
                     <div class="text-secondary text-truncate">👤 Директор: {dir_text}</div>
+                    <div class="text-secondary text-truncate">н.л.: {contact_p_text}</div>
                     <div class="text-dark text-truncate">📞 {phone_text}</div>
                     {tasks_badge}
                     <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 11px;"><span>Сумма: {sum_str} ₸</span><span class="badge bg-light text-dark border">{deal_mgr}</span></div>
@@ -977,8 +972,20 @@ def index():
                         <div class="modal-body"><div class="row g-3">
                             <div class="col-md-6"><label class="form-label fw-bold">ТОО / КХ:</label><input type="text" name="client" class="form-control" value="{d['client']}" required></div>
                             <div class="col-md-6"><label class="form-label fw-bold">Расположение:</label><input type="text" name="region" class="form-control" value="{d.get('region', '')}"></div>
-                            <div class="col-md-6"><label class="form-label fw-bold">Директор:</label><input type="text" name="director" class="form-control" value="{d.get('director', '')}"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold">Директор (ЛПР):</label><input type="text" name="director" class="form-control" value="{d.get('director', '')}"></div>
                             <div class="col-md-6"><label class="form-label fw-bold">Контактное лицо:</label><input type="text" name="contact_person" class="form-control" value="{d.get('contact_person', '')}"></div>
+                            <div class="col-md-12"><label class="form-label fw-bold">Телефоны:</label>
+                                <div id="edit-phones-container-{d['id']}">
+                """
+                phones_list = d.get('phones', [])
+                if not phones_list: phones_list = ['']
+                for p_idx, p_val in enumerate(phones_list):
+                    kanban_content += f'<div class="input-group mb-2"><input type="text" name="phones" class="form-control" value="{p_val}" placeholder="+7...">' + ('<button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button>' if p_idx > 0 else '') + '</div>'
+                
+                kanban_content += f"""
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('edit-phones-container-{d['id']}')">+ Телефон</button>
+                            </div>
                             <div class="col-md-6"><label class="form-label fw-bold">Этап воронки:</label><select name="stage" class="form-select">{"".join([f'<option value="{sk}" {"selected" if d["stage"] == sk else ""}>{sn}</option>' for sk, sn, sc in STAGES])}</select></div>
                             <div class="col-md-6"><label class="form-label fw-bold">Ответственный:</label>
                 """
@@ -992,7 +999,12 @@ def index():
                 
                 kanban_content += f"""</div>
                             <div class="col-md-6"><label class="form-label fw-bold">Сумма сделки (₸):</label><input type="number" name="total_sum" class="form-control {"border-success fw-bold" if d['stage'] in CONTRACT_STAGES else "bg-light"}" value="{d.get('total_sum', 0)}" {"readonly" if d['stage'] not in CONTRACT_STAGES else ""}></div>
-                            <div class="col-12"><label class="form-label fw-bold text-success">+ Комментарий:</label><textarea name="new_comment" class="form-control" rows="2" placeholder="Детали диалога..."></textarea></div>
+                            <div class="col-12"><label class="form-label fw-bold text-success">+ Комментарий и задача:</label><textarea name="new_comment" class="form-control mb-2" rows="2" placeholder="Детали диалога..."></textarea>
+                                <div class="row g-2">
+                                    <div class="col-md-8"><input type="text" name="new_task_text" class="form-control form-control-sm" placeholder="Текст задачи для менеджера..."></div>
+                                    <div class="col-md-4"><input type="date" name="new_task_date" class="form-control form-control-sm"></div>
+                                </div>
+                            </div>
                             <div class="col-12"><label class="form-label fw-bold text-secondary">📜 История:</label><div class="history-box">{"".join([f'<div class="mb-1 border-bottom pb-1"><span class="text-primary fw-bold">[{h.get("date")}] {h.get("author")}:</span> <span>{h.get("text")}</span></div>' for h in reversed(d.get("history", []))])}</div></div>
                         </div></div>
                         <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
@@ -1019,7 +1031,7 @@ def index():
                 <div class="col-md-6"><label class="form-label fw-bold">Этап:</label><select name="stage" class="form-select">{"".join([f'<option value="{sk}">{sn}</option>' for sk, sn, sc in STAGES])}</select></div>
                 <div class="col-md-6"><label class="form-label fw-bold">Ответственный:</label><select name="manager" class="form-select"><option value="Не назначен">📌 Не назначен</option><option value="{user_data['name']}" selected>{user_data['name']} (Себе)</option>{"".join([f'<option value="{m}">{m}</option>' for m in manager_names_list if m != user_data["name"]])}</select></div>
                 <div class="col-md-6"><label class="form-label fw-bold">Расположение:</label><input type="text" name="region" class="form-control" placeholder="Костанай"></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Директор:</label><input type="text" name="director" class="form-control"></div>
+                <div class="col-md-6"><label class="form-label fw-bold">Директор (ЛПР):</label><input type="text" name="director" class="form-control"></div>
                 <div class="col-md-6"><label class="form-label fw-bold">Контактное лицо:</label><input type="text" name="contact_person" class="form-control"></div>
                 <div class="col-12"><label class="form-label fw-bold">Телефон:</label><div id="new-phones-container"><div class="input-group mb-2"><input type="text" name="phones" class="form-control" placeholder="+7..."></div></div><button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('new-phones-container')">+ Телефон</button></div>
             </div></div>
@@ -1046,11 +1058,11 @@ def tz_page():
         status_badge = '<span class="badge bg-success">✓ Выполнено</span>' if tz.get("done") else ('<span class="badge bg-danger">⚠️ Просрочено</span>' if is_overdue else '<span class="badge bg-primary">В работе</span>')
         action_btn = f'<form method="POST" action="{url_for("complete_tz", tz_id=tz["id"])}" class="d-inline"><button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button></form>' if not tz.get("done") and (user_data["name"] == tz.get("responsible") or user_data["role"] in ["director", "rop"]) else ''
         
-        tz_content += f'<tr><td><b>{tz["title"]}</b></td><td><span class="badge bg-secondary">{tz["author"]}</span></td><td><span class="badge bg-dark">{tz["responsible"]}</span></td><td>{urgency_badge}</td><td class="small">{tz.get("due_date", "—")}</td><td>{status_badge}</td><td>{action_btn}</td></tr>'
+        tz_content += f'<tr><td><b>{tz["title"]}</b><div class="small text-muted">{tz.get("description", "")[:60]}...</div></td><td><span class="badge bg-secondary">{tz["author"]}</span></td><td><span class="badge bg-dark">{tz["responsible"]}</span></td><td>{urgency_badge}</td><td class="small">{tz.get("due_date", "—")}</td><td>{status_badge}</td><td>{action_btn}</td></tr>'
     
     resp_opts = "".join([f'<option value="{m}">{m}</option>' for m in manager_names_list])
     tz_content += f'</tbody></table><button class="btn btn-primary btn-sm fw-bold mt-3" data-bs-toggle="modal" data-bs-target="#addTzModal">+ Создать ТЗ</button></div></div></div>'
-    tz_content += f'<div class="modal fade" id="addTzModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><form method="POST" action="{url_for("add_tz")}"><div class="modal-header bg-primary text-white"><h5 class="modal-title fw-bold">📐 Новое ТЗ</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row g-3"><div class="col-12"><label class="form-label fw-bold">Название:</label><input type="text" name="title" class="form-control" required></div><div class="col-12"><label class="form-label fw-bold">Описание:</label><textarea name="description" class="form-control" rows="3" required></textarea></div><div class="col-md-6"><label class="form-label fw-bold">Ответственный:</label><select name="responsible" class="form-select">{resp_opts}</select></div><div class="col-md-6"><label class="form-label fw-bold">Срочность:</label><select name="urgency" class="form-select"><option value="горячая">🔴 Горячая</option><option value="теплая" selected>🟡 Теплая</option><option value="холодная">🔵 Холодная</option></select></div></div></div><div class="modal-footer"><button type="submit" class="btn btn-primary">Поставить ТЗ</button></div></form></div></div></div>'
+    tz_content += f'<div class="modal fade" id="addTzModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><form method="POST" action="{url_for("add_tz")}" enctype="multipart/form-data"><div class="modal-header bg-primary text-white"><h5 class="modal-title fw-bold">📐 Новое ТЗ</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row g-3"><div class="col-12"><label class="form-label fw-bold">Название:</label><input type="text" name="title" class="form-control" required></div><div class="col-12"><label class="form-label fw-bold">Описание:</label><textarea name="description" class="form-control" rows="3" required></textarea></div><div class="col-md-6"><label class="form-label fw-bold">Ответственный:</label><select name="responsible" class="form-select">{resp_opts}</select></div><div class="col-md-6"><label class="form-label fw-bold">Срочность:</label><select name="urgency" class="form-select"><option value="горячая">🔴 Горячая</option><option value="теплая" selected>🟡 Теплая</option><option value="холодная">🔵 Холодная</option></select></div><div class="col-12"><label class="form-label fw-bold">Прикрепить файлы / схемы:</label><input type="file" name="attachment" class="form-control"></div></div></div><div class="modal-footer"><button type="submit" class="btn btn-primary">Поставить ТЗ</button></div></form></div></div></div>'
     return render_template_string(BASE_TEMPLATE, page_title="Технические задания", active_page="tz", current_user_data=user_data, content=tz_content)
 
 @app.route("/tz/add", methods=["POST"])
@@ -1063,6 +1075,12 @@ def add_tz():
     today = datetime.now()
     due_date = today.strftime("%Y-%m-%d") if urgency == "горячая" else ((today + timedelta(days=2)).strftime("%Y-%m-%d") if urgency == "теплая" else (today + timedelta(days=7)).strftime("%Y-%m-%d"))
     
+    file = request.files.get("attachment")
+    filename = None
+    if file and file.filename:
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
     db["tz_list"].append({
         "id": f"tz_{len(db.get('tz_list', []))+1}",
         "title": request.form.get("title"),
@@ -1071,6 +1089,7 @@ def add_tz():
         "responsible": request.form.get("responsible"),
         "urgency": urgency,
         "due_date": due_date,
+        "attachment": filename,
         "done": False,
         "history": [{"date": today.strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": "Создано ТЗ"}]
     })
@@ -1137,6 +1156,9 @@ def add_deal():
 def update_deal(id):
     if "user" not in session: return redirect(url_for("login"))
     db = load_db()
+    uname = session["user"]
+    user_data = db["users"][uname]
+    
     for d in db["deals"]:
         if d["id"] == id:
             d["client"] = request.form.get("client")
@@ -1145,9 +1167,28 @@ def update_deal(id):
             d["region"] = request.form.get("region", "").strip()
             d["director"] = request.form.get("director", "").strip()
             d["contact_person"] = request.form.get("contact_person", "").strip()
+            d["phones"] = [p.strip() for p in request.form.getlist("phones") if p.strip()]
             d["manager"] = request.form.get("manager", d["manager"])
+            
             if d["stage"] in CONTRACT_STAGES:
                 d["total_sum"] = int(request.form.get("total_sum") or 0)
+            
+            new_comment = request.form.get("new_comment", "").strip()
+            if new_comment:
+                if "history" not in d: d["history"] = []
+                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": new_comment})
+            
+            task_text = request.form.get("new_task_text", "").strip()
+            task_date = request.form.get("new_task_date", "").strip()
+            if task_text and task_date:
+                if "tasks" not in d: d["tasks"] = []
+                d["tasks"].append({
+                    "id": f"t_{len(d['tasks'])+1}",
+                    "text": task_text,
+                    "date": task_date,
+                    "done": False,
+                    "reminded": (user_data["role"] == "rop")
+                })
             break
     save_db(db)
     return redirect(url_for("index"))
