@@ -93,7 +93,7 @@ BASE_TEMPLATE = """
     <title>{{ page_title }} - Ангар CRM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; font-family: Arial, sans-serif; overflow-x: hidden; }
+        body { background: #f8f9fa; font-family: Arial, sans-serif; overflow: hidden; height: 100vh; }
         .wrapper { display: flex; width: 100%; height: 100vh; }
         .sidebar { width: 60px; background: #212529; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.25s ease-in-out; overflow: hidden; white-space: nowrap; z-index: 1000; }
         .sidebar:hover { width: 240px; }
@@ -102,13 +102,26 @@ BASE_TEMPLATE = """
         .sidebar .menu a { color: #adb5bd; text-decoration: none; padding: 10px 12px; border-radius: 4px; font-size: 13px; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
         .sidebar .menu a:hover, .sidebar .menu a.active { background: #0d6efd; color: #fff; }
         .sidebar .menu a i { font-size: 16px; min-width: 24px; text-align: center; font-style: normal; }
+        
         .main-content { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         .top-bar { background: #ffffff; border-bottom: 1px solid #dee2e6; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; height: 60px; flex-shrink: 0; }
-        .content-body { flex-grow: 1; overflow-y: auto; padding: 15px; background: #f8f9fa; }
-        .kanban { display: flex; overflow-x: auto; gap: 12px; height: 100%; padding-bottom: 10px; }
-        .k-col { min-width: 280px; max-width: 280px; background: #e9ecef; border-radius: 6px; display: flex; flex-direction: column; max-height: 100%; }
-        .k-header { padding: 10px; font-weight: bold; font-size: 13px; color: white; border-top-left-radius: 6px; border-top-right-radius: 6px; text-align: center; }
-        .k-body { padding: 8px; overflow-y: auto; flex-grow: 1; min-height: 200px; }
+        
+        .content-body { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding: 15px; background: #f8f9fa; }
+        
+        /* Улучшенный скроллборд для воронки */
+        .kanban-wrapper { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .kanban { display: flex; overflow-x: auto; gap: 12px; height: 100%; padding-bottom: 12px; }
+        
+        /* Стилизация полосы прокрутки для удобства */
+        .kanban::-webkit-scrollbar { height: 12px; }
+        .kanban::-webkit-scrollbar-track { background: #e9ecef; border-radius: 6px; }
+        .kanban::-webkit-scrollbar-thumb { background: #0d6efd; border-radius: 6px; }
+        .kanban::-webkit-scrollbar-thumb:hover { background: #0b5ed7; }
+
+        .k-col { min-width: 280px; max-width: 280px; background: #e9ecef; border-radius: 6px; display: flex; flex-direction: column; height: 100%; }
+        .k-header { padding: 10px; font-weight: bold; font-size: 13px; color: white; border-top-left-radius: 6px; border-top-right-radius: 6px; text-align: center; flex-shrink: 0; }
+        .k-body { padding: 8px; overflow-y: auto; flex-grow: 1; }
+        
         .deal-card { background: #ffffff; border-radius: 4px; padding: 10px; margin-bottom: 8px; font-size: 12px; border: 1px solid #ced4da; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: grab; transition: 0.15s; }
         .deal-card:active { cursor: grabbing; opacity: 0.7; }
         .deal-card:hover { border-color: #0d6efd; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
@@ -214,7 +227,6 @@ def index():
     user = USERS[session["user"]]
     db = load_db()
     
-    # Получаем параметры поиска и фильтра менеджера
     search_query = request.args.get("q", "").strip().lower()
     selected_manager = request.args.get("manager_filter", "all")
     
@@ -232,9 +244,9 @@ def index():
                 if t.get("reminded", False):
                     has_reminders = True
 
-    # Панель поиска и фильтрации над воронкой
+    # Закрепленная верхняя панель поиска
     filter_html = f"""
-    <div class="card shadow-sm border-0 mb-3 p-3 bg-white">
+    <div class="card shadow-sm border-0 mb-3 p-3 bg-white flex-shrink-0">
         <form method="GET" action="/" class="row g-2 align-items-center">
             <div class="col-md-5">
                 <div class="input-group">
@@ -254,7 +266,6 @@ def index():
             sel = "selected" if selected_manager == m_name else ""
             filter_html += f'<option value="{m_name}" {sel}>{m_name}</option>'
     else:
-        # Обычный менеджер может выбирать либо свои, либо все
         filter_html += f'<option value="{user["name"]}" {"selected" if selected_manager==user["name"] else ""}>Только мои сделки</option>'
         filter_html += f'<option value="all" {"selected" if selected_manager=="all" else ""}>Все клиенты компании</option>'
 
@@ -270,7 +281,7 @@ def index():
     </div>
     """
                     
-    kanban_content = filter_html + '<div class="kanban">'
+    kanban_content = filter_html + '<div class="kanban-wrapper"><div class="kanban">'
     for s_key, s_name, s_color in STAGES:
         color_style = f"background-color: {s_color};"
         if s_key == 'stage_2': color_style += " color: #000;"
@@ -282,7 +293,6 @@ def index():
         """
         for d in db["deals"]:
             if d.get("stage") == s_key:
-                # Проверка фильтра по менеджеру
                 deal_mgr = d.get("manager", "")
                 if user["role"] not in ["director", "rop"]:
                     if selected_manager != "all" and deal_mgr != user["name"]:
@@ -291,7 +301,6 @@ def index():
                     if selected_manager != "all" and deal_mgr != selected_manager:
                         continue
 
-                # Проверка поискового запроса (Компания, Директор, Контакт, Телефон)
                 if search_query:
                     c_title = d.get("client", "").lower()
                     c_dir = d.get("director", "").lower()
@@ -307,7 +316,7 @@ def index():
                 phone_text = d.get('phones')[0] if d.get('phones') else 'Нет телефона'
                 sum_val = d.get('total_sum', 0)
                 sum_str = "{:,}".format(sum_val).replace(",", " ") if d.get('stage') in CONTRACT_STAGES else "—"
-                manager_text = deal_text = deal_mgr or 'Не назначен'
+                manager_text = deal_mgr or 'Не назначен'
                 
                 tasks_badge = ""
                 for t in d.get("tasks", []):
@@ -433,8 +442,7 @@ def index():
                     </div>
                 </div>
                 """
-        kanban_content += '</div></div>'
-    kanban_content += '</div>'
+        kanban_content += '</div></div></div>'
 
     # Модалка задач
     kanban_content += '<div class="modal fade" id="tasksListModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-warning text-dark"><h5 class="modal-title fw-bold">🔔 Панель задач и контроля</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="list-group">'
@@ -1022,7 +1030,7 @@ def complete_task(deal_id, task_id):
                     if task_date < today_str:
                         history_text = f"✓ Выполнил задачу с просрочкой (план: {task_date}): [{t['type']}] {t['text']}"
                     else:
-                        history_text = f"✓ Выполнил задачу вовремя: [{t['type']}] {t['text']} с прикрепленным файлом"
+                        history_text = f"✓ Выполнил задачу вовремя: [{t['type']}] {t['text']}"
                     d["history"].append({"date": now_str, "author": user["name"], "text": history_text})
                     break
     save_db(db)
