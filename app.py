@@ -38,24 +38,7 @@ CONTRACT_STAGES = ["stage_11", "stage_12", "stage_13", "stage_14", "stage_15"]
 
 def load_db():
     default_data = {
-        "deals": [
-            {
-                "id": "1",
-                "title": 'ТОО "МИРАМ"',
-                "client": 'ТОО "МИРАМ"',
-                "director": "Иванов И.И.",
-                "phones": ["+7 705 626 54 24"],
-                "contact_person": "Бухгалтер Светлана",
-                "contact_phone": "+7 701 999 88 77",
-                "email": "miram@mail.kz",
-                "region": "Костанайская область, п. Заречный",
-                "stage": "stage_5",
-                "manager": "Менеджер 1",
-                "total_sum": 0,
-                "history": [{"date": "15.10.2026 12:00", "author": "РОП", "text": "Создана сделка, скинул КП"}],
-                "tasks": []
-            }
-        ],
+        "deals": [],
         "tz_list": []
     }
     if not os.path.exists(DB_FILE):
@@ -108,37 +91,13 @@ BASE_TEMPLATE = """
     <style>
         body { background: #f8f9fa; font-family: Arial, sans-serif; overflow-x: hidden; }
         .wrapper { display: flex; width: 100%; height: 100vh; }
-        
-        /* Выезжающая боковая панель (Hover Sidebar) */
-        .sidebar { 
-            width: 60px; 
-            background: #212529; 
-            color: #fff; 
-            display: flex; 
-            flex-direction: column; 
-            flex-shrink: 0; 
-            transition: width 0.25s ease-in-out; 
-            overflow: hidden; 
-            white-space: nowrap; 
-            z-index: 1000;
-        }
+        .sidebar { width: 60px; background: #212529; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.25s ease-in-out; overflow: hidden; white-space: nowrap; z-index: 1000; }
         .sidebar:hover { width: 240px; }
         .sidebar .brand { padding: 15px; font-size: 16px; font-weight: bold; background: #1a1e21; border-bottom: 1px solid #373b3e; text-align: left; }
         .sidebar .menu { padding: 15px 5px; display: flex; flex-direction: column; gap: 8px; flex-grow: 1; }
-        .sidebar .menu a { 
-            color: #adb5bd; 
-            text-decoration: none; 
-            padding: 10px 12px; 
-            border-radius: 4px; 
-            font-size: 13px; 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-            transition: 0.2s; 
-        }
+        .sidebar .menu a { color: #adb5bd; text-decoration: none; padding: 10px 12px; border-radius: 4px; font-size: 13px; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
         .sidebar .menu a:hover, .sidebar .menu a.active { background: #0d6efd; color: #fff; }
         .sidebar .menu a i { font-size: 16px; min-width: 24px; text-align: center; font-style: normal; }
-
         .main-content { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         .top-bar { background: #ffffff; border-bottom: 1px solid #dee2e6; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; height: 60px; flex-shrink: 0; }
         .content-body { flex-grow: 1; overflow-y: auto; padding: 15px; background: #f8f9fa; }
@@ -158,20 +117,13 @@ BASE_TEMPLATE = """
 <body>
 
 <div class="wrapper">
-    <!-- Выезжающая боковая панель -->
     <div class="sidebar">
         <div class="brand">🏗️ <span>Ангар CRM</span></div>
         <div class="menu">
-            <a href="/" class="{% if active_page == 'kanban' %}active{% endif %}">
-                <i>📊</i> <span>Канбан CRM</span>
-            </a>
-            <a href="/tz" class="{% if active_page == 'tz' %}active{% endif %}">
-                <i>📐</i> <span>Тех. задания</span>
-            </a>
+            <a href="/" class="{% if active_page == 'kanban' %}active{% endif %}"><i>📊</i> <span>Канбан CRM</span></a>
+            <a href="/tz" class="{% if active_page == 'tz' %}active{% endif %}"><i>📐</i> <span>Тех. задания</span></a>
             {% if user.role in ['director', 'rop'] %}
-            <a href="/analytics" class="{% if active_page == 'analytics' %}active{% endif %}">
-                <i>📈</i> <span>Воронка (Отчеты)</span>
-            </a>
+            <a href="/analytics" class="{% if active_page == 'analytics' %}active{% endif %}"><i>📈</i> <span>Воронка (Отчеты)</span></a>
             {% endif %}
         </div>
         <div class="p-3 bg-dark border-top border-secondary text-muted small">
@@ -180,7 +132,6 @@ BASE_TEMPLATE = """
         </div>
     </div>
 
-    <!-- Основная зона -->
     <div class="main-content">
         <div class="top-bar">
             <div class="d-flex align-items-center gap-3">
@@ -416,7 +367,7 @@ def index():
         kanban_content += '</div></div>'
     kanban_content += '</div>'
 
-    # Модалка списка задач
+    # Модалка задач
     kanban_content += '<div class="modal fade" id="tasksListModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-warning text-dark"><h5 class="modal-title fw-bold">🔔 Панель задач и контроля</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="list-group">'
     for d in db["deals"]:
         for t in d.get("tasks", []):
@@ -425,7 +376,6 @@ def index():
                 badge_class = "list-group-item-danger" if is_overdue else ""
                 date_badge = f'<span class="badge bg-danger">⚠️ Просрочено ({t.get("date")})</span>' if is_overdue else f'<span class="badge bg-primary">{t.get("date")}</span>'
                 remind_badge = '<span class="badge bg-danger text-white blink-remind ms-1">⚡ РОП НАПОМИНАЕТ!</span>' if t.get("reminded") else ''
-                
                 remind_btn = f'<form method="POST" action="/remind_task/{d["id"]}/{t["id"]}"><button type="submit" class="btn btn-danger btn-sm fw-bold">⚡ Напомнить</button></form>' if user["role"] in ["director", "rop"] and is_overdue else ''
                 
                 kanban_content += f'''
@@ -502,11 +452,11 @@ def tz_page():
                     <thead class="table-dark">
                         <tr>
                             <th>Название ТЗ</th>
-                            <th>Автор / Менеджер</th>
+                            <th>Автор</th>
                             <th>Ответственный</th>
                             <th>Наблюдатель</th>
                             <th>Срочность</th>
-                            <th>Срок выполнения</th>
+                            <th>Срок</th>
                             <th>Статус</th>
                             <th>Действие</th>
                         </tr>
@@ -518,23 +468,31 @@ def tz_page():
             is_overdue = not tz.get("done") and tz.get("due_date", "") < today_str
             urgency_badge = ""
             if tz.get("urgency") == "горячая":
-                urgency_badge = '<span class="badge bg-danger">🔴 Горячая (Сегодня)</span>'
+                urgency_badge = '<span class="badge bg-danger">🔴 Горячая</span>'
             elif tz.get("urgency") == "теплая":
-                urgency_badge = '<span class="badge bg-warning text-dark">🟡 Теплая (2-3 дня)</span>'
+                urgency_badge = '<span class="badge bg-warning text-dark">🟡 Теплая</span>'
             else:
-                urgency_badge = '<span class="badge bg-info text-dark">🔵 Холодная (По возможности)</span>'
+                urgency_badge = '<span class="badge bg-info text-dark">🔵 Холодная</span>'
                 
-            remind_alert = '<br><span class="badge bg-danger blink-remind mt-1">⚡ РОП НАПОМИНАЕТ ПО ТЗ!</span>' if tz.get("reminded") else ''
-            
+            remind_alert = '<br><span class="badge bg-danger blink-remind mt-1">⚡ РОП НАПОМИНАЕТ!</span>' if tz.get("reminded") else ''
             status_badge = '<span class="badge bg-success">✓ Выполнено</span>' if tz.get("done") else ('<span class="badge bg-danger">⚠️ Просрочено</span>' if is_overdue else '<span class="badge bg-primary">В работе</span>')
             
+            # Проверка прав доступа: открыть ТЗ может только Автор, Ответственный или Наблюдатель
+            can_open = (user["name"] == tz.get("author") or user["name"] == tz.get("responsible") or user["name"] == tz.get("observer") or user["role"] in ["director", "rop"])
+            
+            if can_open:
+                title_cell = f'<a href="#" data-bs-toggle="modal" data-bs-target="#tzModal{tz["id"]}" class="fw-bold text-primary text-decoration-none">{tz["title"]}</a>'
+            else:
+                title_cell = f'<span class="fw-bold text-secondary">{tz["title"]} 🔒</span>'
+
             action_btn = ""
             if not tz.get("done"):
-                action_btn += f'''
-                <form method="POST" action="/tz/complete/{tz['id']}" class="d-inline">
-                    <button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button>
-                </form>
-                '''
+                if user["name"] == tz.get("responsible") or user["role"] in ["director", "rop"]:
+                    action_btn += f'''
+                    <form method="POST" action="/tz/complete/{tz['id']}" class="d-inline">
+                        <button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button>
+                    </form>
+                    '''
                 if is_overdue and (user["role"] in ["director", "rop"] or user["name"] == tz.get("observer")):
                     action_btn += f'''
                     <form method="POST" action="/tz/remind/{tz['id']}" class="d-inline ms-1">
@@ -544,10 +502,7 @@ def tz_page():
 
             tz_content += f"""
             <tr>
-                <td>
-                    <strong class="text-primary">{tz['title']}</strong>
-                    <div class="small text-muted">{tz['description']}</div>
-                </td>
+                <td>{title_cell}</td>
                 <td><span class="badge bg-secondary">{tz['author']}</span></td>
                 <td><span class="badge bg-dark">{tz['responsible']}</span>{remind_alert}</td>
                 <td><span class="badge bg-light text-dark border">{tz['observer']}</span></td>
@@ -556,6 +511,61 @@ def tz_page():
                 <td>{status_badge}</td>
                 <td>{action_btn}</td>
             </tr>
+            """
+
+            # Модальное окно просмотра / редактирования конкретного ТЗ
+            history_html = ""
+            for h in reversed(tz.get("history", [])):
+                history_html += f'<div class="mb-1 border-bottom pb-1"><span class="text-primary fw-bold">[{h.get("date")}] {h.get("author")}:</span> <span>{h.get("text")}</span></div>'
+
+            is_author = (user["name"] == tz.get("author") or user["role"] in ["director", "rop"])
+            disabled_attr = "" if is_author else "disabled"
+
+            tz_content += f"""
+            <div class="modal fade" id="tzModal{tz['id']}" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <form method="POST" action="/tz/update/{tz['id']}">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title fw-bold">📐 ТЗ: {tz['title']}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row g-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-bold">Название задания:</label>
+                                        <input type="text" name="title" class="form-control" value="{tz['title']}" {disabled_attr} required>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold">Описание / Параметры:</label>
+                                        <textarea name="description" class="form-control" rows="3" {disabled_attr} required>{tz['description']}</textarea>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold">Ответственный:</label>
+                                        <input type="text" class="form-control bg-light" value="{tz['responsible']}" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold">Наблюдатель:</label>
+                                        <input type="text" class="form-control bg-light" value="{tz['observer']}" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold">Срочность:</label>
+                                        <input type="text" class="form-control bg-light" value="{tz['urgency']}" readonly>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold text-secondary">📜 История изменений ТЗ:</label>
+                                        <div class="history-box">{history_html if history_html else 'Нет изменений'}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Закрыть</button>
+                                {f'<button type="submit" class="btn btn-primary btn-sm fw-bold">Сохранить изменения</button>' if is_author else ''}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
             """
     else:
         tz_content += '<tr><td colspan="8" class="text-center text-muted py-4">Технические задания пока не создавались.</td></tr>'
@@ -596,7 +606,7 @@ def tz_page():
                                     </select>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label fw-bold">Наблюдатель:</label>
+                                    <label class="form-label fw-bold">Наблюдатель (РОП или Директор):</label>
                                     <select name="observer" class="form-select">
                                         <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
                                         <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
@@ -640,6 +650,7 @@ def add_tz():
     else:
         due_date = (today + timedelta(days=7)).strftime("%Y-%m-%d")
     
+    now_str = today.strftime("%d.%m.%Y %H:%M")
     db["tz_list"].append({
         "id": f"tz_{len(db['tz_list'])+1}",
         "title": request.form.get("title"),
@@ -651,18 +662,56 @@ def add_tz():
         "due_date": due_date,
         "done": False,
         "reminded": False,
-        "created_at": datetime.now().strftime("%d.%m.%Y %H:%M")
+        "history": [{"date": now_str, "author": user["name"], "text": "Создано техническое задание"}],
+        "created_at": now_str
     })
+    save_db(db)
+    return redirect(url_for("tz_page"))
+
+@app.route("/tz/update/<tz_id>", methods=["POST"])
+def update_tz(tz_id):
+    if "user" not in session: return redirect(url_for("login"))
+    user = USERS[session["user"]]
+    db = load_db()
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    
+    for tz in db.get("tz_list", []):
+        if tz["id"] == tz_id:
+            # Права на редактирование имеет только автор или РОП/Директор
+            if user["name"] != tz.get("author") and user["role"] not in ["director", "rop"]:
+                return redirect(url_for("tz_page"))
+                
+            new_title = request.form.get("title")
+            new_desc = request.form.get("description")
+            
+            changes = []
+            if tz["title"] != new_title:
+                changes.append(f"Изменил название с '{tz['title']}' на '{new_title}'")
+                tz["title"] = new_title
+            if tz["description"] != new_desc:
+                changes.append("Обновил описание ТЗ")
+                tz["description"] = new_desc
+                
+            if changes:
+                if "history" not in tz: tz["history"] = []
+                for change in changes:
+                    tz["history"].append({"date": now_str, "author": user["name"], "text": change})
+            break
+            
     save_db(db)
     return redirect(url_for("tz_page"))
 
 @app.route("/tz/remind/<tz_id>", methods=["POST"])
 def remind_tz(tz_id):
     if "user" not in session: return redirect(url_for("login"))
+    user = USERS[session["user"]]
     db = load_db()
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
     for tz in db.get("tz_list", []):
         if tz["id"] == tz_id:
             tz["reminded"] = True
+            if "history" not in tz: tz["history"] = []
+            tz["history"].append({"date": now_str, "author": user["name"], "text": "⚡ РОП напомнил ответственному по ТЗ!"})
             break
     save_db(db)
     return redirect(url_for("tz_page"))
@@ -670,11 +719,15 @@ def remind_tz(tz_id):
 @app.route("/tz/complete/<tz_id>", methods=["POST"])
 def complete_tz(tz_id):
     if "user" not in session: return redirect(url_for("login"))
+    user = USERS[session["user"]]
     db = load_db()
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
     for tz in db.get("tz_list", []):
         if tz["id"] == tz_id:
             tz["done"] = True
             tz["reminded"] = False
+            if "history" not in tz: tz["history"] = []
+            tz["history"].append({"date": now_str, "author": user["name"], "text": "✓ ТЗ выполнено"})
             break
     save_db(db)
     return redirect(url_for("tz_page"))
