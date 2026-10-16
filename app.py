@@ -1,12 +1,16 @@
-from flask import Flask, render_template_string, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template_string, request, redirect, url_for, session, jsonify, send_from_directory
 import json
 import os
 from datetime import datetime, timedelta
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "angar_crm_secret_2026"
 
 DB_FILE = "crm_db.json"
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 USERS = {
     "director": {"pass": "dir123", "name": "Уралбаев Ж.А. (Директор)", "role": "director"},
@@ -477,7 +481,6 @@ def tz_page():
             remind_alert = '<br><span class="badge bg-danger blink-remind mt-1">⚡ РОП НАПОМИНАЕТ!</span>' if tz.get("reminded") else ''
             status_badge = '<span class="badge bg-success">✓ Выполнено</span>' if tz.get("done") else ('<span class="badge bg-danger">⚠️ Просрочено</span>' if is_overdue else '<span class="badge bg-primary">В работе</span>')
             
-            # Проверка прав доступа: открыть ТЗ может только Автор, Ответственный или Наблюдатель
             can_open = (user["name"] == tz.get("author") or user["name"] == tz.get("responsible") or user["name"] == tz.get("observer") or user["role"] in ["director", "rop"])
             
             if can_open:
@@ -513,7 +516,6 @@ def tz_page():
             </tr>
             """
 
-            # Модальное окно просмотра / редактирования конкретного ТЗ
             history_html = ""
             for h in reversed(tz.get("history", [])):
                 history_html += f'<div class="mb-1 border-bottom pb-1"><span class="text-primary fw-bold">[{h.get("date")}] {h.get("author")}:</span> <span>{h.get("text")}</span></div>'
@@ -521,11 +523,15 @@ def tz_page():
             is_author = (user["name"] == tz.get("author") or user["role"] in ["director", "rop"])
             disabled_attr = "" if is_author else "disabled"
 
+            file_section = ""
+            if tz.get("filename"):
+                file_section = f'<div class="alert alert-secondary py-2 mt-2">📎 Прикрепленный файл: <a href="/uploads/{tz["filename"]}" target="_blank" class="fw-bold text-decoration-none">📥 Скачать файл</a></div>'
+
             tz_content += f"""
             <div class="modal fade" id="tzModal{tz['id']}" tabindex="-1">
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content">
-                        <form method="POST" action="/tz/update/{tz['id']}">
+                        <form method="POST" action="/tz/update/{tz['id']}" enctype="multipart/form-data">
                             <div class="modal-header bg-primary text-white">
                                 <h5 class="modal-title fw-bold">📐 ТЗ: {tz['title']}</h5>
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -539,6 +545,10 @@ def tz_page():
                                     <div class="col-12">
                                         <label class="form-label fw-bold">Описание / Параметры:</label>
                                         <textarea name="description" class="form-control" rows="3" {disabled_attr} required>{tz['description']}</textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        {file_section}
+                                        {f'<label class="form-label fw-bold">Заменить / прикрепить новый файл (чертеж/КП):</label><input type="file" name="file" class="form-control">' if is_author else ''}
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label fw-bold">Ответственный:</label>
@@ -576,11 +586,11 @@ def tz_page():
             </div>
         </div>
 
-        <!-- Модалка создания ТЗ -->
+        <!-- Модалка создания ТЗ (С возможностью прикрепления файла) -->
         <div class="modal fade" id="addTzModal" tabindex="-1">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
-                    <form method="POST" action="/tz/add">
+                    <form method="POST" action="/tz/add" enctype="multipart/form-data">
                         <div class="modal-header bg-primary text-white">
                             <h5 class="modal-title fw-bold">📐 Новое техническое задание</h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -589,11 +599,15 @@ def tz_page():
                             <div class="row g-3">
                                 <div class="col-md-12">
                                     <label class="form-label fw-bold">Название задания:</label>
-                                    <input type="text" name="title" class="form-control" required placeholder="Например: Рассчитать ангар / Связаться с заказчиком">
+                                    <input type="text" name="title" class="form-control" required placeholder="Например: Отправить чертежи на фундамент / Согласовать сверхскидку">
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label fw-bold">Описание задания / Параметры:</label>
                                     <textarea name="description" class="form-control" rows="3" required placeholder="Детальное описание того, что необходимо сделать..."></textarea>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold">Прикрепить файл (чертеж, PDF, КП):</label>
+                                    <input type="file" name="file" class="form-control">
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label fw-bold">Ответственный:</label>
@@ -634,6 +648,10 @@ def tz_page():
     """
     return render_template_string(BASE_TEMPLATE, page_title="Технические задания", active_page="tz", user=user, content=tz_content)
 
+@app.route("/uploads/<path:filename>")
+def downloaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 @app.route("/tz/add", methods=["POST"])
 def add_tz():
     if "user" not in session: return redirect(url_for("login"))
@@ -650,11 +668,18 @@ def add_tz():
     else:
         due_date = (today + timedelta(days=7)).strftime("%Y-%m-%d")
     
+    filename_str = ""
+    file = request.files.get("file")
+    if file and file.filename:
+        filename_str = secure_filename(f"{int(datetime.now().timestamp())}_{file.filename}")
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename_str))
+
     now_str = today.strftime("%d.%m.%Y %H:%M")
     db["tz_list"].append({
         "id": f"tz_{len(db['tz_list'])+1}",
         "title": request.form.get("title"),
         "description": request.form.get("description"),
+        "filename": filename_str,
         "author": user["name"],
         "responsible": request.form.get("responsible"),
         "observer": request.form.get("observer"),
@@ -662,7 +687,7 @@ def add_tz():
         "due_date": due_date,
         "done": False,
         "reminded": False,
-        "history": [{"date": now_str, "author": user["name"], "text": "Создано техническое задание"}],
+        "history": [{"date": now_str, "author": user["name"], "text": "Создано техническое задание" + (" с прикрепленным файлом" if filename_str else "")}],
         "created_at": now_str
     })
     save_db(db)
@@ -677,7 +702,6 @@ def update_tz(tz_id):
     
     for tz in db.get("tz_list", []):
         if tz["id"] == tz_id:
-            # Права на редактирование имеет только автор или РОП/Директор
             if user["name"] != tz.get("author") and user["role"] not in ["director", "rop"]:
                 return redirect(url_for("tz_page"))
                 
@@ -692,6 +716,13 @@ def update_tz(tz_id):
                 changes.append("Обновил описание ТЗ")
                 tz["description"] = new_desc
                 
+            file = request.files.get("file")
+            if file and file.filename:
+                filename_str = secure_filename(f"{int(datetime.now().timestamp())}_{file.filename}")
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename_str))
+                tz["filename"] = filename_str
+                changes.append(f"Загрузил новый файл: {file.filename}")
+
             if changes:
                 if "history" not in tz: tz["history"] = []
                 for change in changes:
