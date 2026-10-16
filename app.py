@@ -246,7 +246,6 @@ def generator_page():
     users = db.get("users", DEFAULT_USERS)
     user_data = users[uname]
     
-    # Автоматически подставляем данные авторизованного сотрудника
     manager_display = f"{user_data.get('position', 'Сотрудник')}: {user_data['name']} ({user_data.get('phone', '+7 700 000 00 00')})"
 
     gen_html = f"""
@@ -632,7 +631,6 @@ def generator_page():
                     btn.innerText = "📄 Сформировать и скачать КП (PDF)";
                 });
 
-                // Отправляем в бэкенд CRM для сохранения в реестр
                 fetch('/save_kp', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -679,9 +677,10 @@ def registry_page():
     users = db.get("users", DEFAULT_USERS)
     user_data = users[uname]
     
-    # Жесткая проверка: доступ только у Директора и РОПа
     if user_data["role"] not in ["director", "rop"]:
         return "<h3 style='color:red; text-align:center; margin-top:50px;'>⛔ Доступ запрещен! Реестр доступен только РОПу и Директору.</h3><p style='text-align:center;'><a href='/'>Вернуться в CRM</a></p>"
+
+    raw_deals_json = json.dumps(db.get('kp_registry', []), ensure_ascii=False)
 
     reg_html = f"""
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -737,38 +736,38 @@ def registry_page():
     </div>
 
     <script>
-        var rawDeals = {db.get('kp_registry', []) | tojson};
+        var rawDeals = {raw_deals_json};
 
-        function filterTable() {
+        function filterTable() {{
             var mFilter = document.getElementById('managerFilter').value;
             var q = document.getElementById('clientSearch').value.toLowerCase().trim();
 
-            var filtered = rawDeals.filter(function(d) {
+            var filtered = rawDeals.filter(function(d) {{
                 var matchM = (mFilter === 'ALL') || (d.manager && d.manager.indexOf(mFilter) !== -1);
                 var matchQ = !q || (d.client && d.client.toLowerCase().indexOf(q) !== -1);
                 return matchM && matchQ;
-            });
+            }});
 
             var container = document.getElementById('tableContainer');
             var totalSum = 0;
 
-            filtered.forEach(function(d) {
-                if (d.price) {
+            filtered.forEach(function(d) {{
+                if (d.price) {{
                     var n = parseInt(String(d.price).replace(/\\D/g, ''));
                     if (!isNaN(n)) totalSum += n;
-                }
-            });
+                }}
+            }});
 
             document.getElementById('totalCount').innerText = filtered.length;
             document.getElementById('totalSum').innerText = totalSum.toLocaleString('ru-RU') + ' ₸';
 
-            if (filtered.length === 0) {
+            if (filtered.length === 0) {{
                 container.innerHTML = '<div class="empty-text">Коммерческих предложений не найдено.</div>';
                 return;
-            }
+            }}
 
             var html = '<table><thead><tr><th>№ КП</th><th>Дата / Время</th><th>Менеджер</th><th>Заказчик</th><th>Телефон</th><th>WhatsApp</th><th>Объект</th><th>Сумма</th><th>Статус</th></tr></thead><tbody>';
-            filtered.forEach(function(d) {
+            filtered.forEach(function(d) {{
                 html += '<tr>' +
                     '<td><b>' + (d.id || '-') + '</b></td>' +
                     '<td>' + (d.date || '-') + '</td>' +
@@ -783,7 +782,7 @@ def registry_page():
             });
             html += '</tbody></table>';
             container.innerHTML = html;
-        }
+        }}
 
         function clearRegistry() {{
             if (confirm('Очистить весь реестр КП?')) {{
@@ -955,7 +954,6 @@ def index():
         kanban_content += '</div></div>'
     kanban_content += '</div>'
 
-    # Модалка задач
     kanban_content += '<div class="modal fade" id="tasksListModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-warning text-dark"><h5 class="modal-title fw-bold">🔔 Панель задач</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="list-group">'
     for d in db["deals"]:
         for t in d.get("tasks", []):
@@ -964,7 +962,6 @@ def index():
                 kanban_content += f'<div class="list-group-item d-flex justify-content-between align-items-center {"list-group-item-danger" if is_overdue else ""}"><div><span class="badge {"bg-danger" if is_overdue else "bg-primary"}">{"⚠️ Просрочено (" + t.get("date") + ")" if is_overdue else t.get("date")}</span><strong class="ms-2">{d["client"]}</strong><div class="small mt-1">{t.get("text")}</div></div><div class="d-flex gap-2"><form method="POST" action="{url_for("complete_task", deal_id=d["id"], task_id=t["id"])}"><button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button></form></div></div>'
     kanban_content += '</div></div></div></div></div>'
 
-    # Модалка добавления сделки
     kanban_content += f"""
     <div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
         <form method="POST" action="{url_for("add_deal")}">
