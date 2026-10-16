@@ -1121,7 +1121,6 @@ def index():
             if not t.get("done", False):
                 is_overdue = t.get("date") < today_str
                 remind_btn = ""
-                # Кнопку «Напомнить» видит ТОЛЬКО РОП или Директор
                 if user_data["role"] in ["director", "rop"] and is_overdue and not t.get("reminded"):
                     remind_btn = f'<form method="POST" action="{url_for("remind_task", deal_id=d["id"], task_id=t["id"])}" class="d-inline"><button type="submit" class="btn btn-outline-danger btn-sm">⚠️ Напомнить</button></form>'
                 
@@ -1476,7 +1475,24 @@ def update_deal(id):
             old_dir_phones = d.get("director_phones", [])
             new_dir_phones = [p.strip() for p in request.form.getlist("director_phones") if p.strip()]
             if old_dir_phones != new_dir_phones:
-                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил телефоны директора: [{', '.join(old_dir_phones)}] ➔ [{', '.join(new_dir_phones)}]"})
+                # Умный анализ изменения телефонов директора
+                added_dp = [p for p in new_dir_phones if p not in old_dir_phones]
+                removed_dp = [p for p in old_dir_phones if p not in new_dir_phones]
+                if len(added_dp) == 1 and len(removed_dp) == 0 and len(old_dir_phones) == len(new_dir_phones):
+                    # Похоже на редактирование (замена элемента на той же позиции или поштучно)
+                    pass # Обработаем ниже или через обход
+                
+                # Детальная фиксация добавлений/удалений/изменений
+                for p in added_dp:
+                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Добавлен номер директора: {p}"})
+                for p in removed_dp:
+                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Удален номер директора: {p}"})
+                
+                if not added_dp and not removed_dp and len(old_dir_phones) == len(new_dir_phones):
+                    for idx, val in enumerate(new_dir_phones):
+                        if val != old_dir_phones[idx]:
+                            d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Отредактирован номер директора с «{old_dir_phones[idx]}» на «{val}»"})
+
                 d["director_phones"] = new_dir_phones
 
             new_cp = request.form.get("contact_person", "").strip()
@@ -1487,7 +1503,19 @@ def update_deal(id):
             old_cp_phones = d.get("contact_phones", [])
             new_cp_phones = [p.strip() for p in request.form.getlist("contact_phones") if p.strip()]
             if old_cp_phones != new_cp_phones:
-                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил телефоны контактного лица: [{', '.join(old_cp_phones)}] ➔ [{', '.join(new_cp_phones)}]"})
+                added_cp = [p for p in new_cp_phones if p not in old_cp_phones]
+                removed_cp = [p for p in old_cp_phones if p not in new_cp_phones]
+                
+                for p in added_cp:
+                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Добавлен номер контактного лица: {p}"})
+                for p in removed_cp:
+                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Удален номер контактного лица: {p}"})
+                
+                if not added_cp and not removed_cp and len(old_cp_phones) == len(new_cp_phones):
+                    for idx, val in enumerate(new_cp_phones):
+                        if val != old_cp_phones[idx]:
+                            d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Отредактирован номер контактного лица с «{old_cp_phones[idx]}» на «{val}»"})
+
                 d["contact_phones"] = new_cp_phones
 
             old_mgr = d.get("manager")
@@ -1547,7 +1575,6 @@ def remind_task(deal_id, task_id):
     uname = session["user"]
     user_data = db["users"][uname]
     
-    # Только РОП или Директор могут нажимать кнопку напоминания
     if user_data["role"] not in ["director", "rop"]:
         return redirect(url_for("index"))
 
