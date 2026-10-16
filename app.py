@@ -1194,3 +1194,4 @@ def add():
         "total_sum": 0,
         "history": history_entries,
         "tasks": []
+    })
