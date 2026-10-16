@@ -725,8 +725,8 @@ def generator_page():
                     var netP = Math.max(0, P - (gateW * gateCount));
                     var totalVol = Math.round((netP * fundW * fundH) + ((Math.floor(l / 3) * 2 + 8) * 0.25) + (P * 1.0 * 0.1));
                     fundPrice = Math.round(totalVol * 135000 * VAT);
-                    fundDesc = "Фундамент железобетонный монолитный Н-" + fundH + "м, В-" + fundW + "м";
-                    fundNote = totalVol + " м³";
+                    fundDesc = "Фундамент железобетонный монолитный Н-" + fundH + "м, В-" + fundW + "м<br>Буронабивные сваи Ø300, L-2.0м<br>Отмостка: 0,1х1,0м";
+                    fundNote = totalVol + " м³ (" + P + " п.м.)";
                 } else if (fundType === 'screw') {
                     var P = 2 * (w + l);
                     var screwRate = (w <= 13) ? 22000 : (w <= 17) ? 26000 : (w <= 22) ? 30000 : 34000;
@@ -735,6 +735,7 @@ def generator_page():
                     fundNote = P + " п.м.";
                 } else {
                     fundDesc = "Подготовка фундамента Заказчиком";
+                    fundNote = "—";
                 }
 
                 var montagePrice = 0;
@@ -769,7 +770,7 @@ def generator_page():
                 if (ventCount > 0) rows += "<tr><td><b>Вентиляционная решетка по торцам</b></td><td style='text-align:center;'>" + ventCount + " к-та</td><td style='text-align:right;'>" + ventPrice.toLocaleString('ru-RU') + "</td><td>—</td></tr>";
                 
                 if (fundType !== 'none') {
-                    rows += "<tr><td><b>" + fundDesc + "</b><br>Буронабивные сваи Ø300, L-2.0м<br>Отмостка: 0,1х1,0м</td><td style='text-align:center;'>" + (fundType === 'strip' ? "100м" : "Сваи") + "</td><td style='text-align:right;'>" + fundPrice.toLocaleString('ru-RU') + "</td><td>" + fundNote + "</td></tr>";
+                    rows += "<tr><td><b>" + fundDesc + "</b></td><td style='text-align:center;'>—</td><td style='text-align:right;'>" + fundPrice.toLocaleString('ru-RU') + "</td><td>" + fundNote + "</td></tr>";
                 } else {
                     rows += "<tr><td><b>" + fundDesc + "</b></td><td style='text-align:center;'>—</td><td style='text-align:right;'>0</td><td>—</td></tr>";
                 }
