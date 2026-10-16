@@ -735,7 +735,18 @@ def generator_page():
                     fundDesc = "Подготовка фундамента Заказчиком";
                 }
 
-                var montagePrice = (montageType === 'include') ? Math.round((constPrice + gatePrice) * (isProf ? 0.23 : 0.21)) : 0;
+                // Точный расчет монтажа по вашему правилу:
+                // Тент: (каркас + ворота + решетки) * 21%
+                // Профлист: (каркас + ворота) * 23%
+                var montagePrice = 0;
+                if (montageType === 'include') {
+                    if (isProf) {
+                        montagePrice = Math.round((constPrice + gatePrice) * 0.23);
+                    } else {
+                        montagePrice = Math.round((constPrice + gatePrice + ventPrice) * 0.21);
+                    }
+                }
+
                 var deliveryPrice = Math.round(distance * 1000 * VAT * truckCount);
 
                 var totalBase = constPrice + gatePrice + ventPrice + fundPrice + montagePrice + deliveryPrice;
@@ -763,7 +774,7 @@ def generator_page():
                 }
 
                 if (montageType === 'include') {
-                    rows += "<tr><td><b>Монтаж строительной бригады</b></td><td style='text-align:center;'>работа</td><td style='text-align:right;'>" + montagePrice.toLocaleString('ru-RU') + "</td><td>Спецтехника</td></tr>";
+                    rows += "<tr><td><b>Монтаж строительной бригады</b></td><td style='text-align:center;'>работа</td><td style='text-align:right;'>" + montagePrice.toLocaleString('ru-RU') + "</td><td>Спецтехника включена</td></tr>";
                 }
 
                 rows += "<tr><td><b>Транспортные расходы и логистика</b> 1000 тг/км от г. Костанай.</td><td style='text-align:center;'>" + truckCount + " рейса</td><td style='text-align:right;'>" + deliveryPrice.toLocaleString('ru-RU') + "</td><td>*Возможен самовывоз со склада.</td></tr>";
