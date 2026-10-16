@@ -33,6 +33,9 @@ STAGES = [
     ("stage_15", "15. Повторный заказ (VIP)", "#8540f5")
 ]
 
+# Список этапов, где РАЗРЕШЕНО вводить сумму договора (начиная со stage_11)
+CONTRACT_STAGES = ["stage_11", "stage_12", "stage_13", "stage_14", "stage_15"]
+
 def load_db():
     default_data = {
         "deals": [
@@ -111,6 +114,8 @@ CRM_HTML = """
         .deal-card:hover { border-color: #0d6efd; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
         .history-box { background: #f1f3f5; border-radius: 4px; padding: 8px; max-height: 130px; overflow-y: auto; font-size: 11px; }
         .drag-over { background-color: #d0e1fd !important; border: 2px dashed #0d6efd; }
+        .blink-remind { animation: blinker 1.2s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0.3; } }
     </style>
 </head>
 <body>
@@ -123,6 +128,9 @@ CRM_HTML = """
             🔔 Задачи <span class="badge bg-primary ms-1">{{ total_tasks_count }}</span>
             {% if overdue_count > 0 %}
             <span class="badge bg-danger ms-1">⚠️ Просрочено: {{ overdue_count }}</span>
+            {% endif %}
+            {% if has_reminders %}
+            <span class="badge bg-danger ms-1 blink-remind">⚡ РОП Напоминает!</span>
             {% endif %}
         </button>
     </div>
@@ -153,11 +161,16 @@ CRM_HTML = """
                             {% else %}
                             <div class="mt-1"><span class="badge bg-warning text-dark">⏰ {{ t.date }} ({{ t.type }})</span></div>
                             {% endif %}
+                            
+                            <!-- Вывод плашки «РОП напоминает» на карточке в канбане -->
+                            {% if t.reminded %}
+                            <div class="mt-1"><span class="badge bg-danger text-white blink-remind">⚡ РОП ТРЕБУЕТ ВЫПОЛНИТЬ!</span></div>
+                            {% endif %}
                         {% endif %}
                     {% endfor %}
 
                     <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 11px;">
-                        {% if loop.index0 >= 10 or d.total_sum > 0 %}
+                        {% if d.stage in contract_stages %}
                         <span>Сумма: {{ "{:,}".format(d.total_sum).replace(",", " ") }} ₸</span>
                         {% else %}
                         <span>Сумма: —</span>
@@ -248,9 +261,16 @@ CRM_HTML = """
                                             {% endif %}
                                         </div>
 
+                                        <!-- Логика включения суммы только на этапе «Сделали договор» и далее -->
                                         <div class="col-md-6">
                                             <label class="form-label fw-bold">Сумма сделки (₸):</label>
-                                            <input type="number" name="total_sum" class="form-control" value="{{ d.total_sum }}">
+                                            {% if d.stage in contract_stages %}
+                                            <input type="number" name="total_sum" class="form-control border-success fw-bold" value="{{ d.total_sum }}">
+                                            <small class="text-success">✓ Договор оформлен. Введите сумму договора.</small>
+                                            {% else %}
+                                            <input type="number" name="total_sum" class="form-control bg-light" value="{{ d.total_sum }}" readonly>
+                                            <small class="text-muted">🔒 Активно только с этапа «11. Сделали договор»</small>
+                                            {% endif %}
                                         </div>
 
                                         <!-- Задачи -->
@@ -325,6 +345,11 @@ CRM_HTML = """
                             {% else %}
                             <span class="badge bg-primary">{{ t.date }}</span>
                             {% endif %}
+                            
+                            {% if t.reminded %}
+                            <span class="badge bg-danger text-white blink-remind">⚡ РОП НАПОМИНАЕТ!</span>
+                            {% endif %}
+                            
                             <span class="badge bg-dark">{{ t.type }}</span>
                             <strong class="ms-2">{{ d.client }}</strong>
                             <div class="small mt-1">{{ t.text }}</div>
@@ -490,6 +515,7 @@ def index():
     today_str = datetime.now().strftime("%Y-%m-%d")
     total_tasks = 0
     overdue_count = 0
+    has_reminders = False
     
     for d in db["deals"]:
         for t in d.get("tasks", []):
@@ -497,14 +523,18 @@ def index():
                 total_tasks += 1
                 if t.get("date", "") < today_str:
                     overdue_count += 1
+                if t.get("reminded", False):
+                    has_reminders = True
                     
     return render_template_string(
         CRM_HTML, 
         user=user, 
         stages=STAGES, 
+        contract_stages=CONTRACT_STAGES,
         deals=db["deals"], 
         total_tasks_count=total_tasks, 
         overdue_count=overdue_count,
+        has_reminders=has_reminders,
         today_str=today_str
     )
 
@@ -632,7 +662,15 @@ def update(id):
         if d["id"] == id:
             client_name = request.form.get("client")
             new_stage = request.form.get("stage")
-            new_sum = int(request.form.get("total_sum") or 0)
+            
+            # Обновляем сумму только если этап позволяет (11 и далее)
+            if new_stage in CONTRACT_STAGES:
+                new_sum = int(request.form.get("total_sum") or 0)
+                if d["total_sum"] != new_sum:
+                    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+                    d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Изменил сумму на: {new_sum:,} ₸"})
+                    d["total_sum"] = new_sum
+
             new_comment = request.form.get("new_comment", "").strip()
             
             new_director = request.form.get("director", "").strip()
@@ -642,7 +680,7 @@ def update(id):
             
             now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
             
-            # Контроль удаления или изменения телефонов
+            # Контроль изменения телефонов
             old_phones = d.get("phones", [])
             removed_phones = [p for p in old_phones if p not in new_phones]
             if removed_phones:
@@ -688,10 +726,6 @@ def update(id):
                     if sk == new_stage: stage_name = sn
                 d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Сменил этап на: {stage_name}"})
                 d["stage"] = new_stage
-                
-            if d["total_sum"] != new_sum:
-                d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Изменил сумму на: {new_sum:,} ₸"})
-                d["total_sum"] = new_sum
                 
             if new_comment:
                 d["history"].append({"date": now_str, "author": current_user["name"], "text": new_comment})
