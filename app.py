@@ -12,12 +12,13 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-USERS = {
-    "director": {"pass": "dir123", "name": "Уралбаев Ж.А. (Директор)", "role": "director"},
-    "rop": {"pass": "rop123", "name": "Лемперт А.С. (РОП)", "role": "rop"},
-    "manager1": {"pass": "man123", "name": "Менеджер 1", "role": "manager"},
-    "manager2": {"pass": "man223", "name": "Менеджер 2", "role": "manager"},
-    "manager3": {"pass": "man323", "name": "Менеджер 3", "role": "manager"}
+# Базовые данные пользователей (теперь с расширенными полями профиля)
+DEFAULT_USERS = {
+    "director": {"pass": "dir123", "name": "Уралбаев Ж.А.", "role": "director", "phone": "", "whatsapp": "", "email": "", "avatar": ""},
+    "rop": {"pass": "rop123", "name": "Лемперт Александр Сергеевич", "role": "rop", "phone": "", "whatsapp": "", "email": "", "avatar": ""},
+    "manager1": {"pass": "man123", "name": "Менеджер 1", "role": "manager", "phone": "", "whatsapp": "", "email": "", "avatar": ""},
+    "manager2": {"pass": "man223", "name": "Менеджер 2", "role": "manager", "phone": "", "whatsapp": "", "email": "", "avatar": ""},
+    "manager3": {"pass": "man323", "name": "Менеджер 3", "role": "manager", "phone": "", "whatsapp": "", "email": "", "avatar": ""}
 }
 
 STAGES = [
@@ -43,7 +44,8 @@ CONTRACT_STAGES = ["stage_11", "stage_12", "stage_13", "stage_14", "stage_15"]
 def load_db():
     default_data = {
         "deals": [],
-        "tz_list": []
+        "tz_list": [],
+        "users": DEFAULT_USERS
     }
     if not os.path.exists(DB_FILE):
         save_db(default_data)
@@ -54,6 +56,8 @@ def load_db():
             if not isinstance(data, dict) or "deals" not in data:
                 save_db(default_data)
                 return default_data
+            if "users" not in data:
+                data["users"] = DEFAULT_USERS
             if "tz_list" not in data:
                 data["tz_list"] = []
             return data
@@ -64,6 +68,10 @@ def load_db():
 def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
+
+def get_all_users():
+    db = load_db()
+    return db.get("users", DEFAULT_USERS)
 
 LOGIN_HTML = """
 <!DOCTYPE html>
@@ -108,11 +116,9 @@ BASE_TEMPLATE = """
         
         .content-body { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding: 15px; background: #f8f9fa; }
         
-        /* Исправленная горизонтальная воронка */
         .kanban-outer { flex-grow: 1; overflow-x: auto; overflow-y: hidden; white-space: nowrap; padding-bottom: 10px; }
         .kanban { display: inline-flex; gap: 12px; height: 100%; align-items: flex-start; }
 
-        /* Красивая видимая полоса скролла */
         .kanban-outer::-webkit-scrollbar { height: 12px; }
         .kanban-outer::-webkit-scrollbar-track { background: #dee2e6; border-radius: 6px; }
         .kanban-outer::-webkit-scrollbar-thumb { background: #0d6efd; border-radius: 6px; }
@@ -138,12 +144,13 @@ BASE_TEMPLATE = """
         <div class="menu">
             <a href="/" class="{% if active_page == 'kanban' %}active{% endif %}"><i>📊</i> <span>Канбан CRM</span></a>
             <a href="/tz" class="{% if active_page == 'tz' %}active{% endif %}"><i>📐</i> <span>Тех. задания</span></a>
-            {% if user.role in ['director', 'rop'] %}
+            {% if current_user_data.role in ['director', 'rop'] %}
             <a href="/analytics" class="{% if active_page == 'analytics' %}active{% endif %}"><i>📈</i> <span>Воронка (Отчеты)</span></a>
             {% endif %}
+            <a href="/profile" class="{% if active_page == 'profile' %}active{% endif %}"><i>👤</i> <span>Мой профиль</span></a>
         </div>
         <div class="p-3 bg-dark border-top border-secondary text-muted small">
-            <div>👤 <span>{{ user.name }}</span></div>
+            <div class="text-truncate">👤 <b>{{ current_user_data.name }}</b></div>
             <a href="/logout" class="text-danger text-decoration-none mt-1 d-inline-block">🚪 <span>Выйти</span></a>
         </div>
     </div>
@@ -157,6 +164,8 @@ BASE_TEMPLATE = """
                 {% elif active_page == 'tz' %}
                 <h5 class="m-0 fw-bold text-secondary">📐 Технические задания</h5>
                 <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addTzModal">+ Создать ТЗ</button>
+                {% elif active_page == 'profile' %}
+                <h5 class="m-0 fw-bold text-secondary">👤 Настройки профиля</h5>
                 {% else %}
                 <h5 class="m-0 fw-bold text-secondary">📈 Воронка продаж и Отчеты</h5>
                 {% endif %}
@@ -206,10 +215,12 @@ function dropDeal(ev, stage) {
 @app.route("/login", methods=["GET", "POST"])
 def login():
     error = None
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
     if request.method == "POST":
         u = request.form.get("username")
         p = request.form.get("password")
-        if u in USERS and USERS[u]["pass"] == p:
+        if u in users and users[u]["pass"] == p:
             session["user"] = u
             return redirect(url_for("index"))
         error = "Неверный логин или пароль"
@@ -220,11 +231,110 @@ def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
 
+@app.route("/profile", methods=["GET", "POST"])
+def profile_page():
+    if "user" not in session: return redirect(url_for("login"))
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    
+    success_msg = ""
+    error_msg = ""
+    
+    if request.method == "POST":
+        new_name = request.form.get("name", "").strip()
+        new_phone = request.form.get("phone", "").strip()
+        new_whatsapp = request.form.get("whatsapp", "").strip()
+        new_email = request.form.get("email", "").strip()
+        old_pass = request.form.get("old_pass", "").strip()
+        new_pass = request.form.get("new_pass", "").strip()
+        
+        avatar_file = request.files.get("avatar")
+        if avatar_file and avatar_file.filename:
+            filename_str = secure_filename(f"avatar_{uname}_{int(datetime.now().timestamp())}_{avatar_file.filename}")
+            avatar_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename_str))
+            user_data["avatar"] = filename_str
+
+        if new_name:
+            user_data["name"] = new_name
+        user_data["phone"] = new_phone
+        user_data["whatsapp"] = new_whatsapp
+        user_data["email"] = new_email
+        
+        if new_pass:
+            if old_pass == user_data["pass"]:
+                user_data["pass"] = new_pass
+                success_msg = "Профиль и пароль успешно обновлены!"
+            else:
+                error_msg = "Неверно указан текущий пароль!"
+        else:
+            success_msg = "Профиль успешно обновлен!"
+            
+        users[uname] = user_data
+        db["users"] = users
+        save_db(db)
+
+    avatar_html = f'<img src="/uploads/{user_data["avatar"]}" class="rounded-circle border" width="100" height="100" style="object-fit: cover;">' if user_data.get("avatar") else '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-2" style="width: 100px; height: 100px;">👤</div>'
+
+    profile_content = f"""
+    <div class="container-fluid p-4" style="max-width: 700px;">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white fw-bold">⚙️ Редактирование профиля сотрудника</div>
+            <div class="card-body">
+                {f'<div class="alert alert-success">{success_msg}</div>' if success_msg else ''}
+                {f'<div class="alert alert-danger">{error_msg}</div>' if error_msg else ''}
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="d-flex align-items-center gap-4 mb-4">
+                        <div>{avatar_html}</div>
+                        <div>
+                            <label class="form-label fw-bold">Фото профиля:</label>
+                            <input type="file" name="avatar" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">ФИО сотрудника:</label>
+                        <input type="text" name="name" class="form-control" value="{user_data.get('name', '')}" required>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Прямый номер телефона:</label>
+                            <input type="text" name="phone" class="form-control" value="{user_data.get('phone', '')}" placeholder="+7...">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Номер WhatsApp:</label>
+                            <input type="text" name="whatsapp" class="form-control" value="{user_data.get('whatsapp', '')}" placeholder="+7...">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Email:</label>
+                        <input type="email" name="email" class="form-control" value="{user_data.get('email', '')}" placeholder="example@mail.kz">
+                    </div>
+                    <hr class="my-4">
+                    <h6 class="fw-bold text-secondary mb-3">🔒 Смена пароля (если требуется)</h6>
+                    <div class="mb-3">
+                        <label class="form-label">Текущий пароль:</label>
+                        <input type="password" name="old_pass" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Новый пароль:</label>
+                        <input type="password" name="new_pass" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-primary fw-bold w-100">Сохранить изменения</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    """
+    return render_template_string(BASE_TEMPLATE, page_title="Профиль", active_page="profile", current_user_data=user_data, content=profile_content)
+
 @app.route("/")
 def index():
     if "user" not in session: return redirect(url_for("login"))
-    user = USERS[session["user"]]
+    uname = session["user"]
     db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
     
     search_query = request.args.get("q", "").strip().lower()
     selected_manager = request.args.get("manager_filter", "all")
@@ -243,7 +353,9 @@ def index():
                 if t.get("reminded", False):
                     has_reminders = True
 
-    # Панель поиска сверху
+    # Формируем список менеджеров для фильтра и селектов на основе реальных имен
+    manager_names_list = [u_info["name"] for u_info in users.values()]
+
     filter_html = f"""
     <div class="card shadow-sm border-0 mb-3 p-3 bg-white flex-shrink-0">
         <form method="GET" action="/" class="row g-2 align-items-center">
@@ -259,13 +371,13 @@ def index():
                     <select name="manager_filter" class="form-select">
     """
     
-    if user["role"] in ["director", "rop"]:
+    if user_data["role"] in ["director", "rop"]:
         filter_html += f'<option value="all" {"selected" if selected_manager=="all" else ""}>Все менеджеры</option>'
-        for m_name in ["Менеджер 1", "Менеджер 2", "Менеджер 3", "Уралбаев Ж.А. (Директор)", "Лемперт А.С. (РОП)"]:
+        for m_name in manager_names_list:
             sel = "selected" if selected_manager == m_name else ""
             filter_html += f'<option value="{m_name}" {sel}>{m_name}</option>'
     else:
-        filter_html += f'<option value="{user["name"]}" {"selected" if selected_manager==user["name"] else ""}>Только мои сделки</option>'
+        filter_html += f'<option value="{user_data["name"]}" {"selected" if selected_manager==user_data["name"] else ""}>Только мои сделки</option>'
         filter_html += f'<option value="all" {"selected" if selected_manager=="all" else ""}>Все клиенты компании</option>'
 
     filter_html += f"""
@@ -293,8 +405,8 @@ def index():
         for d in db["deals"]:
             if d.get("stage") == s_key:
                 deal_mgr = d.get("manager", "")
-                if user["role"] not in ["director", "rop"]:
-                    if selected_manager != "all" and deal_mgr != user["name"]:
+                if user_data["role"] not in ["director", "rop"]:
+                    if selected_manager != "all" and deal_mgr != user_data["name"]:
                         continue
                 else:
                     if selected_manager != "all" and deal_mgr != selected_manager:
@@ -385,17 +497,15 @@ def index():
                                         <div class="col-md-6">
                                             <label class="form-label fw-bold">Ответственный менеджер:</label>
                 """
-                if user["role"] in ["director", "rop"]:
+                if user_data["role"] in ["director", "rop"]:
                     kanban_content += f"""
                     <select name="manager" class="form-select">
                         <option value="Не назначен" {'selected' if d.get('manager')=='Не назначен' else ''}>Не назначен</option>
-                        <option value="Менеджер 1" {'selected' if d.get('manager')=='Менеджер 1' else ''}>Менеджер 1</option>
-                        <option value="Менеджер 2" {'selected' if d.get('manager')=='Менеджер 2' else ''}>Менеджер 2</option>
-                        <option value="Менеджер 3" {'selected' if d.get('manager')=='Менеджер 3' else ''}>Менеджер 3</option>
-                        <option value="Уралбаев Ж.А. (Директор)" {'selected' if d.get('manager')=='Уралбаев Ж.А. (Директор)' else ''}>Уралбаев Ж.А. (Директор)</option>
-                        <option value="Лемперт А.С. (РОП)" {'selected' if d.get('manager')=='Лемперт А.С. (РОП)' else ''}>Лемперт А.С. (РОП)</option>
-                    </select>
                     """
+                    for m_name in manager_names_list:
+                        sel_m = 'selected' if d.get('manager') == m_name else ''
+                        kanban_content += f'<option value="{m_name}" {sel_m}>{m_name}</option>'
+                    kanban_content += '</select>'
                 else:
                     kanban_content += f'<input type="text" class="form-control bg-light" value="{d.get("manager", "")}" readonly><input type="hidden" name="manager" value="{d.get("manager", "")}">'
 
@@ -453,7 +563,7 @@ def index():
                 badge_class = "list-group-item-danger" if is_overdue else ""
                 date_badge = f'<span class="badge bg-danger">⚠️ Просрочено ({t.get("date")})</span>' if is_overdue else f'<span class="badge bg-primary">{t.get("date")}</span>'
                 remind_badge = '<span class="badge bg-danger text-white blink-remind ms-1">⚡ РОП НАПОМИНАЕТ!</span>' if t.get("reminded") else ''
-                remind_btn = f'<form method="POST" action="/remind_task/{d["id"]}/{t["id"]}"><button type="submit" class="btn btn-danger btn-sm fw-bold">⚡ Напомнить</button></form>' if user["role"] in ["director", "rop"] and is_overdue else ''
+                remind_btn = f'<form method="POST" action="/remind_task/{d["id"]}/{t["id"]}"><button type="submit" class="btn btn-danger btn-sm fw-bold">⚡ Напомнить</button></form>' if user_data["role"] in ["director", "rop"] and is_overdue else ''
                 
                 kanban_content += f'''
                 <div class="list-group-item d-flex justify-content-between align-items-center {badge_class}">
@@ -474,6 +584,12 @@ def index():
 
     # Модалка добавления сделки
     stages_opts = "".join([f'<option value="{sk}">{sn}</option>' for sk, sn, sc in STAGES])
+    
+    manager_options_add = f'<option value="{user_data["name"]}">{user_data["name"]}</option>'
+    for m_name in manager_names_list:
+        if m_name != user_data["name"]:
+            manager_options_add += f'<option value="{m_name}">{m_name}</option>'
+
     kanban_content += f"""
     <div class="modal fade" id="addModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
@@ -487,12 +603,7 @@ def index():
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Ответственный:</label>
                                 <select name="manager" class="form-select">
-                                    <option value="{user['name']}">{user['name']}</option>
-                                    <option value="Менеджер 1">Менеджер 1</option>
-                                    <option value="Менеджер 2">Менеджер 2</option>
-                                    <option value="Менеджер 3">Менеджер 3</option>
-                                    <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
-                                    <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
+                                    {manager_options_add}
                                 </select>
                             </div>
                             <div class="col-md-6"><label class="form-label fw-bold">Расположение:</label><input type="text" name="region" class="form-control" placeholder="Костанай"></div>
@@ -518,13 +629,16 @@ def index():
     </div>
     """
     
-    return render_template_string(BASE_TEMPLATE, page_title="Воронка продаж", active_page="kanban", user=user, total_tasks_count=total_tasks, overdue_count=overdue_count, has_reminders=has_reminders, content=kanban_content)
+    return render_template_string(BASE_TEMPLATE, page_title="Воронка продаж", active_page="kanban", current_user_data=user_data, total_tasks_count=total_tasks, overdue_count=overdue_count, has_reminders=has_reminders, content=kanban_content)
 
 @app.route("/tz")
 def tz_page():
     if "user" not in session: return redirect(url_for("login"))
-    user = USERS[session["user"]]
+    uname = session["user"]
     db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    manager_names_list = [u_info["name"] for u_info in users.values()]
     today_str = datetime.now().strftime("%Y-%m-%d")
     
     tz_content = """
@@ -560,7 +674,7 @@ def tz_page():
             remind_alert = '<br><span class="badge bg-danger blink-remind mt-1">⚡ РОП НАПОМИНАЕТ!</span>' if tz.get("reminded") else ''
             status_badge = '<span class="badge bg-success">✓ Выполнено</span>' if tz.get("done") else ('<span class="badge bg-danger">⚠️ Просрочено</span>' if is_overdue else '<span class="badge bg-primary">В работе</span>')
             
-            can_open = (user["name"] == tz.get("author") or user["name"] == tz.get("responsible") or user["name"] == tz.get("observer") or user["role"] in ["director", "rop"])
+            can_open = (user_data["name"] == tz.get("author") or user_data["name"] == tz.get("responsible") or user_data["name"] == tz.get("observer") or user_data["role"] in ["director", "rop"])
             
             if can_open:
                 title_cell = f'<a href="#" data-bs-toggle="modal" data-bs-target="#tzModal{tz["id"]}" class="fw-bold text-primary text-decoration-none">{tz["title"]}</a>'
@@ -569,13 +683,13 @@ def tz_page():
 
             action_btn = ""
             if not tz.get("done"):
-                if user["name"] == tz.get("responsible") or user["role"] in ["director", "rop"]:
+                if user_data["name"] == tz.get("responsible") or user_data["role"] in ["director", "rop"]:
                     action_btn += f'''
                     <form method="POST" action="/tz/complete/{tz['id']}" class="d-inline">
                         <button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button>
                     </form>
                     '''
-                if is_overdue and (user["role"] in ["director", "rop"] or user["name"] == tz.get("observer")):
+                if is_overdue and (user_data["role"] in ["director", "rop"] or user_data["name"] == tz.get("observer")):
                     action_btn += f'''
                     <form method="POST" action="/tz/remind/{tz['id']}" class="d-inline ms-1">
                         <button type="submit" class="btn btn-danger btn-sm fw-bold">⚡ Напомнить</button>
@@ -599,7 +713,7 @@ def tz_page():
             for h in reversed(tz.get("history", [])):
                 history_html += f'<div class="mb-1 border-bottom pb-1"><span class="text-primary fw-bold">[{h.get("date")}] {h.get("author")}:</span> <span>{h.get("text")}</span></div>'
 
-            is_author = (user["name"] == tz.get("author") or user["role"] in ["director", "rop"])
+            is_author = (user_data["name"] == tz.get("author") or user_data["role"] in ["director", "rop"])
             disabled_attr = "" if is_author else "disabled"
 
             file_section = ""
@@ -659,12 +773,10 @@ def tz_page():
     else:
         tz_content += '<tr><td colspan="8" class="text-center text-muted py-4">Технические задания пока не создавались.</td></tr>'
         
-    tz_content += """
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    resp_opts = "".join([f'<option value="{m}">{m}</option>' for m in manager_names_list])
+    obs_opts = "".join([f'<option value="{m}">{m}</option>' for m in manager_names_list])
 
+    tz_content += f"""
         <!-- Модалка создания ТЗ -->
         <div class="modal fade" id="addTzModal" tabindex="-1">
             <div class="modal-dialog modal-lg">
@@ -691,18 +803,13 @@ def tz_page():
                                 <div class="col-md-4">
                                     <label class="form-label fw-bold">Ответственный:</label>
                                     <select name="responsible" class="form-select">
-                                        <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
-                                        <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
-                                        <option value="Менеджер 1">Менеджер 1</option>
-                                        <option value="Менеджер 2">Менеджер 2</option>
-                                        <option value="Менеджер 3">Менеджер 3</option>
+                                        {resp_opts}
                                     </select>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label fw-bold">Наблюдатель (РОП или Директор):</label>
+                                    <label class="form-label fw-bold">Наблюдатель:</label>
                                     <select name="observer" class="form-select">
-                                        <option value="Лемперт А.С. (РОП)">Лемперт А.С. (РОП)</option>
-                                        <option value="Уралбаев Ж.А. (Директор)">Уралбаев Ж.А. (Директор)</option>
+                                        {obs_opts}
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -725,7 +832,7 @@ def tz_page():
         </div>
     </div>
     """
-    return render_template_string(BASE_TEMPLATE, page_title="Технические задания", active_page="tz", user=user, content=tz_content)
+    return render_template_string(BASE_TEMPLATE, page_title="Технические задания", active_page="tz", current_user_data=user_data, content=tz_content)
 
 @app.route("/uploads/<path:filename>")
 def downloaded_file(filename):
@@ -734,8 +841,10 @@ def downloaded_file(filename):
 @app.route("/tz/add", methods=["POST"])
 def add_tz():
     if "user" not in session: return redirect(url_for("login"))
-    user = USERS[session["user"]]
+    uname = session["user"]
     db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
     if "tz_list" not in db: db["tz_list"] = []
     
     urgency = request.form.get("urgency", "теплая")
@@ -759,14 +868,14 @@ def add_tz():
         "title": request.form.get("title"),
         "description": request.form.get("description"),
         "filename": filename_str,
-        "author": user["name"],
+        "author": user_data["name"],
         "responsible": request.form.get("responsible"),
         "observer": request.form.get("observer"),
         "urgency": urgency,
         "due_date": due_date,
         "done": False,
         "reminded": False,
-        "history": [{"date": now_str, "author": user["name"], "text": "Создано техническое задание" + (" с прикрепленным файлом" if filename_str else "")}],
+        "history": [{"date": now_str, "author": user_data["name"], "text": "Создано техническое задание" + (" с прикрепленным файлом" if filename_str else "")}],
         "created_at": now_str
     })
     save_db(db)
@@ -775,13 +884,15 @@ def add_tz():
 @app.route("/tz/update/<tz_id>", methods=["POST"])
 def update_tz(tz_id):
     if "user" not in session: return redirect(url_for("login"))
-    user = USERS[session["user"]]
+    uname = session["user"]
     db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
     now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
     
     for tz in db.get("tz_list", []):
         if tz["id"] == tz_id:
-            if user["name"] != tz.get("author") and user["role"] not in ["director", "rop"]:
+            if user_data["name"] != tz.get("author") and user_data["role"] not in ["director", "rop"]:
                 return redirect(url_for("tz_page"))
                 
             new_title = request.form.get("title")
@@ -805,7 +916,7 @@ def update_tz(tz_id):
             if changes:
                 if "history" not in tz: tz["history"] = []
                 for change in changes:
-                    tz["history"].append({"date": now_str, "author": user["name"], "text": change})
+                    tz["history"].append({"date": now_str, "author": user_data["name"], "text": change})
             break
             
     save_db(db)
@@ -814,14 +925,16 @@ def update_tz(tz_id):
 @app.route("/tz/remind/<tz_id>", methods=["POST"])
 def remind_tz(tz_id):
     if "user" not in session: return redirect(url_for("login"))
-    user = USERS[session["user"]]
+    uname = session["user"]
     db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
     now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
     for tz in db.get("tz_list", []):
         if tz["id"] == tz_id:
             tz["reminded"] = True
             if "history" not in tz: tz["history"] = []
-            tz["history"].append({"date": now_str, "author": user["name"], "text": "⚡ РОП напомнил ответственному по ТЗ!"})
+            tz["history"].append({"date": now_str, "author": user_data["name"], "text": "⚡ РОП напомнил ответственному по ТЗ!"})
             break
     save_db(db)
     return redirect(url_for("tz_page"))
@@ -829,15 +942,17 @@ def remind_tz(tz_id):
 @app.route("/tz/complete/<tz_id>", methods=["POST"])
 def complete_tz(tz_id):
     if "user" not in session: return redirect(url_for("login"))
-    user = USERS[session["user"]]
+    uname = session["user"]
     db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
     now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
     for tz in db.get("tz_list", []):
         if tz["id"] == tz_id:
             tz["done"] = True
             tz["reminded"] = False
             if "history" not in tz: tz["history"] = []
-            tz["history"].append({"date": now_str, "author": user["name"], "text": "✓ ТЗ выполнено"})
+            tz["history"].append({"date": now_str, "author": user_data["name"], "text": "✓ ТЗ выполнено"})
             break
     save_db(db)
     return redirect(url_for("tz_page"))
@@ -845,11 +960,13 @@ def complete_tz(tz_id):
 @app.route("/analytics")
 def analytics_page():
     if "user" not in session: return redirect(url_for("login"))
-    user = USERS[session["user"]]
-    if user["role"] not in ["director", "rop"]:
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    if user_data["role"] not in ["director", "rop"]:
         return "<h3 style='color:red; text-align:center; margin-top:50px;'>⛔ Доступ запрещен! Доступно только РОПу и Директору.</h3><p style='text-align:center;'><a href='/'>Вернуться в CRM</a></p>"
     
-    db = load_db()
     total_deals = len(db["deals"])
     total_contract_sum = sum(d.get("total_sum", 0) for d in db["deals"])
     total_tz = len(db.get("tz_list", []))
@@ -868,17 +985,19 @@ def analytics_page():
         </div>
     </div>
     """
-    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", user=user, content=analytics_content)
+    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", current_user_data=user_data, content=analytics_content)
 
 @app.route("/move_deal", methods=["POST"])
 def move_deal():
     if "user" not in session: return jsonify({"success": False})
-    user = USERS[session["user"]]
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
     data = request.get_json()
     deal_id = data.get("id")
     target_stage = data.get("stage")
     
-    db = load_db()
     for d in db["deals"]:
         if d["id"] == deal_id:
             old_stage = d["stage"]
@@ -888,7 +1007,7 @@ def move_deal():
                     if sk == target_stage: stage_name = sn
                 now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
                 d["stage"] = target_stage
-                d["history"].append({"date": now_str, "author": user["name"], "text": f"Перетащил карточку на этап: {stage_name}"})
+                d["history"].append({"date": now_str, "author": user_data["name"], "text": f"Перетащил карточку на этап: {stage_name}"})
                 save_db(db)
                 return jsonify({"success": True})
     return jsonify({"success": False})
@@ -896,12 +1015,14 @@ def move_deal():
 @app.route("/add", methods=["POST"])
 def add():
     if "user" not in session: return redirect(url_for("login"))
-    user = USERS[session["user"]]
+    uname = session["user"]
     db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
     
     client_name = request.form.get("client")
     selected_stage = request.form.get("stage", "stage_1")
-    selected_manager = request.form.get("manager", user["name"])
+    selected_manager = request.form.get("manager", user_data["name"])
     director = request.form.get("director", "").strip()
     contact_person = request.form.get("contact_person", "").strip()
     contact_phone = request.form.get("contact_phone", "").strip()
@@ -911,9 +1032,9 @@ def add():
     comment = request.form.get("comment", "").strip()
     
     now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
-    history_entries = [{"date": now_str, "author": user["name"], "text": "Создана новая заявка"}]
+    history_entries = [{"date": now_str, "author": user_data["name"], "text": "Создана новая заявка"}]
     if comment:
-        history_entries.append({"date": now_str, "author": user["name"], "text": f"💬 Первичный комментарий: {comment}"})
+        history_entries.append({"date": now_str, "author": user_data["name"], "text": f"💬 Первичный комментарий: {comment}"})
 
     db["deals"].append({
         "id": str(len(db["deals"]) + 1),
@@ -937,8 +1058,10 @@ def add():
 @app.route("/update/<id>", methods=["POST"])
 def update(id):
     if "user" not in session: return redirect(url_for("login"))
-    current_user = USERS[session["user"]]
+    uname = session["user"]
     db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    current_user_data = users[uname]
     
     for d in db["deals"]:
         if d["id"] == id:
@@ -956,16 +1079,16 @@ def update(id):
             now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
             
             if d.get("contact_person") != new_contact_person:
-                d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Обновил контактное лицо: {new_contact_person}"})
+                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Обновил контактное лицо: {new_contact_person}"})
             
             old_phones = d.get("phones", [])
             removed_phones = [p for p in old_phones if p not in new_phones]
             if removed_phones:
-                d["history"].append({"date": now_str, "author": current_user["name"], "text": f"🗑️ Удалил номера телефонов: {', '.join(removed_phones)}"})
+                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"🗑️ Удалил номера телефонов: {', '.join(removed_phones)}"})
             
             added_phones = [p for p in new_phones if p not in old_phones]
             if added_phones:
-                d["history"].append({"date": now_str, "author": current_user["name"], "text": f"➕ Добавил номера телефонов: {', '.join(added_phones)}"})
+                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"➕ Добавил номера телефонов: {', '.join(added_phones)}"})
 
             d["director"] = new_director
             d["contact_person"] = new_contact_person
@@ -977,7 +1100,7 @@ def update(id):
             if new_stage in CONTRACT_STAGES:
                 new_sum = int(request.form.get("total_sum") or 0)
                 if d["total_sum"] != new_sum:
-                    d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Изменил сумму на: {new_sum:,} ₸"})
+                    d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Изменил сумму на: {new_sum:,} ₸"})
                     d["total_sum"] = new_sum
 
             task_date = request.form.get("task_date")
@@ -988,23 +1111,23 @@ def update(id):
                 if "tasks" not in d: d["tasks"] = []
                 task_id = f"t_{len(d['tasks'])+1}_{int(datetime.now().timestamp())}"
                 d["tasks"].append({"id": task_id, "date": task_date, "type": task_type, "text": task_text, "done": False, "reminded": False})
-                d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Поставил задачу ({task_type} на {task_date}): {task_text}"})
+                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Поставил задачу ({task_type} на {task_date}): {task_text}"})
 
-            if current_user["role"] in ["director", "rop"]:
+            if current_user_data["role"] in ["director", "rop"]:
                 requested_manager = request.form.get("manager")
                 if requested_manager and d["manager"] != requested_manager:
-                    d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Изменил ответственного на: {requested_manager}"})
+                    d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Изменил ответственного на: {requested_manager}"})
                     d["manager"] = requested_manager
             
             if d["stage"] != new_stage:
                 stage_name = new_stage
                 for sk, sn, sc in STAGES:
                     if sk == new_stage: stage_name = sn
-                d["history"].append({"date": now_str, "author": current_user["name"], "text": f"Сменил этап на: {stage_name}"})
+                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"Сменил этап на: {stage_name}"})
                 d["stage"] = new_stage
                 
             if new_comment:
-                d["history"].append({"date": now_str, "author": current_user["name"], "text": f"💬 {new_comment}"})
+                d["history"].append({"date": now_str, "author": current_user_data["name"], "text": f"💬 {new_comment}"})
                 
             d["title"] = client_name
             d["client"] = client_name
@@ -1016,8 +1139,10 @@ def update(id):
 @app.route("/complete_task/<deal_id>/<task_id>", methods=["POST"])
 def complete_task(deal_id, task_id):
     if "user" not in session: return redirect(url_for("login"))
-    user = USERS[session["user"]]
+    uname = session["user"]
     db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
     today_str = datetime.now().strftime("%Y-%m-%d")
     now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
     
@@ -1031,7 +1156,7 @@ def complete_task(deal_id, task_id):
                         history_text = f"✓ Выполнил задачу с просрочкой (план: {task_date}): [{t['type']}] {t['text']}"
                     else:
                         history_text = f"✓ Выполнил задачу вовремя: [{t['type']}] {t['text']}"
-                    d["history"].append({"date": now_str, "author": user["name"], "text": history_text})
+                    d["history"].append({"date": now_str, "author": user_data["name"], "text": history_text})
                     break
     save_db(db)
     return redirect(url_for("index"))
@@ -1039,14 +1164,16 @@ def complete_task(deal_id, task_id):
 @app.route("/remind_task/<deal_id>/<task_id>", methods=["POST"])
 def remind_task(deal_id, task_id):
     if "user" not in session: return redirect(url_for("login"))
-    user = USERS[session["user"]]
+    uname = session["user"]
     db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
     for d in db["deals"]:
         if d["id"] == deal_id:
             for t in d.get("tasks", []):
                 if t.get("id") == task_id:
                     t["reminded"] = True
-                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user["name"], "text": "⚡ РОП напомнил менеджеру о просроченной задаче!"})
+                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": "⚡ РОП напомнил менеджеру о просроченной задаче!"})
                     break
     save_db(db)
     return redirect(url_for("index"))
