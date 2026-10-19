@@ -15,7 +15,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Настройки SMS (Mobizon.kz API)
-MOBIZON_API_KEY = os.environ.get("MOBIZON_API_KEY", "YOUR_MOBIZON_API_KEY")
+MOBIZON_API_KEY = os.environ.get("MOBIZON_API_KEY", "")
 ROP_PHONE = "+77476899680"  # Номер телефона РОПа (Александра) для получения SMS-кодов
 
 DEFAULT_USERS = {
