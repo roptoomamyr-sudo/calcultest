@@ -1,6 +1,8 @@
 from flask import Flask, render_template_string, request, redirect, url_for, session, jsonify, send_from_directory
 import json
 import os
+import random
+import requests
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 
@@ -11,6 +13,10 @@ DB_FILE = "crm_db.json"
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Настройки SMS (Mobizon.kz API)
+MOBIZON_API_KEY = os.environ.get("MOBIZON_API_KEY", "YOUR_MOBIZON_API_KEY")
+ROP_PHONE = "+77476899680"  # Номер телефона РОПа (Александра) для получения SMS-кодов
 
 DEFAULT_USERS = {
     "director": {"pass": "dir123", "name": "Уралбаев Жанайдар Абишевич", "role": "director", "position": "Генеральный директор", "phone": "+7 771 054 77 66", "whatsapp": "+7 771 054 77 66", "email": "too.mamyr@mail.ru", "avatar": ""},
@@ -40,6 +46,7 @@ STAGES = [
 
 STAGES_DICT = {sk: sn for sk, sn, sc in STAGES}
 CONTRACT_STAGES = ["stage_11", "stage_12", "stage_13", "stage_14", "stage_15"]
+LOST_STAGES = ["stage_8", "stage_9"]
 
 def load_db():
     default_data = {
@@ -47,7 +54,8 @@ def load_db():
         "tz_list": [],
         "users": DEFAULT_USERS,
         "chats": [],
-        "kp_registry": []
+        "kp_registry": [],
+        "pending_codes": {}
     }
     if not os.path.exists(DB_FILE):
         save_db(default_data)
@@ -62,6 +70,7 @@ def load_db():
             if "tz_list" not in data: data["tz_list"] = []
             if "chats" not in data: data["chats"] = []
             if "kp_registry" not in data: data["kp_registry"] = []
+            if "pending_codes" not in data: data["pending_codes"] = {}
             return data
     except:
         save_db(default_data)
@@ -70,6 +79,66 @@ def load_db():
 def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
+
+def send_sms_code(code, req_phone):
+    """Отправка SMS с кодом на телефон РОПа через Mobizon"""
+    text = f"M-CONSTRUCTION: Запрос доступа от {req_phone}. Код: {code}"
+    if MOBIZON_API_KEY == "YOUR_MOBIZON_API_KEY":
+        print(f"[ТЕСТОВЫЙ РЕЖИМ SMS] {text}")
+        return True
+    try:
+        url = "https://api.mobizon.kz/service/message/sendSmsMessage"
+        params = {
+            "recipient": ROP_PHONE,
+            "text": text,
+            "apiKey": MOBIZON_API_KEY
+        }
+        res = requests.get(url, params=params, timeout=5)
+        return res.status_code == 200
+    except Exception as e:
+        print(f"Ошибка отправки SMS: {e}")
+        return False
+
+REQUEST_ACCESS_HTML = """
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Запрос доступа - M-CONSTRUCTION CRM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-dark d-flex align-items-center justify-content-center vh-100">
+<div class="card p-4 shadow border-0 bg-white" style="width: 380px;">
+    <h3 class="mb-1 text-center fw-bold" style="color: #b8860b;">M-CONSTRUCTION</h3>
+    <div class="text-center text-muted small mb-3">Защищенная корпоративная CRM</div>
+
+    {% if error %}<div class="alert alert-danger py-2 small">{{ error }}</div>{% endif %}
+    {% if success %}<div class="alert alert-success py-2 small">{{ success }}</div>{% endif %}
+
+    {% if step == 'phone' %}
+    <form method="POST" action="/request_access">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Введите ваш телефон:</label>
+            <input type="text" name="phone" class="form-control" placeholder="+7 700 000 00 00" required autofocus>
+            <div class="form-text small">Для входа требуется подтверждение РОПа.</div>
+        </div>
+        <button type="submit" class="btn text-white w-100 fw-bold" style="background: #b8860b;">Запросить доступ (SMS)</button>
+    </form>
+    {% elif step == 'code' %}
+    <form method="POST" action="/verify_code">
+        <input type="hidden" name="phone" value="{{ phone }}">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Код подтверждения:</label>
+            <input type="text" name="code" class="form-control text-center fw-bold fs-4" placeholder="0000" maxlength="4" required autofocus>
+            <div class="form-text small">Код отправлен РОПу на номер {{ rop_phone }}. Запросите 4-значный код у руководителя.</div>
+        </div>
+        <button type="submit" class="btn btn-success w-100 fw-bold">Подтвердить код</button>
+    </form>
+    {% endif %}
+</div>
+</body>
+</html>
+"""
 
 LOGIN_HTML = """
 <!DOCTYPE html>
@@ -80,10 +149,10 @@ LOGIN_HTML = """
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-dark d-flex align-items-center justify-content-center vh-100">
-<form method="POST" class="card p-4 shadow border-0 bg-white" style="width: 340px;">
-    <h3 class="mb-3 text-center fw-bold" style="color: #b8860b;">M-CONSTRUCTION</h3>
-    <div class="text-center text-muted small mb-3">Система управления продажами</div>
-    {% if error %}<div class="alert alert-danger py-1">{{ error }}</div>{% endif %}
+<form method="POST" action="/login" class="card p-4 shadow border-0 bg-white" style="width: 340px;">
+    <h3 class="mb-1 text-center fw-bold" style="color: #b8860b;">M-CONSTRUCTION</h3>
+    <div class="text-center text-muted small mb-3">Авторизация сотрудника</div>
+    {% if error %}<div class="alert alert-danger py-1 small">{{ error }}</div>{% endif %}
     <div class="mb-3"><label class="form-label">Логин:</label><input type="text" name="username" class="form-control" required autofocus></div>
     <div class="mb-3"><label class="form-label">Пароль:</label><input type="password" name="password" class="form-control" required></div>
     <button type="submit" class="btn text-white w-100 fw-bold" style="background: #b8860b;">Войти в систему</button>
@@ -185,7 +254,7 @@ BASE_TEMPLATE = """
                 {% elif active_page == 'profile' %}
                 <h5 class="m-0 fw-bold text-secondary">👤 Настройки профиля</h5>
                 {% else %}
-                <h5 class="m-0 fw-bold text-secondary">📈 Воронка продаж и Отчеты</h5>
+                <h5 class="m-0 fw-bold text-secondary">📈 Полная аналитика и воронка продаж</h5>
                 {% endif %}
             </div>
             <div class="d-flex align-items-center gap-3">
@@ -230,12 +299,64 @@ function dropDeal(ev, stage) {
 </html>
 """
 
+def check_phone_approved():
+    return session.get("phone_approved", False)
+
 @app.route('/static/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
 
+@app.route("/request_access", methods=["GET", "POST"])
+def request_access():
+    if check_phone_approved():
+        return redirect(url_for("login"))
+    
+    error = None
+    if request.method == "POST":
+        phone = request.form.get("phone", "").strip()
+        if phone:
+            code = str(random.randint(1000, 9999))
+            db = load_db()
+            db["pending_codes"][phone] = code
+            save_db(db)
+            send_sms_code(code, phone)
+            return render_template_string(
+                REQUEST_ACCESS_HTML, 
+                step="code", 
+                phone=phone, 
+                rop_phone=ROP_PHONE, 
+                success=f"Запрос отправлен! Код передан РОПу."
+            )
+        error = "Введите корректный номер телефона."
+    return render_template_string(REQUEST_ACCESS_HTML, step="phone", error=error)
+
+@app.route("/verify_code", methods=["POST"])
+def verify_code():
+    phone = request.form.get("phone", "").strip()
+    user_code = request.form.get("code", "").strip()
+    db = load_db()
+    saved_code = db.get("pending_codes", {}).get(phone)
+
+    if saved_code and saved_code == user_code:
+        session["phone_approved"] = True
+        session["approved_phone"] = phone
+        del db["pending_codes"][phone]
+        save_db(db)
+        return redirect(url_for("login"))
+    
+    return render_template_string(
+        REQUEST_ACCESS_HTML, 
+        step="code", 
+        phone=phone, 
+        rop_phone=ROP_PHONE, 
+        error="Неверный код подтверждения! Перепроверьте код у РОПа."
+    )
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if not check_phone_approved():
+        return redirect(url_for("request_access"))
+
     error = None
     db = load_db()
     users = db.get("users", DEFAULT_USERS)
@@ -305,6 +426,272 @@ def profile_page():
     </div>
     """
     return render_template_string(BASE_TEMPLATE, page_title="Профиль", active_page="profile", current_user_data=user_data, content=profile_html)
+
+@app.route("/analytics")
+def analytics_page():
+    if "user" not in session: return redirect(url_for("login"))
+    uname = session["user"]
+    db = load_db()
+    users = db.get("users", DEFAULT_USERS)
+    user_data = users[uname]
+    
+    if user_data["role"] not in ["director", "rop"]:
+        return "<h3 style='color:red; text-align:center; margin-top:50px;'>⛔ Доступ запрещен! Аналитика доступна только РОПу и Директору.</h3><p style='text-align:center;'><a href='/'>Вернуться в CRM</a></p>"
+
+    deals = db.get("deals", [])
+    manager_names = [u["name"] for u in users.values()]
+
+    managers_stats = {}
+    for m in manager_names:
+        managers_stats[m] = {
+            "total_deals": 0, "won_deals": 0, "won_sum": 0, "lost_deals": 0, "lost_sum": 0,
+            "stages_count": {sk: 0 for sk, sn, sc in STAGES}, "drop_stage": "", "drop_count": 0
+        }
+
+    for d in deals:
+        m = d.get("manager", "Не назначен")
+        if m not in managers_stats:
+            managers_stats[m] = {
+                "total_deals": 0, "won_deals": 0, "won_sum": 0, "lost_deals": 0, "lost_sum": 0,
+                "stages_count": {sk: 0 for sk, sn, sc in STAGES}, "drop_stage": "", "drop_count": 0
+            }
+        
+        managers_stats[m]["total_deals"] += 1
+        st = d.get("stage")
+        if st in managers_stats[m]["stages_count"]:
+            managers_stats[m]["stages_count"][st] += 1
+        
+        if st in CONTRACT_STAGES:
+            managers_stats[m]["won_deals"] += 1
+            managers_stats[m]["won_sum"] += d.get("total_sum", 0)
+        elif st in LOST_STAGES:
+            managers_stats[m]["lost_deals"] += 1
+            managers_stats[m]["lost_sum"] += d.get("total_sum", 0)
+
+    global_stages_count = {sk: 0 for sk, sn, sc in STAGES}
+    global_lost_stages_count = {sk: 0 for sk, sn, sc in STAGES}
+
+    for d in deals:
+        st = d.get("stage")
+        global_stages_count[st] += 1
+        if st in LOST_STAGES:
+            global_lost_stages_count[st] += 1
+
+    for m, data in managers_stats.items():
+        max_c = -1
+        worst_st = "Нет потерь"
+        for sk, cnt in data["stages_count"].items():
+            if sk in LOST_STAGES and cnt > max_c:
+                max_c = cnt
+                worst_st = STAGES_DICT.get(sk, sk)
+        data["drop_stage"] = worst_st
+        data["drop_count"] = max_c if max_c > 0 else 0
+
+    total_deals_count = len(deals)
+    total_won_sum = sum(d.get("total_sum", 0) for d in deals if d.get("stage") in CONTRACT_STAGES)
+    total_lost_sum = sum(d.get("total_sum", 0) for d in deals if d.get("stage") in LOST_STAGES)
+    total_won_count = sum(1 for d in deals if d.get("stage") in CONTRACT_STAGES)
+    
+    conversion_rate = round((total_won_count / total_deals_count * 100), 1) if total_deals_count > 0 else 0
+
+    worst_global_stage = "Отсутствует"
+    max_global_lost = max(global_lost_stages_count.values()) if global_lost_stages_count else 0
+    if max_global_lost > 0:
+        for sk, cnt in global_lost_stages_count.items():
+            if cnt == max_global_lost:
+                worst_global_stage = STAGES_DICT.get(sk, sk)
+
+    chart_stages_labels = [sn for sk, sn, sc in STAGES]
+    chart_stages_data = [global_stages_count[sk] for sk, sn, sc in STAGES]
+    
+    mgr_names_arr = list(managers_stats.keys())
+    mgr_sales_arr = [data["won_sum"] for data in managers_stats.values()]
+
+    analytics_html = f"""
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        .analytics-container {{ max-width: 1400px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }}
+        .metric-card {{ background: #f8f9fa; border-left: 4px solid #b8860b; padding: 15px; border-radius: 6px; }}
+        .metric-card h3 {{ margin: 0; font-size: 22px; color: #1a365d; }}
+        .metric-card p {{ margin: 0; font-size: 13px; color: #718096; text-transform: uppercase; font-weight: bold; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
+        th, td {{ border: 1px solid #cbd5e0; padding: 10px 12px; text-align: left; font-size: 13px; vertical-align: middle; }}
+        th {{ background: #1a1e21; color: #fff; font-weight: bold; font-size: 12px; text-transform: uppercase; }}
+        tr:nth-child(even) {{ background: #f8fafc; }}
+        .chart-box {{ background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 20px; }}
+    </style>
+
+    <div class="analytics-container">
+        <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4 flex-wrap gap-2">
+            <div>
+                <h2 class="fw-bold m-0" style="color: #1a365d;">📈 Управленческая аналитика и отчеты</h2>
+                <div class="text-muted small">Комплексный анализ воронки продаж, эффективности менеджеров и упущенной выгоды</div>
+            </div>
+            <button onclick="exportAnalyticsToExcel()" class="btn btn-success fw-bold">📊 Экспорт полного отчета в Excel</button>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <p>Всего сделок</p>
+                    <h3>{total_deals_count} шт.</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card" style="border-left-color: #198754;">
+                    <p>Общая выручка (Заключено)</p>
+                    <h3 style="color: #198754;">{"{:,}".format(total_won_sum).replace(",", " ")} ₸</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card" style="border-left-color: #dc3545;">
+                    <p>Упущенная выгода (Потери)</p>
+                    <h3 style="color: #dc3545;">{"{:,}".format(total_lost_sum).replace(",", " ")} ₸</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card" style="border-left-color: #0dcaf0;">
+                    <p>Общая конверсия (CR)</p>
+                    <h3 style="color: #0dcaf0;">{conversion_rate}%</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-warning mb-4 py-2">
+            ⚠️ <b>Главная точка потери клиентов (Узкое место компании):</b> Этап <u>"{worst_global_stage}"</u> (больше всего отказов и уходов к конкурентам).
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="chart-box">
+                    <h5 class="fw-bold mb-3 text-secondary">📊 Распределение сделок по этапам воронки</h5>
+                    <canvas id="funnelChart" height="180"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-box">
+                    <h5 class="fw-bold mb-3 text-secondary">💰 Выручка по менеджерам (₸)</h5>
+                    <canvas id="managersChart" height="180"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <h4 class="fw-bold mb-3" style="color: #1a365d;">👥 Детальный отчет по каждому менеджеру</h4>
+        <div class="table-responsive mb-4">
+            <table id="managersTable">
+                <thead>
+                    <tr>
+                        <th>Менеджер</th>
+                        <th>Всего сделок</th>
+                        <th>Успешных сделок</th>
+                        <th>Сумма договоров (₸)</th>
+                        <th>Упущенных сделок</th>
+                        <th>Сумма потерь (₸)</th>
+                        <th>Главная точка потерь (Этап)</th>
+                        <th>Конверсия</th>
+                    </tr>
+                </thead>
+                <tbody>
+    """
+
+    for m_name, m_data in managers_stats.items():
+        m_tot = m_data["total_deals"]
+        m_won = m_data["won_deals"]
+        m_cr = round((m_won / m_tot * 100), 1) if m_tot > 0 else 0
+        analytics_html += f"""
+                    <tr>
+                        <td><b>{m_name}</b></td>
+                        <td>{m_tot}</td>
+                        <td><span class="text-success fw-bold">{m_won}</span></td>
+                        <td><b>{"{:,}".format(m_data["won_sum"]).replace(",", " ")} ₸</b></td>
+                        <td><span class="text-danger fw-bold">{m_data["lost_deals"]}</span></td>
+                        <td>{"{:,}".format(m_data["lost_sum"]).replace(",", " ")} ₸</td>
+                        <td><span class="badge bg-warning text-dark">{m_data["drop_stage"]} ({m_data["drop_count"]} шт.)</span></td>
+                        <td><b>{m_cr}%</b></td>
+                    </tr>
+        """
+
+    analytics_html += f"""
+                </tbody>
+            </table>
+        </div>
+
+        <h4 class="fw-bold mb-3" style="color: #1a365d;">📋 Срез по этапам воронки продаж</h4>
+        <div class="table-responsive">
+            <table id="stagesTable">
+                <thead>
+                    <tr>
+                        <th>№ Этапа</th>
+                        <th>Название этапа воронки</th>
+                        <th>Количество сделок</th>
+                        <th>% от общего числа</th>
+                    </tr>
+                </thead>
+                <tbody>
+    """
+
+    for sk, sn, sc in STAGES:
+        scnt = global_stages_count[sk]
+        s_pct = round((scnt / total_deals_count * 100), 1) if total_deals_count > 0 else 0
+        analytics_html += f"""
+                    <tr>
+                        <td><span class="badge" style="background: {sc};">{sk}</span></td>
+                        <td><b>{sn}</b></td>
+                        <td><b>{scnt}</b></td>
+                        <td>{s_pct}%</td>
+                    </tr>
+        """
+
+    analytics_html += f"""
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const ctxFunnel = document.getElementById('funnelChart').getContext('2d');
+        new Chart(ctxFunnel, {{
+            type: 'bar',
+            data: {{
+                labels: {json.dumps(chart_stages_labels, ensure_ascii=False)},
+                datasets: [{{
+                    label: 'Кол-во сделок',
+                    data: {json.dumps(chart_stages_data)},
+                    backgroundColor: '#b8860b',
+                    borderRadius: 4
+                }}]
+            }},
+            options: {{ responsive: true, plugins: {{ legend: {{ display: false }} }} }}
+        }});
+
+        const ctxMgr = document.getElementById('managersChart').getContext('2d');
+        new Chart(ctxMgr, {{
+            type: 'bar',
+            data: {{
+                labels: {json.dumps(mgr_names_arr, ensure_ascii=False)},
+                datasets: [{{
+                    label: 'Выручка (₸)',
+                    data: {json.dumps(mgr_sales_arr)},
+                    backgroundColor: '#198754',
+                    borderRadius: 4
+                }}]
+            }},
+            options: {{ responsive: true, plugins: {{ legend: {{ display: false }} }} }}
+        }});
+
+        function exportAnalyticsToExcel() {{
+            var wb = XLSX.utils.book_new();
+            var wsMgr = XLSX.utils.table_to_sheet(document.getElementById('managersTable'));
+            XLSX.utils.book_append_sheet(wb, wsMgr, "По менеджерам");
+            var wsStg = XLSX.utils.table_to_sheet(document.getElementById('stagesTable'));
+            XLSX.utils.book_append_sheet(wb, wsStg, "По этапам воронки");
+            XLSX.writeFile(wb, "Аналитика_Продаж_M-CONSTRUCTION.xlsx");
+        }}
+    </script>
+    """
+
+    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", current_user_data=user_data, content=analytics_html)
 
 @app.route("/generator")
 def generator_page():
@@ -449,7 +836,7 @@ def generator_page():
                 <label>Фундамент:</label>
                 <select id="fundType">
                     <option value="strip">Ленточный ж/б монолитный + Сваи + Отмостка</option>
-                    <option value="screw">Винтовые сваи</option>
+                    <option value="screw">Свайно-винтовой фундамент</option>
                     <option value="none">Подготовка Заказчика (0 ₸)</option>
                 </select>
             </div>
@@ -752,7 +1139,6 @@ def generator_page():
                 var totalBase = constPrice + gatePrice + ventPrice + fundPrice + montagePrice + deliveryPrice;
                 var discountAmount = Math.round(totalBase * (discountPercent / 100));
                 var totalFinal = totalBase - discountAmount;
-                var kpNum = Math.floor(100 + Math.random() * 900);
 
                 var buildingTypeTitle = isProf ? "Быстровозводимый металлический ангар" : "Быстровозводимый металлотентовый ангар";
                 
@@ -872,7 +1258,6 @@ def registry_page():
         th, td { border: 1px solid #cbd5e0; padding: 10px 12px; text-align: left; font-size: 13px; vertical-align: middle; }
         th { background: #1a1e21; color: #fff; font-weight: bold; font-size: 12px; text-transform: uppercase; }
         tr:nth-child(even) { background: #f8fafc; }
-        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; text-align: center; background: #e2e8f0; color: #2d3748; }
         .empty-text { text-align: center; color: #718096; padding: 30px; font-style: italic; }
     </style>
 
@@ -1439,17 +1824,6 @@ def complete_tz(tz_id):
             break
     save_db(db)
     return redirect(url_for("tz_page"))
-
-@app.route("/analytics")
-def analytics_page():
-    if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    user_data = db["users"][uname]
-    if user_data["role"] not in ["director", "rop"]: return "<h3 style='color:red; text-align:center;'>⛔ Доступ запрещен</h3>"
-    total_deals = len(db["deals"])
-    total_sum = sum(d.get("total_sum", 0) for d in db["deals"])
-    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", current_user_data=user_data, content=f'<div class="container-fluid p-4"><div class="row g-3"><div class="col-md-6"><div class="card text-white p-3" style="background: #1a1e21;"><h5>📊 Всего сделок</h5><h3>{total_deals}</h3></div></div><div class="col-md-6"><div class="card text-white p-3" style="background: #b8860b;"><h5>💰 Сумма по договорам</h5><h3>{"{:,}".format(total_sum).replace(",", " ")} ₸</h3></div></div></div></div>')
 
 @app.route("/move_deal", methods=["POST"])
 def move_deal():
