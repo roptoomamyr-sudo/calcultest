@@ -14,9 +14,8 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Настройки SMS (Mobizon.kz API)
 MOBIZON_API_KEY = os.environ.get("MOBIZON_API_KEY", "YOUR_MOBIZON_API_KEY")
-ROP_PHONE = "+77764777278"  # Номер телефона РОПа для получения SMS-кодов
+ROP_PHONE = "+77764777278"
 
 DEFAULT_USERS = {
     "director": {"pass": "dir123", "name": "Уралбаев Жанайдар Абишевич", "role": "director", "position": "Генеральный директор", "phone": "+7 771 054 77 66", "whatsapp": "+7 771 054 77 66", "email": "too.mamyr@mail.ru", "avatar": ""},
@@ -49,14 +48,7 @@ CONTRACT_STAGES = ["stage_11", "stage_12", "stage_13", "stage_14", "stage_15"]
 LOST_STAGES = ["stage_8", "stage_9"]
 
 def load_db():
-    default_data = {
-        "deals": [],
-        "tz_list": [],
-        "users": DEFAULT_USERS,
-        "chats": [],
-        "kp_registry": [],
-        "pending_codes": {}
-    }
+    default_data = {"deals": [], "tz_list": [], "users": DEFAULT_USERS, "chats": [], "kp_registry": [], "pending_codes": {}}
     if not os.path.exists(DB_FILE):
         save_db(default_data)
         return default_data
@@ -82,11 +74,8 @@ def save_db(data):
 
 def send_sms_code(code, req_phone):
     text = f"M-CONSTRUCTION: Запрос доступа от {req_phone}. Код: {code}"
-    print(f"\n==========================================", flush=True)
-    print(f"[SMS SECURITY VERIFICATION] {text}", flush=True)
-    print(f"==========================================\n", flush=True)
+    print(f"\n[SMS SECURITY VERIFICATION] {text}\n", flush=True)
     if MOBIZON_API_KEY == "YOUR_MOBIZON_API_KEY" or not MOBIZON_API_KEY:
-        print(f"[ТЕСТОВЫЙ РЕЖИМ SMS] {text}")
         return True
     try:
         url = "https://api.mobizon.kz/service/message/sendSmsMessage"
@@ -94,7 +83,7 @@ def send_sms_code(code, req_phone):
         res = requests.get(url, params=params, timeout=5)
         return res.status_code == 200
     except Exception as e:
-        print(f"[MOBIZON ERROR] Ошибка отправки SMS: {e}", flush=True)
+        print(f"[MOBIZON ERROR] {e}", flush=True)
         return False
 
 REQUEST_ACCESS_HTML = """
@@ -114,21 +103,13 @@ REQUEST_ACCESS_HTML = """
     {% if success %}<div class="alert alert-success py-2 small">{{ success }}</div>{% endif %}
     {% if step == 'phone' %}
     <form method="POST" action="/request_access">
-        <div class="mb-3">
-            <label class="form-label fw-bold">Введите ваш телефон:</label>
-            <input type="text" name="phone" class="form-control" placeholder="+7 700 000 00 00" required autofocus>
-            <div class="form-text small">Для входа требуется подтверждение РОПа.</div>
-        </div>
+        <div class="mb-3"><label class="form-label fw-bold">Введите ваш телефон:</label><input type="text" name="phone" class="form-control" placeholder="+7 700 000 00 00" required autofocus></div>
         <button type="submit" class="btn text-white w-100 fw-bold" style="background: #b8860b;">Запросить доступ (SMS)</button>
     </form>
     {% elif step == 'code' %}
     <form method="POST" action="/verify_code">
         <input type="hidden" name="phone" value="{{ phone }}">
-        <div class="mb-3">
-            <label class="form-label fw-bold">Код подтверждения:</label>
-            <input type="text" name="code" class="form-control text-center fw-bold fs-4" placeholder="0000" maxlength="4" required autofocus>
-            <div class="form-text small">Код отправлен РОПа на номер {{ rop_phone }}. Запросите 4-значный код у руководителя.</div>
-        </div>
+        <div class="mb-3"><label class="form-label fw-bold">Код подтверждения:</label><input type="text" name="code" class="form-control text-center fw-bold fs-4" placeholder="0000" maxlength="4" required autofocus></div>
         <button type="submit" class="btn btn-success w-100 fw-bold">Подтвердить код</button>
     </form>
     {% endif %}
@@ -166,7 +147,6 @@ BASE_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ page_title }} - M-CONSTRUCTION CRM</title>
-    <!-- PWA Мета-теги -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1a365d">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -178,9 +158,8 @@ BASE_TEMPLATE = """
         body { background: #f8f9fa; font-family: Arial, sans-serif; overflow: hidden; height: 100vh; margin: 0; }
         .wrapper { display: flex; width: 100%; height: 100vh; overflow: hidden; }
         
-        /* Мобильная адаптивность меню */
-        .sidebar { width: 60px; background: #1a1e21; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.25s ease-in-out; overflow: hidden; white-space: nowrap; z-index: 1000; border-right: 2px solid #b8860b; }
-        .sidebar:hover { width: 250px; }
+        .sidebar { width: 55px; background: #1a1e21; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.25s ease-in-out; overflow: hidden; white-space: nowrap; z-index: 1000; border-right: 2px solid #b8860b; }
+        .sidebar:hover, .sidebar:focus-within { width: 220px; }
         .sidebar .brand { padding: 12px; font-size: 14px; font-weight: bold; background: #111; border-bottom: 1px solid #373b3e; text-align: left; color: #b8860b; display: flex; align-items: center; gap: 10px; }
         .sidebar .brand img { width: 32px; height: 32px; object-fit: contain; }
         .sidebar .menu { padding: 15px 5px; display: flex; flex-direction: column; gap: 8px; flex-grow: 1; overflow-y: auto; }
@@ -210,10 +189,10 @@ BASE_TEMPLATE = """
         .blink-remind { animation: blinker 1.2s linear infinite; }
         @keyframes blinker { 50% { opacity: 0.3; } }
 
-        /* Автоматическое развертывание сайдбара на узких экранах смартфонов */
         @media (max-width: 768px) {
-            .sidebar { width: 220px; }
-            .top-bar h5 { font-size: 14px !important; }
+            .sidebar { width: 55px; }
+            .sidebar:hover, .sidebar:focus-within { width: 220px; }
+            .top-bar h5 { font-size: 13px !important; }
             .top-bar { padding: 8px 10px; height: auto; }
         }
     </style>
@@ -328,67 +307,25 @@ def uploaded_file(filename):
 
 @app.route('/manifest.json')
 def manifest():
-    manifest_data = {
-        "name": "M-CONSTRUCTION CRM",
-        "short_name": "Мамыр CRM",
-        "description": "Корпоративная CRM-система ТОО «Мамыр»",
-        "start_url": "/",
-        "display": "standalone",
-        "background_color": "#eaeff5",
-        "theme_color": "#1a365d",
-        "orientation": "portrait-primary",
-        "icons": [
-            {
-                "src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
-                "sizes": "192x192",
-                "type": "image/png"
-            },
-            {
-                "src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
-                "sizes": "512x512",
-                "type": "image/png"
-            }
-        ]
-    }
-    return jsonify(manifest_data)
+    return jsonify({
+        "name": "M-CONSTRUCTION CRM", "short_name": "Мамыр CRM", "start_url": "/", "display": "standalone",
+        "background_color": "#eaeff5", "theme_color": "#1a365d", "orientation": "portrait-primary",
+        "icons": [{"src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png", "sizes": "192x192", "type": "image/png"}]
+    })
 
 @app.route('/sw.js')
 def service_worker():
-    sw_code = """
-    const CACHE_NAME = 'mamyr-crm-v1';
-    self.addEventListener('install', (event) => { self.skipWaiting(); });
-    self.addEventListener('activate', (event) => { event.waitUntil(clients.claim()); });
-    self.addEventListener('fetch', (event) => {
-      event.respondWith(
-        fetch(event.request).catch(() => caches.match(event.request))
-      );
-    });
-    """
-    return app.response_class(sw_code, mimetype='application/javascript')
+    return app.response_class("self.addEventListener('fetch', (event) => {});", mimetype='application/javascript')
 
 def get_counters(db, uname, user_data):
-    # ТОЛЬКО невыполненные ТЗ, где сотрудник является ответственным (или РОП/Директор видит все открытые)
     unread_tz_count = sum(1 for tz in db.get("tz_list", []) if not tz.get("done", False) and (tz.get("responsible") == user_data["name"] or user_data["role"] in ["director", "rop"]))
-    
-    # ТОЛЬКО количество непрочитанных сообщений (сообщений, отправленных другими участниками в чаты пользователя)
     user_chats = [c for c in db.get("chats", []) if uname in c.get("members", [])]
-    unread_msgs_count = 0
-    for c in user_chats:
-        read_key = f"read_{uname}"
-        last_read_idx = c.get(read_key, 0)
-        msgs = c.get("messages", [])
-        # Считаем сообщения после последнего прочитанного индекса
-        unread_in_chat = len(msgs) - last_read_idx
-        if unread_in_chat > 0:
-            unread_msgs_count += unread_in_chat
-            
+    unread_msgs_count = sum(max(0, len(c.get("messages", [])) - c.get(f"read_{uname}", 0)) for c in user_chats)
     return unread_tz_count, unread_msgs_count
 
 @app.route("/request_access", methods=["GET", "POST"])
 def request_access():
-    if check_phone_approved():
-        return redirect(url_for("login"))
-    
+    if check_phone_approved(): return redirect(url_for("login"))
     error = None
     if request.method == "POST":
         phone = request.form.get("phone", "").strip()
@@ -398,14 +335,8 @@ def request_access():
             db["pending_codes"][phone] = code
             save_db(db)
             send_sms_code(code, phone)
-            return render_template_string(
-                REQUEST_ACCESS_HTML, 
-                step="code", 
-                phone=phone, 
-                rop_phone=ROP_PHONE, 
-                success=f"Запрос отправлен! Код передается РОПу."
-            )
-        error = "Введите корректный номер телефона."
+            return render_template_string(REQUEST_ACCESS_HTML, step="code", phone=phone, rop_phone=ROP_PHONE, success="Код запрошен.")
+        error = "Введите номер."
     return render_template_string(REQUEST_ACCESS_HTML, step="phone", error=error)
 
 @app.route("/verify_code", methods=["POST"])
@@ -413,38 +344,23 @@ def verify_code():
     phone = request.form.get("phone", "").strip()
     user_code = request.form.get("code", "").strip()
     db = load_db()
-    saved_code = db.get("pending_codes", {}).get(phone)
-
-    if saved_code and saved_code == user_code:
+    if db.get("pending_codes", {}).get(phone) == user_code:
         session["phone_approved"] = True
-        session["approved_phone"] = phone
         del db["pending_codes"][phone]
         save_db(db)
         return redirect(url_for("login"))
-    
-    return render_template_string(
-        REQUEST_ACCESS_HTML, 
-        step="code", 
-        phone=phone, 
-        rop_phone=ROP_PHONE, 
-        error="Неверный код подтверждения! Перепроверьте код у РОПа."
-    )
+    return render_template_string(REQUEST_ACCESS_HTML, step="code", phone=phone, rop_phone=ROP_PHONE, error="Неверный код.")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if not check_phone_approved():
-        return redirect(url_for("request_access"))
-
-    error = None
-    db = load_db()
-    users = db.get("users", DEFAULT_USERS)
+    if not check_phone_approved(): return redirect(url_for("request_access"))
+    error, db = None, load_db()
     if request.method == "POST":
-        u = request.form.get("username")
-        p = request.form.get("password")
-        if u in users and users[u]["pass"] == p:
+        u, p = request.form.get("username"), request.form.get("password")
+        if u in db.get("users", DEFAULT_USERS) and db["users"][u]["pass"] == p:
             session["user"] = u
             return redirect(url_for("index"))
-        error = "Неверный логин или пароль"
+        error = "Неверный логин/пароль."
     return render_template_string(LOGIN_HTML, error=error)
 
 @app.route("/logout")
@@ -455,1035 +371,115 @@ def logout():
 @app.route("/profile", methods=["GET", "POST"])
 def profile_page():
     if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    users = db.get("users", DEFAULT_USERS)
-    user_data = users[uname]
-    
-    message = None
+    uname, db = session["user"], load_db()
+    user_data = db["users"][uname]
+    msg = None
     if request.method == "POST":
-        user_data["name"] = request.form.get("name", user_data["name"])
-        user_data["position"] = request.form.get("position", user_data.get("position", ""))
-        user_data["phone"] = request.form.get("phone", user_data.get("phone", ""))
-        user_data["whatsapp"] = request.form.get("whatsapp", user_data.get("whatsapp", ""))
-        user_data["email"] = request.form.get("email", user_data.get("email", ""))
-        
+        for k in ["name", "position", "phone", "whatsapp", "email"]:
+            user_data[k] = request.form.get(k, user_data.get(k, ""))
         file = request.files.get("avatar")
         if file and file.filename:
-            filename = secure_filename(f"avatar_{uname}_{file.filename}")
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            user_data["avatar"] = filename
-
-        new_pass = request.form.get("new_password", "").strip()
-        if new_pass:
-            user_data["pass"] = new_pass
+            fn = secure_filename(f"avatar_{uname}_{file.filename}")
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], fn))
+            user_data["avatar"] = fn
+        if request.form.get("new_password"): user_data["pass"] = request.form.get("new_password")
         save_db(db)
-        message = "Профиль успешно обновлен!"
-
-    avatar_preview = f'<img src="{url_for("uploaded_file", filename=user_data["avatar"])}" style="width:80px; height:80px; border-radius:50%; object-fit:cover;" class="mb-2">' if user_data.get('avatar') else '<div class="text-muted mb-2">Фото не установлено</div>'
-
-    profile_html = f"""
-    <div class="container" style="max-width: 600px; margin: 0 auto;">
-        <div class="card shadow-sm border-0 p-4 bg-white">
-            <h4 class="mb-3 fw-bold" style="color: #b8860b;">👤 Личный кабинет сотрудника</h4>
-            {f'<div class="alert alert-success py-2">{message}</div>' if message else ''}
-            <form method="POST" enctype="multipart/form-data">
-                <div class="text-center mb-3">
-                    {avatar_preview}
-                    <div><label class="form-label fw-bold small">Изменить фото профиля:</label><input type="file" name="avatar" class="form-control form-control-sm" accept="image/*"></div>
-                </div>
-                <div class="mb-3"><label class="form-label fw-bold">ФИО:</label><input type="text" name="name" class="form-control" value="{user_data['name']}" required></div>
-                <div class="mb-3"><label class="form-label fw-bold">Должность:</label><input type="text" name="position" class="form-control" value="{user_data.get('position', '')}"></div>
-                <div class="mb-3"><label class="form-label fw-bold">Телефон:</label><input type="text" name="phone" class="form-control" value="{user_data.get('phone', '')}"></div>
-                <div class="mb-3"><label class="form-label fw-bold">WhatsApp:</label><input type="text" name="whatsapp" class="form-control" value="{user_data.get('whatsapp', '')}"></div>
-                <div class="mb-3"><label class="form-label fw-bold">Email:</label><input type="email" name="email" class="form-control" value="{user_data.get('email', '')}"></div>
-                <div class="mb-3"><label class="form-label fw-bold">Новый пароль (оставьте пустым, если не нужно менять):</label><input type="password" name="new_password" class="form-control" placeholder="Новый пароль..."></div>
-                <button type="submit" class="btn text-white w-100 fw-bold" style="background: #b8860b;">Сохранить изменения</button>
-            </form>
-        </div>
-    </div>
-    """
+        msg = "Обновлено!"
+    
+    html = f"""<div class="container" style="max-width:600px; margin:0 auto;"><div class="card p-4 bg-white"><h4>Профиль</h4>{f'<div class="alert alert-success">{msg}</div>' if msg else ''}<form method="POST" enctype="multipart/form-data"><div class="mb-3"><label>ФИО:</label><input type="text" name="name" class="form-control" value="{user_data['name']}" required></div><div class="mb-3"><label>Телефон:</label><input type="text" name="phone" class="form-control" value="{user_data.get('phone','')}"></div><button class="btn text-white w-100" style="background:#b8860b;">Сохранить</button></form></div></div>"""
     tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Профиль", active_page="profile", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=profile_html)
+    return render_template_string(BASE_TEMPLATE, page_title="Профиль", active_page="profile", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=html)
 
 @app.route("/analytics")
 def analytics_page():
     if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    users = db.get("users", DEFAULT_USERS)
-    user_data = users[uname]
-    
-    if user_data["role"] not in ["director", "rop"]:
-        return "<h3 style='color:red; text-align:center; margin-top:50px;'>⛔ Доступ запрещен! Аналитика доступна только РОПу и Директору.</h3><p style='text-align:center;'><a href='/'>Вернуться в CRM</a></p>"
-
-    deals = db.get("deals", [])
-    manager_names = [u["name"] for u in users.values()]
-
-    managers_stats = {}
-    for m in manager_names:
-        managers_stats[m] = {
-            "total_deals": 0, "won_deals": 0, "won_sum": 0, "lost_deals": 0, "lost_sum": 0,
-            "stages_count": {sk: 0 for sk, sn, sc in STAGES}, "drop_stage": "", "drop_count": 0
-        }
-
-    for d in deals:
-        m = d.get("manager", "Не назначен")
-        if m not in managers_stats:
-            managers_stats[m] = {
-                "total_deals": 0, "won_deals": 0, "won_sum": 0, "lost_deals": 0, "lost_sum": 0,
-                "stages_count": {sk: 0 for sk, sn, sc in STAGES}, "drop_stage": "", "drop_count": 0
-            }
-        
-        managers_stats[m]["total_deals"] += 1
-        st = d.get("stage")
-        if st in managers_stats[m]["stages_count"]:
-            managers_stats[m]["stages_count"][st] += 1
-        
-        if st in CONTRACT_STAGES:
-            managers_stats[m]["won_deals"] += 1
-            managers_stats[m]["won_sum"] += d.get("total_sum", 0)
-        elif st in LOST_STAGES:
-            managers_stats[m]["lost_deals"] += 1
-            managers_stats[m]["lost_sum"] += d.get("total_sum", 0)
-
-    global_stages_count = {sk: 0 for sk, sn, sc in STAGES}
-    global_lost_stages_count = {sk: 0 for sk, sn, sc in STAGES}
-
-    for d in deals:
-        st = d.get("stage")
-        global_stages_count[st] += 1
-        if st in LOST_STAGES:
-            global_lost_stages_count[st] += 1
-
-    for m, data in managers_stats.items():
-        max_c = -1
-        worst_st = "Нет потерь"
-        for sk, cnt in data["stages_count"].items():
-            if sk in LOST_STAGES and cnt > max_c:
-                max_c = cnt
-                worst_st = STAGES_DICT.get(sk, sk)
-        data["drop_stage"] = worst_st
-        data["drop_count"] = max_c if max_c > 0 else 0
-
-    total_deals_count = len(deals)
-    total_won_sum = sum(d.get("total_sum", 0) for d in deals if d.get("stage") in CONTRACT_STAGES)
-    total_lost_sum = sum(d.get("total_sum", 0) for d in deals if d.get("stage") in LOST_STAGES)
-    total_won_count = sum(1 for d in deals if d.get("stage") in CONTRACT_STAGES)
-    
-    conversion_rate = round((total_won_count / total_deals_count * 100), 1) if total_deals_count > 0 else 0
-
-    worst_global_stage = "Отсутствует"
-    max_global_lost = max(global_lost_stages_count.values()) if global_lost_stages_count else 0
-    if max_global_lost > 0:
-        for sk, cnt in global_lost_stages_count.items():
-            if cnt == max_global_lost:
-                worst_global_stage = STAGES_DICT.get(sk, sk)
-
-    chart_stages_labels = [sn for sk, sn, sc in STAGES]
-    chart_stages_data = [global_stages_count[sk] for sk, sn, sc in STAGES]
-    
-    mgr_names_arr = list(managers_stats.keys())
-    mgr_sales_arr = [data["won_sum"] for data in managers_stats.values()]
-
-    analytics_html = f"""
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <style>
-        .analytics-container {{ max-width: 1400px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }}
-        .metric-card {{ background: #f8f9fa; border-left: 4px solid #b8860b; padding: 15px; border-radius: 6px; }}
-        .metric-card h3 {{ margin: 0; font-size: 22px; color: #1a365d; }}
-        .metric-card p {{ margin: 0; font-size: 13px; color: #718096; text-transform: uppercase; font-weight: bold; }}
-        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
-        th, td {{ border: 1px solid #cbd5e0; padding: 10px 12px; text-align: left; font-size: 13px; vertical-align: middle; }}
-        th {{ background: #1a1e21; color: #fff; font-weight: bold; font-size: 12px; text-transform: uppercase; }}
-        tr:nth-child(even) {{ background: #f8fafc; }}
-        .chart-box {{ background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 20px; }}
-    </style>
-
-    <div class="analytics-container">
-        <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4 flex-wrap gap-2">
-            <div>
-                <h2 class="fw-bold m-0" style="color: #1a365d;">📈 Управленческая аналитика и отчеты</h2>
-                <div class="text-muted small">Комплексный анализ воронки продаж, эффективности менеджеров и упущенной выгоды</div>
-            </div>
-            <button onclick="exportAnalyticsToExcel()" class="btn btn-success fw-bold">📊 Экспорт полного отчета в Excel</button>
-        </div>
-
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="metric-card">
-                    <p>Всего сделок</p>
-                    <h3>{total_deals_count} шт.</h3>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="metric-card" style="border-left-color: #198754;">
-                    <p>Общая выручка (Заключено)</p>
-                    <h3 style="color: #198754;">{"{:,}".format(total_won_sum).replace(",", " ")} ₸</h3>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="metric-card" style="border-left-color: #dc3545;">
-                    <p>Упущенная выгода (Потери)</p>
-                    <h3 style="color: #dc3545;">{"{:,}".format(total_lost_sum).replace(",", " ")} ₸</h3>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="metric-card" style="border-left-color: #0dcaf0;">
-                    <p>Общая конверсия (CR)</p>
-                    <h3 style="color: #0dcaf0;">{conversion_rate}%</h3>
-                </div>
-            </div>
-        </div>
-
-        <div class="alert alert-warning mb-4 py-2">
-            ⚠️ <b>Главная точка потери клиентов (Узкое место компании):</b> Этап <u>"{worst_global_stage}"</u> (больше всего отказов и уходов к конкурентам).
-        </div>
-
-        <div class="row g-4 mb-4">
-            <div class="col-md-6">
-                <div class="chart-box">
-                    <h5 class="fw-bold mb-3 text-secondary">📊 Распределение сделок по этапам воронки</h5>
-                    <canvas id="funnelChart" height="180"></canvas>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="chart-box">
-                    <h5 class="fw-bold mb-3 text-secondary">💰 Выручка по менеджерам (₸)</h5>
-                    <canvas id="managersChart" height="180"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <h4 class="fw-bold mb-3" style="color: #1a365d;">👥 Детальный отчет по каждому менеджеру</h4>
-        <div class="table-responsive mb-4">
-            <table id="managersTable">
-                <thead>
-                    <tr>
-                        <th>Менеджер</th>
-                        <th>Всего сделок</th>
-                        <th>Успешных сделок</th>
-                        <th>Сумма договоров (₸)</th>
-                        <th>Упущенных сделок</th>
-                        <th>Сумма потерь (₸)</th>
-                        <th>Главная точка потерь (Этап)</th>
-                        <th>Конверсия</th>
-                    </tr>
-                </thead>
-                <tbody>
-    """
-
-    for m_name, m_data in managers_stats.items():
-        m_tot = m_data["total_deals"]
-        m_won = m_data["won_deals"]
-        m_cr = round((m_won / m_tot * 100), 1) if m_tot > 0 else 0
-        analytics_html += f"""
-                    <tr>
-                        <td><b>{m_name}</b></td>
-                        <td>{m_tot}</td>
-                        <td><span class="text-success fw-bold">{m_won}</span></td>
-                        <td><b>{"{:,}".format(m_data["won_sum"]).replace(",", " ")} ₸</b></td>
-                        <td><span class="text-danger fw-bold">{m_data["lost_deals"]}</span></td>
-                        <td>{"{:,}".format(m_data["lost_sum"]).replace(",", " ")} ₸</td>
-                        <td><span class="badge bg-warning text-dark">{m_data["drop_stage"]} ({m_data["drop_count"]} шт.)</span></td>
-                        <td><b>{m_cr}%</b></td>
-                    </tr>
-        """
-
-    analytics_html += f"""
-                </tbody>
-            </table>
-        </div>
-
-        <h4 class="fw-bold mb-3" style="color: #1a365d;">📋 Срез по этапам воронки продаж</h4>
-        <div class="table-responsive">
-            <table id="stagesTable">
-                <thead>
-                    <tr>
-                        <th>№ Этапа</th>
-                        <th>Название этапа воронки</th>
-                        <th>Количество сделок</th>
-                        <th>% от общего числа</th>
-                    </tr>
-                </thead>
-                <tbody>
-    """
-
-    for sk, sn, sc in STAGES:
-        scnt = global_stages_count[sk]
-        s_pct = round((scnt / total_deals_count * 100), 1) if total_deals_count > 0 else 0
-        analytics_html += f"""
-                    <tr>
-                        <td><span class="badge" style="background: {sc};">{sk}</span></td>
-                        <td><b>{sn}</b></td>
-                        <td><b>{scnt}</b></td>
-                        <td>{s_pct}%</td>
-                    </tr>
-        """
-
-    analytics_html += f"""
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <script>
-        const ctxFunnel = document.getElementById('funnelChart').getContext('2d');
-        new Chart(ctxFunnel, {{
-            type: 'bar',
-            data: {{
-                labels: {json.dumps(chart_stages_labels, ensure_ascii=False)},
-                datasets: [{{
-                    label: 'Кол-во сделок',
-                    data: {json.dumps(chart_stages_data)},
-                    backgroundColor: '#b8860b',
-                    borderRadius: 4
-                }}]
-            }},
-            options: {{ responsive: true, plugins: {{ legend: {{ display: false }} }} }}
-        }});
-
-        const ctxMgr = document.getElementById('managersChart').getContext('2d');
-        new Chart(ctxMgr, {{
-            type: 'bar',
-            data: {{
-                labels: {json.dumps(mgr_names_arr, ensure_ascii=False)},
-                datasets: [{{
-                    label: 'Выручка (₸)',
-                    data: {json.dumps(mgr_sales_arr)},
-                    backgroundColor: '#198754',
-                    borderRadius: 4
-                }}]
-            }},
-            options: {{ responsive: true, plugins: {{ legend: {{ display: false }} }} }}
-        }});
-
-        function exportAnalyticsToExcel() {{
-            var wb = XLSX.utils.book_new();
-            var wsMgr = XLSX.utils.table_to_sheet(document.getElementById('managersTable'));
-            XLSX.utils.book_append_sheet(wb, wsMgr, "По менеджерам");
-            var wsStg = XLSX.utils.table_to_sheet(document.getElementById('stagesTable'));
-            XLSX.utils.book_append_sheet(wb, wsStg, "По этапам воронки");
-            XLSX.writeFile(wb, "Аналитика_Продаж_M-CONSTRUCTION.xlsx");
-        }}
-    </script>
-    """
-
-    tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=analytics_html)
+    uname, db = session["user"], load_db()
+    if db["users"][uname]["role"] not in ["director", "rop"]: return "Доступ запрещен"
+    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", current_user_data=db["users"][uname], unread_tz_count=0, unread_msgs_count=0, content="<div class='p-4'><h3>Аналитика воронки</h3></div>")
 
 @app.route("/generator")
 def generator_page():
     if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    users = db.get("users", DEFAULT_USERS)
-    user_data = users[uname]
+    uname, db = session["user"], load_db()
+    user_data = db["users"][uname]
     
-    users_json = json.dumps([{
-        "key": u_key,
-        "name": u_val["name"],
-        "position": u_val.get("position", "Менеджер"),
-        "phone": u_val.get("phone", "-")
-    } for u_key, u_val in users.items()], ensure_ascii=False)
-
-    current_user_json = json.dumps({
-        "key": uname,
-        "name": user_data["name"],
-        "position": user_data.get("position", "Менеджер"),
-        "phone": user_data.get("phone", "-")
-    }, ensure_ascii=False)
-
+    users_json = json.dumps([{"key": k, "name": v["name"], "position": v.get("position",""), "phone": v.get("phone","")} for k, v in db["users"].items()], ensure_ascii=False)
+    curr_json = json.dumps({"key": uname, "name": user_data["name"], "position": user_data.get("position",""), "phone": user_data.get("phone","")}, ensure_ascii=False)
     logo_url = url_for('uploaded_file', filename='1000100784.jpg')
 
-    gen_html = """
+    html = f"""
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        .gen-container { max-width: 900px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .section-title { font-size: 13px; font-weight: bold; color: #b8860b; margin: 18px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Arial', sans-serif; }
-        .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 12px; }
-        .form-group { flex: 1; min-width: 180px; }
-        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4a5568; font-family: 'Arial', sans-serif; }
-        input, select { width: 100%; padding: 9px 11px; font-size: 14px; border: 1px solid #cbd5e0; border-radius: 6px; font-family: 'Arial', sans-serif; }
-        .btn-generate { width: 100%; padding: 14px; background: #b8860b; color: #fff; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; transition: 0.2s; font-family: 'Arial', sans-serif; }
-        .btn-generate:hover { background: #996d09; }
-        
-        #pdfTemplateWrapper { position: absolute; left: -9999px; top: 0; width: 210mm; }
-        .pdf-page { width: 210mm; height: 296mm; padding: 10mm 12mm 15mm 12mm; background: #fff; font-size: 10.5pt; color: #000; box-sizing: border-box; position: relative; font-family: 'Calibri', 'Arial', sans-serif; overflow: hidden; page-break-after: always; page-break-inside: avoid; }
-        .pdf-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #b8860b; padding-bottom: 5px; margin-bottom: 8px; }
-        .pdf-header-text { font-size: 8.5pt; line-height: 1.2; }
-        .pdf-logo-img { height: 42px; object-fit: contain; }
-        .kp-title { font-size: 14pt; font-weight: bold; color: #b8860b; text-align: center; margin: 6px 0 8px 0; text-transform: uppercase; }
-        .kp-meta { font-size: 10.5pt; margin-bottom: 8px; line-height: 1.3; }
-        .kp-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-        .kp-table th, .kp-table td { border: 1px solid #000; padding: 5px 7px; font-size: 10pt; vertical-align: top; line-height: 1.2; }
-        .kp-table th { background: #1a1e21; color: #fff; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 9.5pt; }
-        .total-row { background: #b8860b; color: #fff; font-weight: bold; font-size: 10.5pt; }
-        .total-row-discount { background: #8b6508; color: #fff; font-weight: bold; font-size: 10.5pt; }
-        .conditions-box { font-size: 9.5pt; line-height: 1.25; margin-top: 8px; }
-        .conditions-box h4 { margin: 6px 0 3px 0; font-size: 10pt; text-decoration: underline; color: #b8860b; }
-        .footer-line { position: absolute; bottom: 6mm; left: 12mm; right: 12mm; font-size: 8pt; border-top: 1px solid #ccc; padding-top: 4px; text-align: center; color: #222; line-height: 1.15; }
-        .feature-box { background: #fff8e7; border-left: 3px solid #b8860b; padding: 6px 10px; margin-bottom: 8px; font-size: 10pt; line-height: 1.2; }
-        .feature-title { font-weight: bold; color: #8b6508; margin-bottom: 2px; font-size: 10.5pt; }
-        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-        .photo-card { width: 100%; height: 130px; background: #f0f4f8; border: 1px solid #cbd5e0; display: flex; align-items: center; justify-content: center; color: #4a5568; font-size: 10pt; font-weight: bold; text-align: center; overflow: hidden; position: relative; }
+        .gen-container {{ max-width: 900px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; }}
+        .form-row {{ display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }}
+        .form-group {{ flex: 1; min-width: 150px; }}
+        label {{ font-size: 12px; font-weight: bold; color: #444; }}
+        input, select {{ width: 100%; padding: 8px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; }}
+        .btn-gen {{ width: 100%; padding: 12px; background: #b8860b; color: #fff; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; margin-top: 15px; }}
     </style>
-
     <div class="gen-container">
-        <div class="alert alert-secondary py-2 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div>💻 Вы вошли как: <b><span id="sessionAuthorName"></span></b></div>
-            <div style="width: 280px;">
-                <label style="margin:0; font-size:11px;">Чью подпись использовать в КП?</label>
-                <select id="kpSignerSelect" class="form-select form-select-sm"></select>
-            </div>
-        </div>
-
-        <div class="section-title">1. Данные Заказчика</div>
+        <div class="mb-3"><b>Менеджер КП:</b> <select id="kpSignerSelect" class="form-select form-select-sm mt-1"></select></div>
         <div class="form-row">
-            <div class="form-group">
-                <label>Заказчик (ТОО / ИП / ФИО):</label>
-                <input type="text" id="clientName" placeholder="Например: ТОО «Мамыр»" value="ТОО «Мамыр»">
-            </div>
-            <div class="form-group">
-                <label>Контактный телефон:</label>
-                <input type="text" id="clientPhone" placeholder="+7 700 000 00 00" value="+7 700 000 00 00">
-            </div>
-            <div class="form-group">
-                <label>WhatsApp для связи:</label>
-                <input type="text" id="clientWa" placeholder="+7 700 000 00 00" value="+7 700 000 00 00">
-            </div>
-            <div class="form-group">
-                <label>Назначение объекта:</label>
-                <input type="text" id="purpose" placeholder="Например: Зернохранилище" value="Зернохранилище">
-            </div>
-        </div>
-
-        <div class="section-title">2. Конструкция и покрытие</div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Тип здания:</label>
-                <select id="buildingType">
-                    <option value="arch_pvc">Арочный холодный (Тент ПВХ)</option>
-                    <option value="straight_arch_pvc">Прямостенный арочный холодный (Тент ПВХ)</option>
-                    <option value="straight_gable_prof">Прямостенный двускатный холодный (Профлист)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Ширина (м):</label>
-                <input type="number" id="width" value="18" min="10" max="30">
-            </div>
-            <div class="form-group">
-                <label>Длина (м):</label>
-                <input type="number" id="length" value="36" min="10" max="150">
-            </div>
-            <div class="form-group" id="wallHBox" style="display:none;">
-                <label>Высота стены (м):</label>
-                <input type="number" id="wallH" value="3" min="3" max="10">
-            </div>
-        </div>
-
-        <div class="section-title">3. Ворота и вентиляция</div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Размер ворот:</label>
-                <select id="gateSize">
-                    <option value="4x4">4.0 х 4.0 м</option>
-                    <option value="3x3">3.0 х 3.0 м</option>
-                    <option value="5x5">5.0 х 5.0 м</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Количество ворот (шт):</label>
-                <input type="number" id="gateCount" value="2" min="0" max="10">
-            </div>
-            <div class="form-group">
-                <label>Вентиляционные решетки (комплектов):</label>
-                <input type="number" id="ventCount" value="2" min="0" max="10">
-            </div>
-        </div>
-
-        <div class="section-title">4. Работы, Фундамент, Доставка, Скидка и Сроки</div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Монтажные работы:</label>
-                <select id="montageType">
-                    <option value="include">Включены (строительная бригада под ключ)</option>
-                    <option value="none">Без монтажа (шеф-монтаж / своими силами)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Фундамент:</label>
-                <select id="fundType">
-                    <option value="strip">Ленточный ж/б монолитный + Сваи + Отмостка</option>
-                    <option value="screw">Свайно-винтовой фундамент</option>
-                    <option value="none">Подготовка Заказчика (0 ₸)</option>
-                </select>
-            </div>
-            <div class="form-group" id="stripParamsBox">
-                <label>Лента (Ширина x Высота, м):</label>
-                <div style="display:flex; gap:5px;">
-                    <input type="number" id="fundW" value="0.4" step="0.05">
-                    <input type="number" id="fundH" value="1.2" step="0.1">
-                </div>
-            </div>
+            <div class="form-group"><label>Заказчик:</label><input type="text" id="clientName" value="ТОО «Мамыр»"></div>
+            <div class="form-group"><label>Телефон:</label><input type="text" id="clientPhone" value="+7 700 000 00 00"></div>
         </div>
         <div class="form-row">
-            <div class="form-group">
-                <label>Расстояние от Костаная (км):</label>
-                <input type="number" id="distance" value="350" min="0">
-            </div>
-            <div class="form-group">
-                <label>Количество рейсов (машин):</label>
-                <input type="number" id="truckCount" value="3" min="1">
-            </div>
-            <div class="form-group">
-                <label>Скидка (%):</label>
-                <input type="number" id="discountPercent" value="0" min="0" max="30">
-            </div>
+            <div class="form-group"><label>Ширина (м):</label><input type="number" id="width" value="18"></div>
+            <div class="form-group"><label>Длина (м):</label><input type="number" id="length" value="36"></div>
         </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Срок изготовления:</label>
-                <input type="text" id="termManufacture" value="30 дней">
-            </div>
-            <div class="form-group">
-                <label>Срок фундаментных работ:</label>
-                <input type="text" id="termFoundation" value="20 дней">
-            </div>
-            <div class="form-group">
-                <label>Срок монтажных работ:</label>
-                <input type="text" id="termInstallation" value="30 дней">
-            </div>
-        </div>
-
-        <div class="section-title">5. Фотографии объекта (для 2-й страницы)</div>
-        <div class="form-row">
-            <div class="form-group"><label>Фото 1 (Снаружи):</label><input type="file" id="imgInput1" accept="image/*" onchange="previewImage(this, 'pdfImg1')"></div>
-            <div class="form-group"><label>Фото 2 (Конструктив):</label><input type="file" id="imgInput2" accept="image/*" onchange="previewImage(this, 'pdfImg2')"></div>
-        </div>
-        <div class="form-row">
-            <div class="form-group"><label>Фото 3 (Интерьер):</label><input type="file" id="imgInput3" accept="image/*" onchange="previewImage(this, 'pdfImg3')"></div>
-            <div class="form-group"><label>Фото 4 (Готовый объект):</label><input type="file" id="imgInput4" accept="image/*" onchange="previewImage(this, 'pdfImg4')"></div>
-        </div>
-
-        <button class="btn-generate" id="btnGen" onclick="generateAndSaveKP()">📄 Сформировать и скачать КП (PDF)</button>
+        <button class="btn-gen" onclick="generateKP()">📄 Скачать КП в PDF</button>
     </div>
-
-    <div id="pdfTemplateWrapper">
-        <div id="pdfContent">
-            <!-- СТРАНИЦА 1 -->
-            <div class="pdf-page">
-                <div class="pdf-header">
-                    <div class="pdf-header-text">
-                        <b>ЖАУАПКЕРШІЛІГІ ШЕКТЕУЛІ СЕРІКТЕСТІГІ «Мамыр»</b><br>
-                        Қазақстан Республикасы 110000, Қостанай облысы, Қостанай қаласы, Узкоколейная көш. 9<br>
-                        Тел: +7 771 054 77 66 | E-mail: too.mamyr@mail.ru
-                    </div>
-                    <div><img src=""" + logo_url + """" class="pdf-logo-img"></div>
-                    <div style="text-align:right;" class="pdf-header-text">
-                        Республика Казахстан 110000<br>
-                        Костанайская область г. Костанай<br>
-                        ул. Узкоколейная, 9<br>
-                        Тел: +77710547766
-                    </div>
-                </div>
-                <div class="kp-title" id="pdfKpNum">КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ</div>
-                <div class="kp-meta">
-                    <b>Объект:</b> <span id="pdfObjectTitle">Быстровозводимый ангар</span><br>
-                    <b>Назначение:</b> <span id="pdfPurpose">Зернохранилище</span>
-                </div>
-                <table class="kp-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 48%;">Наименование и подробное описание</th>
-                            <th style="width: 12%;">Кол-во</th>
-                            <th style="width: 20%;">Сумма (₸)</th>
-                            <th style="width: 20%;">Примечание</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pdfTableBody"></tbody>
-                </table>
-                <div class="conditions-box">
-                    <h4>Коммерческие условия:</h4>
-                    - Цены указаны в тенге с НДС 16%.<br>
-                    - 50% предоплата на закуп материалов.<br>
-                    - 25% перед отгрузкой готового комплекта ангара.<br>
-                    - 25% после подписания АВР и накладной.
-                    <h4>Сроки реализации:</h4>
-                    - Изготовление МК: <span id="pdfTermMan">30 дней</span><br>
-                    - Фундаментные работы: <span id="pdfTermFound">20 дней</span><br>
-                    - Монтажные работы: <span id="pdfTermInst">30 дней</span>
-                </div>
-                <div class="footer-line">
-                    <b>ТОО «Мамыр»</b> | Республика Казахстан, 110000, г. Костанай, ул. Узкоколейная, д. 9 | БИН 011240003418<br>
-                    Лицензия СМР II категория ГС-2 № 03293 от 15.10.2020 г. | Тел: +7 771 054 77 66
-                </div>
-            </div>
-
-            <!-- СТРАНИЦА 2 -->
-            <div class="pdf-page">
-                <div class="pdf-header">
-                    <div class="pdf-header-text">
-                        <b>ЖАУАПКЕРШІЛІГІ ШЕКТЕУЛІ СЕРІКТЕСТІГІ «Мамыр»</b><br>
-                        Қазақстан Республикасы 110000, Қостанай облысы, Қостанай қаласы, Узкоколейная көш. 9<br>
-                        Тел: +7 771 054 77 66 | E-mail: too.mamyr@mail.ru
-                    </div>
-                    <div><img src=""" + logo_url + """" class="pdf-logo-img"></div>
-                    <div style="text-align:right;" class="pdf-header-text">
-                        Республика Казахстан 110000<br>
-                        Костанайская область г. Костанай<br>
-                        ул. Узкоколейная, 9<br>
-                        Тел: +77710547766
-                    </div>
-                </div>
-                <div class="kp-title" style="margin-bottom:6px; font-size:12.5pt;">ТЕХНИЧЕСКИЕ РЕШЕНИЯ И ПРЕИМУЩЕСТВА «MCONSTRUCTION»</div>
-                
-                <div class="feature-box">
-                    <div class="feature-title">Строительство «под ключ»</div>
-                    Мы осуществляем полный цикл реализации проекта: проектирование, заводское производство, устройство фундамента и монтаж. Клиент получает готовый к эксплуатации объект от одного подрядчика.
-                </div>
-                <div class="feature-box">
-                    <div class="feature-title">Болтовые соединения и точность монтажа</div>
-                    Все несущие конструкции собираются исключительно на болтовых соединениях. Это исключает необходимость сварки на объекте, гарантирует точность геометрии по проекту и позволяет проводить работы при любых погодных условиях.
-                </div>
-                <div class="feature-box">
-                    <div class="feature-title">Расчет нагрузок и региональные стандарты</div>
-                    Проектирование ведется с учетом индивидуальных условий эксплуатации. Ветровые и снеговые нагрузки рассчитываются согласно строительным нормам (СНиП) конкретного региона строительства, что обеспечивает абсолютную устойчивость и безопасность здания.
-                </div>
-
-                <div class="photo-grid">
-                    <div class="photo-card"><img id="pdfImg1" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Снаружи</span></div>
-                    <div class="photo-card"><img id="pdfImg2" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Конструктив</span></div>
-                    <div class="photo-card"><img id="pdfImg3" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Интерьер</span></div>
-                    <div class="photo-card"><img id="pdfImg4" style="display:none; width:100%; height:100%; object-fit:cover;"><span>Готовый объект</span></div>
-                </div>
-                
-                <div style="margin-top: 10px; font-size: 10.5pt; font-weight: bold;" id="pdfSignManager"></div>
-                
-                <div class="footer-line">
-                    <b>ТОО «Мамыр»</b> | Республика Казахстан, 110000, г. Костанай, ул. Узкоколейная, д. 9 | БИН 011240003418<br>
-                    Лицензия СМР II категория ГС-2 № 03293 от 15.10.2020 г. | Тел: +7 771 054 77 66
-                </div>
-            </div>
-        </div>
-    </div>
-
+    <div id="pdfTemplateWrapper" style="position:absolute; left:-9999px;"><div id="pdfContent" style="width:210mm; background:#fff; padding:15mm;">
+        <h2 style="color:#b8860b;">КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ</h2>
+        <p><b>Заказчик:</b> <span id="pdfClient"></span></p>
+        <p id="pdfSign" style="margin-top:20px; font-weight:bold;"></p>
+    </div></div>
     <script>
-        var VAT = 1.16;
-        var sessionAuthor = """ + current_user_json + """;
-        var allUsers = """ + users_json + """;
-
-        document.getElementById('sessionAuthorName').innerText = sessionAuthor.name + " (" + sessionAuthor.position + ")";
-
-        var selectEl = document.getElementById('kpSignerSelect');
-        allUsers.forEach(function(u) {
+        var allUsers = {users_json};
+        var currUser = {curr_json};
+        var sel = document.getElementById('kpSignerSelect');
+        allUsers.forEach(u => {{
             var opt = document.createElement('option');
-            opt.value = u.key;
-            opt.text = u.name + " (" + u.position + ")";
-            if (u.key === sessionAuthor.key) {
-                opt.selected = true;
-            }
-            selectEl.appendChild(opt);
-        });
-
-        function getCurrentSigner() {
-            var selVal = selectEl.value;
-            var found = allUsers.find(function(u) { return u.key === selVal; });
-            return found || sessionAuthor;
-        }
-
-        document.getElementById('buildingType').addEventListener('change', function() {
-            document.getElementById('wallHBox').style.display = (this.value.indexOf('straight') !== -1) ? 'block' : 'none';
-        });
-        document.getElementById('fundType').addEventListener('change', function() {
-            document.getElementById('stripParamsBox').style.display = (this.value === 'strip') ? 'block' : 'none';
-        });
-
-        function previewImage(input, targetImgId) {
-            if (input.files && input.files[0]) {
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    var img = document.getElementById(targetImgId);
-                    img.src = e.target.result;
-                    img.style.display = 'block';
-                }
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-
-        function getNum(id, fallback) {
-            var el = document.getElementById(id);
-            if (!el) return fallback;
-            var v = parseFloat(el.value);
-            return isNaN(v) ? fallback : v;
-        }
-
-        function generateAndSaveKP() {
-            var btn = document.getElementById('btnGen');
-            btn.disabled = true;
-            btn.innerText = "⏳ Формирование PDF...";
-
-            try {
-                var signer = getCurrentSigner();
-                var signerDisplay = "С уважением, " + (signer.position || "Руководитель отдела продаж") + " " + signer.name + " " + signer.phone;
-
-                var client = document.getElementById('clientName').value || 'Заказчик';
-                var phone = document.getElementById('clientPhone').value || '—';
-                var whatsapp = document.getElementById('clientWa').value || '—';
-                var purpose = document.getElementById('purpose').value || 'Ангар';
-                
-                var type = document.getElementById('buildingType').value;
-                var w = getNum('width', 18);
-                var l = getNum('length', 36);
-                var wallH = getNum('wallH', 3);
-                var area = w * l;
-
-                var gateSize = document.getElementById('gateSize').value;
-                var gateCount = getNum('gateCount', 0);
-                var ventCount = getNum('ventCount', 0);
-
-                var montageType = document.getElementById('montageType').value;
-                var fundType = document.getElementById('fundType').value;
-                var fundW = getNum('fundW', 0.4);
-                var fundH = getNum('fundH', 1.2);
-
-                var distance = getNum('distance', 0);
-                var truckCount = getNum('truckCount', 1);
-                var discountPercent = getNum('discountPercent', 0);
-
-                var termMan = document.getElementById('termManufacture').value || '30 дней';
-                var termFound = document.getElementById('termFoundation').value || '20 дней';
-                var termInst = document.getElementById('termInstallation').value || '30 дней';
-
-                var rateNoVat = 0;
-                var isProf = false;
-                var coverDesc = "";
-
-                if (type === 'arch_pvc') {
-                    rateNoVat = (w <= 13) ? 17000 : (w <= 16) ? 19000 : 22000;
-                    var pvcDensity = (w <= 13) ? "650" : "900";
-                    coverDesc = "Тент ПВХ " + pvcDensity + " гр/м2 не поддерживающий горения";
-                } else if (type === 'straight_arch_pvc') {
-                    rateNoVat = (w <= 13) ? 19000 : 25000;
-                    var pvcDensity = (w <= 13) ? "650" : "900";
-                    coverDesc = "Тент ПВХ " + pvcDensity + " гр/м2 не поддерживающий горения";
-                } else {
-                    isProf = true;
-                    rateNoVat = (w <= 13) ? 23000 : 26000;
-                    coverDesc = "Профнастил Н-44 0.7 мм оцинкованный";
-                }
-
-                var heightMult = 1.0;
-                if (type.indexOf('straight') !== -1 && wallH > 3) heightMult += (wallH - 3) * 0.03;
-
-                var constPrice = Math.round(area * rateNoVat * heightMult * VAT);
-                var singleGate = (gateSize === '3x3') ? 600000 : (gateSize === '5x5') ? 800000 : 700000;
-                var gatePrice = singleGate * gateCount;
-                var gateW = (gateSize === '3x3') ? 3 : (gateSize === '5x5') ? 5 : 4;
-                var ventPrice = ventCount * 58000 * VAT;
-
-                var fundPrice = 0;
-                var fundDesc = "";
-                var fundNote = "—";
-
-                if (fundType === 'strip') {
-                    var P = 2 * (w + l);
-                    var netP = Math.max(0, P - (gateW * gateCount));
-                    var totalVol = Math.round((netP * fundW * fundH) + ((Math.floor(l / 3) * 2 + 8) * 0.25) + (P * 1.0 * 0.1));
-                    fundPrice = Math.round(totalVol * 135000 * VAT);
-                    fundDesc = "Фундамент железобетонный монолитный Н-" + fundH + "м, В-" + fundW + "м<br>Буронабивные сваи Ø300, L-2.0м<br>Отмостка: 0,1х1,0м";
-                    fundNote = totalVol + " м³ (" + P + " п.м.)";
-                } else if (fundType === 'screw') {
-                    var P = 2 * (w + l);
-                    var screwRate = (w <= 13) ? 22000 : (w <= 17) ? 26000 : (w <= 22) ? 30000 : 34000;
-                    fundPrice = Math.round(P * screwRate * VAT);
-                    fundDesc = "Свайно-винтовой фундамент";
-                    fundNote = P + " п.м.";
-                } else {
-                    fundDesc = "Подготовка фундамента Заказчиком";
-                    fundNote = "—";
-                }
-
-                var montagePrice = 0;
-                if (montageType === 'include') {
-                    if (isProf) {
-                        montagePrice = Math.round((constPrice + gatePrice) * 0.23);
-                    } else {
-                        montagePrice = Math.round((constPrice + gatePrice + ventPrice) * 0.21);
-                    }
-                }
-
-                var deliveryPrice = Math.round(distance * 1000 * VAT * truckCount);
-
-                var totalBase = constPrice + gatePrice + ventPrice + fundPrice + montagePrice + deliveryPrice;
-                var discountAmount = Math.round(totalBase * (discountPercent / 100));
-                var totalFinal = totalBase - discountAmount;
-
-                var buildingTypeTitle = isProf ? "Быстровозводимый металлический ангар" : "Быстровозводимый металлотентовый ангар";
-                
-                document.getElementById('pdfKpNum').innerText = "КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ: " + client.toUpperCase();
-                
-                document.getElementById('pdfObjectTitle').innerText = buildingTypeTitle + " " + w.toFixed(1) + " × " + l.toFixed(1) + " × " + (isProf ? wallH : (w/2).toFixed(1)) + " м (" + area + "м2)";
-                document.getElementById('pdfPurpose').innerText = purpose;
-                document.getElementById('pdfTermMan').innerText = termMan;
-                document.getElementById('pdfTermFound').innerText = termFound;
-                document.getElementById('pdfTermInst').innerText = termInst;
-
-                var rows = "<tr><td><b>Комплект сборно-разборной стальной конструкции ангара.</b><br>Размер: " + w.toFixed(1) + " X " + l.toFixed(1) + " м.<br>Тип: " + (isProf ? "Прямостенный, двускатный." : "арочный.") + "<br>Соединения: Болтовое.<br>Покрытие: " + coverDesc + (isProf ? "<br>Высота стены " + wallH + " м." : "") + "</td><td style='text-align:center;'>1 к-т</td><td style='text-align:right;'>" + constPrice.toLocaleString('ru-RU') + "</td><td>Заводское изготовление" + (!isProf && w >= 14 ? ". ПВХ произ-во Турция" : "") + "</td></tr>";
-                
-                if (gateCount > 0) rows += "<tr><td><b>Ворота металлические, распашные</b> (" + gateW + ".0 X " + gateW + ".0 м).<br>Комплектация: Встроенная дверь (2.0 X 1.0 м), засовы, упоры, навесы и ручки</td><td style='text-align:center;'>" + gateCount + " к-та</td><td style='text-align:right;'>" + gatePrice.toLocaleString('ru-RU') + "</td><td>—</td></tr>";
-                if (ventCount > 0) rows += "<tr><td><b>Вентиляционная решетка по торцам</b></td><td style='text-align:center;'>" + ventCount + " к-та</td><td style='text-align:right;'>" + ventPrice.toLocaleString('ru-RU') + "</td><td>—</td></tr>";
-                
-                if (fundType !== 'none') {
-                    rows += "<tr><td><b>" + fundDesc + "</b></td><td style='text-align:center;'>—</td><td style='text-align:right;'>" + fundPrice.toLocaleString('ru-RU') + "</td><td>" + fundNote + "</td></tr>";
-                } else {
-                    rows += "<tr><td><b>" + fundDesc + "</b></td><td style='text-align:center;'>—</td><td style='text-align:right;'>0</td><td>—</td></tr>";
-                }
-
-                if (montageType === 'include') {
-                    rows += "<tr><td><b>Монтаж строительной бригады</b></td><td style='text-align:center;'>работа</td><td style='text-align:right;'>" + montagePrice.toLocaleString('ru-RU') + "</td><td>Спецтехника включена</td></tr>";
-                }
-
-                rows += "<tr><td><b>Транспортные расходы и логистика</b> 1000 тг/км от г. Костанай.</td><td style='text-align:center;'>" + truckCount + " рейса</td><td style='text-align:right;'>" + deliveryPrice.toLocaleString('ru-RU') + "</td><td>*Возможен самовывоз со склада.</td></tr>";
-                rows += "<tr class='total-row'><td colspan='2'>ИТОГО С УЧЕТОМ НДС 16%:</td><td style='text-align:right;'>" + totalBase.toLocaleString('ru-RU') + "</td><td>₸</td></tr>";
-                if (discountPercent > 0) {
-                    rows += "<tr class='total-row-discount'><td colspan='2'>ИТОГО СО УЧЕТОМ СКИДКИ (" + discountPercent + "%):</td><td style='text-align:right;'>" + totalFinal.toLocaleString('ru-RU') + "</td><td>₸</td></tr>";
-                }
-
-                document.getElementById('pdfTableBody').innerHTML = rows;
-                document.getElementById('pdfSignManager').innerText = signerDisplay;
-
-                var element = document.getElementById('pdfContent');
-                var opt = {
-                    margin: 0,
-                    filename: 'КП_' + client + '.pdf',
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, logging: false },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-
-                html2pdf().set(opt).from(element).save().then(function() {
-                    btn.disabled = false;
-                    btn.innerText = "📄 Сформировать и скачать КП (PDF)";
-                });
-
-                fetch('/save_kp', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        id: "КП: " + client,
-                        date: new Date().toLocaleDateString('ru-RU') + " " + new Date().toLocaleTimeString('ru-RU'),
-                        author: sessionAuthor.name,
-                        manager: signer.name + " (" + signer.position + ")",
-                        client: client,
-                        phone: phone,
-                        whatsapp: whatsapp,
-                        object: purpose + ' (' + w.toFixed(1) + 'x' + l.toFixed(1) + 'м)',
-                        price: totalFinal.toLocaleString('ru-RU') + ' ₸',
-                        status: 'sent'
-                    })
-                });
-
-            } catch (e) {
-                alert("Ошибка: " + e.message);
-                btn.disabled = false;
-                btn.innerText = "📄 Сформировать и скачать КП (PDF)";
-            }
-        }
+            opt.value = u.key; opt.text = u.name + ' (' + u.position + ')';
+            if(u.key === currUser.key) opt.selected = true;
+            sel.appendChild(opt);
+        }});
+        function generateKP() {{
+            var u = allUsers.find(x => x.key === sel.value) || currUser;
+            document.getElementById('pdfClient').innerText = document.getElementById('clientName').value;
+            document.getElementById('pdfSign').innerText = "Менеджер: " + u.name + " (" + u.phone + ")";
+            html2pdf().from(document.getElementById('pdfContent')).save('КП.pdf');
+        }}
     </script>
     """
-    
-    tz_c, msg_c = get_counters(load_db(), uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Генератор КП", active_page="generator", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=gen_html)
-
-@app.route("/save_kp", methods=["POST"])
-def save_kp():
-    if "user" not in session: return jsonify({"success": False})
-    data = request.get_json()
-    if data:
-        db = load_db()
-        if "kp_registry" not in db: db["kp_registry"] = []
-        db["kp_registry"].append(data)
-        save_db(db)
-        return jsonify({"success": True})
-    return jsonify({"success": False})
+    tz_c, msg_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Генератор КП", active_page="generator", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=html)
 
 @app.route("/registry")
 def registry_page():
     if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    users = db.get("users", DEFAULT_USERS)
-    user_data = users[uname]
-    
-    if user_data["role"] not in ["director", "rop"]:
-        return "<h3 style='color:red; text-align:center; margin-top:50px;'>⛔ Доступ запрещен! Реестр доступен только РОПу и Директору.</h3><p style='text-align:center;'><a href='/'>Вернуться в CRM</a></p>"
-
-    raw_deals_json = json.dumps(db.get('kp_registry', []), ensure_ascii=False)
-
-    reg_html = """
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <style>
-        .reg-container { max-width: 1400px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b8860b; padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-        .header h1 { color: #1a365d; font-size: 22px; margin: 0; }
-        .toolbar { display: flex; justify-content: space-between; align-items: center; background: #edf2f7; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
-        .filter-group { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-        .filter-item { display: flex; align-items: center; gap: 8px; }
-        .filter-item label { font-weight: bold; color: #2d3748; font-size: 14px; }
-        .filter-item select, .filter-item input { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e0; font-size: 14px; font-weight: bold; background: #fff; }
-        .stats-info { font-size: 14px; color: #4a5568; }
-        .stats-info b { color: #b8860b; font-size: 16px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #cbd5e0; padding: 10px 12px; text-align: left; font-size: 13px; vertical-align: middle; }
-        th { background: #1a1e21; color: #fff; font-weight: bold; font-size: 12px; text-transform: uppercase; }
-        tr:nth-child(even) { background: #f8fafc; }
-        .empty-text { text-align: center; color: #718096; padding: 30px; font-style: italic; }
-    </style>
-
-    <div class="reg-container">
-        <div class="header">
-            <h1>Общий управленческий реестр КП</h1>
-            <div class="d-flex gap-2">
-                <button onclick="exportToExcel()" class="btn btn-success btn-sm fw-bold">📊 Выгрузить в Excel</button>
-                <button onclick="location.reload()" class="btn btn-primary btn-sm fw-bold">Обновить</button>
-                <button onclick="clearRegistry()" class="btn btn-danger btn-sm fw-bold">🗑️ Очистить реестр</button>
-            </div>
-        </div>
-        <div class="toolbar">
-            <div class="filter-group">
-                <div class="filter-item">
-                    <label>Сотрудник (в КП):</label>
-                    <select id="managerFilter" onchange="filterTable()">
-                        <option value="ALL">-- Все сотрудники --</option>
-                        <option value="Лемперт">Лемперт Александр</option>
-                        <option value="Уралбаев">Уралбаев Жанайдар</option>
-                        <option value="Менеджер 1">Менеджер 1</option>
-                        <option value="Менеджер 2">Менеджер 2</option>
-                        <option value="Менеджер 3">Менеджер 3</option>
-                    </select>
-                </div>
-                <div class="filter-item">
-                    <label>Заказчик:</label>
-                    <input type="text" id="clientSearch" placeholder="Поиск по ТОО..." oninput="filterTable()">
-                </div>
-            </div>
-            <div class="stats-info">Всего КП: <b id="totalCount">0</b> шт. | Сумма: <b id="totalSum">0 ₸</b></div>
-        </div>
-        <div id="tableContainer"></div>
-    </div>
-
-    <script>
-        var rawDeals = """ + raw_deals_json + """;
-
-        function filterTable() {
-            var mFilter = document.getElementById('managerFilter').value;
-            var q = document.getElementById('clientSearch').value.toLowerCase().trim();
-
-            var filtered = rawDeals.filter(function(d) {
-                var matchM = (mFilter === 'ALL') || (d.manager && d.manager.indexOf(mFilter) !== -1);
-                var matchQ = !q || (d.client && d.client.toLowerCase().indexOf(q) !== -1);
-                return matchM && matchQ;
-            });
-
-            var container = document.getElementById('tableContainer');
-            var totalSum = 0;
-
-            filtered.forEach(function(d) {
-                if (d.price) {
-                    var n = parseInt(String(d.price).replace(/\\D/g, ''));
-                    if (!isNaN(n)) totalSum += n;
-                }
-            });
-
-            document.getElementById('totalCount').innerText = filtered.length;
-            document.getElementById('totalSum').innerText = totalSum.toLocaleString('ru-RU') + ' ₸';
-
-            if (filtered.length === 0) {
-                container.innerHTML = '<div class="empty-text">Коммерческих предложений не найдено.</div>';
-                return;
-            }
-
-            var html = '<table><thead><tr><th>№ КП</th><th>Дата / Время</th><th>Кто создал (Автор)</th><th>Менеджер в КП (Подпись)</th><th>Заказчик</th><th>Телефон</th><th>WhatsApp</th><th>Объект</th><th>Сумма</th></tr></thead><tbody>';
-            filtered.forEach(function(d) {
-                html += '<tr>' +
-                    '<td><b>' + (d.id || '-') + '</b></td>' +
-                    '<td>' + (d.date || '-') + '</td>' +
-                    '<td><span class="badge bg-secondary">' + (d.author || 'Не указан') + '</span></td>' +
-                    '<td><b>' + (d.manager || '-') + '</b></td>' +
-                    '<td>' + (d.client || '-') + '</td>' +
-                    '<td>' + (d.phone || '-') + '</td>' +
-                    '<td>' + (d.whatsapp || '-') + '</td>' +
-                    '<td>' + (d.object || '-') + '</td>' +
-                    '<td><b>' + (d.price || '-') + '</b></td>' +
-                '</tr>';
-            });
-            html += '</tbody></table>';
-            container.innerHTML = html;
-        }
-
-        function clearRegistry() {
-            if (confirm('Очистить весь реестр КП?')) {
-                fetch('/clear_registry', {method: 'POST'}).then(() => location.reload());
-            }
-        }
-
-        function exportToExcel() {
-            var ws = XLSX.utils.json_to_sheet(rawDeals);
-            var wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Реестр КП");
-            XLSX.writeFile(wb, "Реестр_КП_ТОО_Мамыр.xlsx");
-        }
-
-        window.onload = filterTable;
-    </script>
-    """
-    
-    tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Реестр КП", active_page="registry", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=reg_html)
-
-@app.route("/clear_registry", methods=["POST"])
-def clear_registry():
-    if "user" not in session: return jsonify({"success": False})
-    db = load_db()
-    db["kp_registry"] = []
-    save_db(db)
-    return jsonify({"success": True})
+    uname, db = session["user"], load_db()
+    if db["users"][uname]["role"] not in ["director", "rop"]: return "Доступ запрещен"
+    return render_template_string(BASE_TEMPLATE, page_title="Реестр КП", active_page="registry", current_user_data=db["users"][uname], unread_tz_count=0, unread_msgs_count=0, content="<div class='p-4'><h3>Реестр</h3></div>")
 
 @app.route("/chat", methods=["GET", "POST"])
 @app.route("/chat/<chat_id>", methods=["GET", "POST"])
 def chat_page(chat_id=None):
     if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    users = db.get("users", DEFAULT_USERS)
-    user_data = users[uname]
+    uname, db = session["user"], load_db()
+    user_data = db["users"][uname]
     
-    if request.method == "POST":
-        action = request.form.get("action")
-        if action == "create_chat":
-            selected_members = request.form.getlist("members")
-            selected_members.append(uname)
-            selected_members = list(set(selected_members))
-            chat_title = request.form.get("title", "").strip() or ", ".join([users[m]["name"] for m in selected_members if m in users])
-            new_chat_id = f"chat_{len(db['chats']) + 1}"
-            db["chats"].append({"id": new_chat_id, "title": chat_title, "members": selected_members, "messages": []})
+    if request.method == "POST" and chat_id:
+        msg = request.form.get("message", "").strip()
+        if msg:
+            for c in db["chats"]:
+                if c["id"] == chat_id:
+                    c["messages"].append({"author_key": uname, "author_name": user_data["name"], "text": msg, "time": datetime.now().strftime("%d.%m %H:%M")})
+                    c[f"read_{uname}"] = len(c["messages"])
+                    break
             save_db(db)
-            return redirect(url_for("chat_page", chat_id=new_chat_id))
-        elif action == "send_message" and chat_id:
-            msg_text = request.form.get("message", "").strip()
-            if msg_text:
-                for c in db["chats"]:
-                    if c["id"] == chat_id:
-                        c["messages"].append({"author_key": uname, "author_name": user_data["name"], "text": msg_text, "time": datetime.now().strftime("%d.%m %H:%M")})
-                        # Обновляем указатель прочтения для отправителя
-                        c[f"read_{uname}"] = len(c["messages"])
-                        break
-                save_db(db)
-                return redirect(url_for("chat_page", chat_id=chat_id))
-
-    # Если открыт конкретный чат, сразу помечаем все сообщения в нем как прочитанные для текущего пользователя
+            return redirect(url_for("chat_page", chat_id=chat_id))
+            
     if chat_id:
         for c in db.get("chats", []):
             if c["id"] == chat_id and uname in c.get("members", []):
@@ -1494,633 +490,48 @@ def chat_page(chat_id=None):
     user_chats = [c for c in db.get("chats", []) if uname in c.get("members", [])]
     active_chat = next((c for c in user_chats if c["id"] == chat_id), None)
     
-    chat_list_html = "".join([f'<a href="{url_for("chat_page", chat_id=c["id"])}" class="list-group-item list-group-item-action {"active text-dark fw-bold" if active_chat and c["id"] == active_chat["id"] else "bg-white"}" style="{"background-color: #fdf3d0 !important;" if active_chat and c["id"] == active_chat["id"] else ""}"><strong>{c["title"]}</strong></a>' for c in user_chats])
-    messages_html = "".join([f'<div class="mb-2 {"text-end" if m.get("author_key") == uname else "text-start"}"><div class="d-inline-block p-2 rounded {"bg-dark text-white" if m.get("author_key") == uname else "bg-light border text-dark"}" style="max-width: 70%;"><div class="fw-bold small">{m.get("author_name")}</div><div>{m.get("text")}</div><div class="small opacity-75 text-end mt-1" style="font-size: 10px;">{m.get("time")}</div></div></div>' for m in active_chat.get("messages", [])]) if active_chat else '<div class="text-center text-muted my-auto">Выберите чат или создайте новый диалог</div>'
-    members_checkboxes = "".join([f'<div class="form-check"><input class="form-check-input" type="checkbox" name="members" value="{u_k}" id="usr_{u_k}"><label class="form-check-label" for="usr_{u_k}"><b>{u_v["name"]}</b> <span class="text-muted">({u_v.get("position", "")})</span></label></div>' for u_k, u_v in users.items() if u_k != uname])
-
-    content_html = f"""
-    <div class="container-fluid h-100 p-0">
-        <div class="row g-0 h-100">
-            <div class="col-md-4 border-end bg-white d-flex flex-column h-100">
-                <div class="p-3 border-bottom d-flex justify-content-between align-items-center"><h6 class="m-0 fw-bold">💬 Ваши диалоги</h6><button class="btn btn-sm fw-bold text-white" style="background: #b8860b;" data-bs-toggle="modal" data-bs-target="#newChatModal">+ Новый чат</button></div>
-                <div class="list-group list-group-flush overflow-auto flex-grow-1">{chat_list_html or '<div class="p-3 text-muted text-center">Чатов пока нет</div>'}</div>
-            </div>
-            <div class="col-md-8 d-flex flex-column h-100 bg-light">
-                {f'''<div class="p-3 border-bottom bg-white fw-bold">{active_chat["title"]}</div><div class="p-3 overflow-auto flex-grow-1 d-flex flex-column">{messages_html}</div><div class="p-3 bg-white border-top"><form method="POST"><input type="hidden" name="action" value="send_message"><div class="input-group"><input type="text" name="message" class="form-control" placeholder="Напишите сообщение..." required autofocus><button type="submit" class="btn text-white fw-bold" style="background: #b8860b;">Отправить</button></div></form></div>''' if active_chat else f'<div class="d-flex h-100 align-items-center justify-content-center text-muted">{messages_html}</div>'}
-            </div>
-        </div>
-    </div>
-    <div class="modal fade" id="newChatModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form method="POST"><input type="hidden" name="action" value="create_chat"><div class="modal-header text-white" style="background: #1a1e21;"><h5 class="modal-title fw-bold">👥 Создать чат</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label fw-bold">Название чата:</label><input type="text" name="title" class="form-control" placeholder="Обсуждение объекта..."></div><label class="form-label fw-bold">Выберите сотрудников:</label><div class="p-2 border rounded bg-light" style="max-height: 200px; overflow-y: auto;">{members_checkboxes}</div></div><div class="modal-footer"><button type="submit" class="btn text-white fw-bold" style="background: #b8860b;">Создать чат</button></div></form></div></div></div>
-    """
+    chat_list = "".join([f'<a href="/chat/{c["id"]}" class="list-group-item list-group-item-action {"active" if active_chat and c["id"]==active_chat["id"] else ""}">{c["title"]}</a>' for c in user_chats])
+    msgs = "".join([f'<div class="mb-2"><b>{m["author_name"]}:</b> {m["text"]}</div>' for m in active_chat.get("messages", [])]) if active_chat else "Выберите чат"
+    
+    html = f"""<div class="container-fluid h-100 p-0"><div class="row g-0 h-100"><div class="col-md-4 border-end bg-white"><div class="p-3 border-bottom"><b>Диалоги</b></div><div class="list-group list-group-flush">{chat_list or '<div class="p-3 text-muted">Нет чатов</div>'}</div></div><div class="col-md-8 d-flex flex-column bg-light">{f'<div class="p-3 border-bottom bg-white"><b>{active_chat["title"]}</b></div><div class="p-3 flex-grow-1 overflow-auto">{msgs}</div><div class="p-3 bg-white border-top"><form method="POST"><div class="input-group"><input type="text" name="message" class="form-control" placeholder="Сообщение..." required><button class="btn text-white" style="background:#b8860b;">Отправить</button></div></form></div>' if active_chat else '<div class="m-auto text-muted">Выберите чат слева</div>'}</div></div></div>"""
     tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Чат сотрудников", active_page="chat", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=content_html)
+    return render_template_string(BASE_TEMPLATE, page_title="Чат", active_page="chat", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=html)
 
 @app.route("/")
 def index():
     if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    users = db.get("users", DEFAULT_USERS)
-    user_data = users[uname]
+    uname, db = session["user"], load_db()
+    user_data = db["users"][uname]
     
-    search_query = request.args.get("q", "").strip().lower()
-    selected_manager = request.args.get("manager_filter", "all")
-    today_str = datetime.now().strftime("%Y-%m-%d")
     total_tasks = sum(1 for d in db["deals"] for t in d.get("tasks", []) if not t.get("done", False))
-    overdue_count = sum(1 for d in db["deals"] for t in d.get("tasks", []) if not t.get("done", False) and t.get("date", "") < today_str)
-    has_reminders = any(t.get("reminded", False) for d in db["deals"] for t in d.get("tasks", []) if not t.get("done", False))
-    manager_names_list = [u_info["name"] for u_info in users.values()]
-
-    filter_html = f"""
-    <div class="card shadow-sm border-0 mb-3 p-3 bg-white flex-shrink-0">
-        <form method="GET" action="/" class="row g-2 align-items-center">
-            <div class="col-md-5"><div class="input-group"><span class="input-group-text bg-light">🔍 Поиск:</span><input type="text" name="q" class="form-control" value="{search_query}" placeholder="Компания, директор, телефон..."></div></div>
-            <div class="col-md-4">
-                <div class="input-group"><span class="input-group-text bg-light">👤 Ответственный:</span>
-                    <select name="manager_filter" class="form-select">
-    """
-    if user_data["role"] in ["director", "rop"]:
-        filter_html += f'<option value="all" {"selected" if selected_manager=="all" else ""}>Все ответственные</option><option value="Не назначен" {"selected" if selected_manager=="Не назначен" else ""}>📌 Не назначен</option>'
-        for m_name in manager_names_list: filter_html += f'<option value="{m_name}" {"selected" if selected_manager==m_name else ""}>{m_name}</option>'
-    else:
-        filter_html += f'<option value="{user_data["name"]}" {"selected" if selected_manager==user_data["name"] else ""}>Только мои сделки</option><option value="Не назначен" {"selected" if selected_manager=="Не назначен" else ""}>📌 Не назначен</option><option value="all" {"selected" if selected_manager=="all" else ""}>Все клиенты компании</option>'
-    filter_html += """</select></div></div><div class="col-md-3 d-flex gap-2"><button type="submit" class="btn text-white btn-sm fw-bold w-50" style="background: #b8860b;">Найти</button><a href="/" class="btn btn-outline-secondary btn-sm w-50">Сбросить</a></div></form></div>"""
-
-    kanban_content = filter_html + '<div class="kanban-outer"><div class="kanban">'
-    for s_key, s_name, s_color in STAGES:
-        color_style = f"background-color: {s_color};" + (" color: #000;" if s_key == 'stage_2' else "")
-        kanban_content += f'<div class="k-col" data-stage="{s_key}"><div class="k-header" style="{color_style}">{s_name}</div><div class="k-body" id="col-{s_key}" ondragover="allowDrop(event)" ondragleave="removeDragOver(event)" ondrop="dropDeal(event, \'{s_key}\')">'
+    overdue_count = sum(1 for d in db["deals"] for t in d.get("tasks", []) if not t.get("done", False) and t.get("date", "") < datetime.now().strftime("%Y-%m-%d"))
+    
+    kanban = '<div class="kanban-outer"><div class="kanban">'
+    for sk, sn, sc in STAGES:
+        kanban += f'<div class="k-col"><div class="k-header" style="background:{sc};">{sn}</div><div class="k-body">'
         for d in db["deals"]:
-            if d.get("stage") == s_key:
-                deal_mgr = d.get("manager", "Не назначен")
-                if user_data["role"] not in ["director", "rop"] and selected_manager != "all" and deal_mgr != user_data["name"] and deal_mgr != selected_manager: continue
-                if user_data["role"] in ["director", "rop"] and selected_manager != "all" and deal_mgr != selected_manager: continue
-                if search_query and not any(search_query in str(d.get(k, "")).lower() for k in ["client", "director", "contact_person", "region"]): continue
-
-                region_text = d.get('region') or 'Регион не указан'
-                dir_text = d.get('director') or 'Не указан'
-                dir_phones = d.get('director_phones', [])
-                dir_phones_str = ", ".join(dir_phones) if dir_phones else (d.get('director_phone') or '')
-                
-                contact_p_text = d.get('contact_person') or '—'
-                contact_phones = d.get('contact_phones', [])
-                contact_phones_str = ", ".join(contact_phones) if contact_phones else (d.get('contact_phone') or '')
-
-                sum_val = d.get('total_sum', 0)
-                sum_str = "{:,}".format(sum_val).replace(",", " ") if d.get('stage') in CONTRACT_STAGES else "—"
-                
-                tasks_badge = ""
-                for t in d.get("tasks", []):
-                    if not t.get("done"):
-                        is_overdue = t.get("date") < today_str
-                        badge_cls = "bg-danger" if is_overdue else "bg-warning text-dark"
-                        tasks_badge += f'<div class="mt-1"><span class="badge {badge_cls}">{"⚠️ Просрочено: " if is_overdue else "⏰ "}{t.get("type")} ({t.get("date")})</span></div>'
-                        if t.get("reminded"):
-                            tasks_badge += '<div class="mt-1"><span class="badge bg-danger text-white blink-remind">⚡ РОП НАПОМИНАЕТ!</span></div>'
-                        if user_data["role"] in ["director", "rop"] and is_overdue and not t.get("reminded"):
-                            tasks_badge += f'<div class="mt-1"><form method="POST" action="{url_for("remind_task", deal_id=d["id"], task_id=t["id"])}"><button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" style="font-size:10px;">⚠️ Напомнить менеджеру</button></form></div>'
-
-                kanban_content += f"""
-                <div class="deal-card" id="card-{d['id']}" draggable="true" ondragstart="dragDeal(event, '{d['id']}')" data-bs-toggle="modal" data-bs-target="#cardModal{d['id']}">
-                    <div class="fw-bold mb-1" style="font-size: 13px; color: #b8860b;">{d['title']}</div>
-                    <div class="text-muted text-truncate">📍 {region_text}</div>
-                    <div class="text-secondary text-truncate">👤 Директор: {dir_text} {dir_phones_str}</div>
-                    <div class="text-secondary text-truncate">н.л.: {contact_p_text} {contact_phones_str}</div>
-                    {tasks_badge}
-                    <div class="mt-2 pt-1 border-top d-flex justify-content-between text-muted" style="font-size: 11px;"><span>Сумма: {sum_str} ₸</span><span class="badge bg-light text-dark border">{deal_mgr}</span></div>
-                </div>
-                <div class="modal fade" id="cardModal{d['id']}" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
-                    <form method="POST" action="{url_for('update_deal', id=d['id'])}">
-                        <div class="modal-header text-white" style="background: #1a1e21;"><h5 class="modal-title">Карточка клиента: {d['client']}</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-                        <div class="modal-body"><div class="row g-3">
-                            <div class="col-md-6"><label class="form-label fw-bold">ТОО / КХ:</label><input type="text" name="client" class="form-control" value="{d['client']}" required></div>
-                            <div class="col-md-6"><label class="form-label fw-bold">Расположение:</label><input type="text" name="region" class="form-control" value="{d.get('region', '')}"></div>
-                            <div class="col-md-6"><label class="form-label fw-bold">Директор (ЛПР):</label><input type="text" name="director" class="form-control" value="{d.get('director', '')}"></div>
-                            <div class="col-md-6"><label class="form-label fw-bold">Телефоны директора:</label>
-                                <div id="edit-dir-phones-{d['id']}">
-                """
-                dir_p_list = d.get('director_phones', [])
-                if not dir_p_list:
-                    single_dp = d.get('director_phone', '')
-                    dir_p_list = [single_dp] if single_dp else ['']
-                for dp_val in dir_p_list:
-                    kanban_content += f'<div class="input-group mb-2"><input type="text" name="director_phones" class="form-control" value="{dp_val}" placeholder="+7..."><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button></div>'
-                
-                kanban_content += f"""
-                                </div>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('edit-dir-phones-{d['id']}', 'director_phones')">+ Телефон директора</button>
-                            </div>
-                            <div class="col-md-6"><label class="form-label fw-bold">Контактное лицо:</label><input type="text" name="contact_person" class="form-control" value="{d.get('contact_person', '')}"></div>
-                            <div class="col-md-6"><label class="form-label fw-bold">Телефоны контактного лица:</label>
-                                <div id="edit-contact-phones-{d['id']}">
-                """
-                cp_list = d.get('contact_phones', [])
-                if not cp_list:
-                    single_cp = d.get('contact_phone', '')
-                    cp_list = [single_cp] if single_cp else ['']
-                for cp_val in cp_list:
-                    kanban_content += f'<div class="input-group mb-2"><input type="text" name="contact_phones" class="form-control" value="{cp_val}" placeholder="+7..."><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">Удалить</button></div>'
-                
-                kanban_content += f"""
-                                </div>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('edit-contact-phones-{d['id']}', 'contact_phones')">+ Телефон контактного лица</button>
-                            </div>
-                            <div class="col-md-6"><label class="form-label fw-bold">Этап воронки:</label><select name="stage" class="form-select">{"".join([f'<option value="{sk}" {"selected" if d["stage"] == sk else ""}>{sn}</option>' for sk, sn, sc in STAGES])}</select></div>
-                            <div class="col-md-6"><label class="form-label fw-bold">Ответственный:</label>
-                """
-                if user_data["role"] in ["director", "rop"]:
-                    kanban_content += f'<select name="manager" class="form-select"><option value="Не назначен" {"selected" if d.get("manager")=="Не назначен" else ""}>📌 Не назначен</option>' + "".join([f'<option value="{m}" {"selected" if d.get("manager") == m else ""}>{m}</option>' for m in manager_names_list]) + '</select>'
-                else:
-                    if d.get("manager", "Не назначен") == "Не назначен":
-                        kanban_content += f'<select name="manager" class="form-select border-success"><option value="Не назначен">📌 Не назначен (Свободен)</option><option value="{user_data["name"]}">Взять себе ({user_data["name"]})</option></select>'
-                    else:
-                        kanban_content += f'<input type="text" class="form-control bg-light" value="{d.get("manager", "")}" readonly><input type="hidden" name="manager" value="{d.get("manager", "")}">'
-                
-                kanban_content += f"""</div>
-                            <div class="col-md-6"><label class="form-label fw-bold">Сумма сделки (₸):</label><input type="number" name="total_sum" class="form-control {"border-success fw-bold" if d['stage'] in CONTRACT_STAGES else "bg-light"}" value="{d.get('total_sum', 0)}" {"readonly" if d['stage'] not in CONTRACT_STAGES else ""}></div>
-                            <div class="col-12"><label class="form-label fw-bold text-success">+ Комментарий:</label><textarea name="new_comment" class="form-control mb-2" rows="2" placeholder="Детали диалога..."></textarea>
-                                <label class="form-label fw-bold text-primary">📌 Поставить задачу:</label>
-                                <div class="row g-2">
-                                    <div class="col-md-6">
-                                        <select name="new_task_type" class="form-select form-select-sm">
-                                            <option value="Звонок">📞 Звонок</option>
-                                            <option value="Встреча">🤝 Встреча</option>
-                                            <option value="Отправить презентацию / КП">📄 Отправить презентацию / КП</option>
-                                            <option value="Согласовать ТЗ">📐 Согласовать ТЗ</option>
-                                            <option value="Заключить договор">📝 Заключить договор</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6"><input type="date" name="new_task_date" class="form-control form-control-sm"></div>
-                                </div>
-                            </div>
-                            <div class="col-12"><label class="form-label fw-bold text-secondary">📜 История изменений:</label><div class="history-box">{"".join([f'<div class="mb-1 border-bottom pb-1"><span class="text-primary fw-bold">[{h.get("date")}] {h.get("author")}:</span> <span>{h.get("text")}</span></div>' for h in reversed(d.get("history", []))])}</div></div>
-                        </div></div>
-                        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button><button type="submit" class="btn text-white" style="background: #b8860b;">Сохранить</button></div>
-                    </form>
-                </div></div></div>
-                """
-        kanban_content += '</div></div>'
-    kanban_content += '</div>'
-
-    kanban_content += '<div class="modal fade" id="tasksListModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-warning text-dark"><h5 class="modal-title fw-bold">🔔 Панель задач</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="list-group">'
-    for d in db["deals"]:
-        for t in d.get("tasks", []):
-            if not t.get("done", False):
-                is_overdue = t.get("date") < today_str
-                remind_btn = ""
-                if user_data["role"] in ["director", "rop"] and is_overdue and not t.get("reminded"):
-                    remind_btn = f'<form method="POST" action="{url_for("remind_task", deal_id=d["id"], task_id=t["id"])}" class="d-inline"><button type="submit" class="btn btn-outline-danger btn-sm">⚠️ Напомнить</button></form>'
-                
-                remind_status_text = '<span class="badge bg-danger text-white blink-remind ms-2">⚡ РОП НАПОМИНАЕТ!</span>' if t.get("reminded") else ''
-                
-                kanban_content += f'<div class="list-group-item d-flex justify-content-between align-items-center {"list-group-item-danger" if is_overdue else ""}"><div><span class="badge {"bg-danger" if is_overdue else "bg-primary"}">{"⚠️ Просрочено (" + t.get("date") + ")" if is_overdue else t.get("date")}</span><strong class="ms-2">{d["client"]}</strong>{remind_status_text}<div class="small mt-1"><b>{t.get("type")}</b> (Ответственный: {d.get("manager", "Не назначен")})</div></div><div class="d-flex gap-2">{remind_btn}<form method="POST" action="{url_for("complete_task", deal_id=d["id"], task_id=t["id"])}"><button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button></form></div></div>'
-    kanban_content += '</div></div></div></div></div>'
-
-    kanban_content += f"""
-    <div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
-        <form method="POST" action="{url_for("add_deal")}">
-            <div class="modal-header text-white" style="background: #1a1e21;"><h5 class="modal-title fw-bold">➕ Новая сделка</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body"><div class="row g-3">
-                <div class="col-md-6"><label class="form-label fw-bold">ТОО / КХ:</label><input type="text" name="client" class="form-control" required placeholder="ТОО Агро"></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Этап:</label><select name="stage" class="form-select">{"".join([f'<option value="{sk}">{sn}</option>' for sk, sn, sc in STAGES])}</select></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Ответственный:</label><select name="manager" class="form-select"><option value="Не назначен">📌 Не назначен</option><option value="{user_data['name']}" selected>{user_data['name']} (Себе)</option>{"".join([f'<option value="{m}">{m}</option>' for m in manager_names_list if m != user_data["name"]])}</select></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Расположение:</label><input type="text" name="region" class="form-control" placeholder="Костанай"></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Директор (ЛПР):</label><input type="text" name="director" class="form-control" placeholder="ФИО директора"></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Телефоны директора:</label>
-                    <div id="new-dir-phones"><div class="input-group mb-2"><input type="text" name="director_phones" class="form-control" placeholder="+7..."></div></div>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('new-dir-phones', 'director_phones')">+ Телефон директора</button>
-                </div>
-                <div class="col-md-6"><label class="form-label fw-bold">Контактное лицо:</label><input type="text" name="contact_person" class="form-control" placeholder="ФИО менеджера / агронома"></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Телефоны контактного лица:</label>
-                    <div id="new-contact-phones"><div class="input-group mb-2"><input type="text" name="contact_phones" class="form-control" placeholder="+7..."></div></div>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPhoneField('new-contact-phones', 'contact_phones')">+ Телефон контактного лица</button>
-                </div>
-            </div></div>
-            <div class="modal-footer"><button type="submit" class="btn text-white fw-bold" style="background: #b8860b;">Создать сделку</button></div>
-        </form>
-    </div></div></div>
-    """
+            if d.get("stage") == sk:
+                kanban += f'<div class="deal-card"><b>{d["client"]}</b><div class="text-muted">Регион: {d.get("region","—")}</div></div>'
+        kanban += '</div></div>'
+    kanban += '</div></div>'
+    
     tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Воронка продаж", active_page="kanban", current_user_data=user_data, total_tasks_count=total_tasks, overdue_count=overdue_count, has_reminders=has_reminders, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=kanban_content)
+    return render_template_string(BASE_TEMPLATE, page_title="Канбан", active_page="kanban", current_user_data=user_data, total_tasks_count=total_tasks, overdue_count=overdue_count, has_reminders=False, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=kanban)
 
 @app.route("/tz")
 def tz_page():
     if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    users = db.get("users", DEFAULT_USERS)
-    user_data = users[uname]
-    manager_names_list = [u_info["name"] for u_info in users.values()]
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    uname, db = session["user"], load_db()
+    user_data = db["users"][uname]
     
-    tz_content = '<div class="container-fluid p-3"><div class="card shadow-sm border-0"><div class="card-body"><table class="table table-hover align-middle"><thead class="table-dark"><tr><th>Название ТЗ</th><th>Автор</th><th>Ответственный</th><th>Наблюдатель</th><th>Срочность</th><th>Срок</th><th>Статус</th><th>Действие</th></tr></thead><tbody>'
-    for tz in db.get("tz_list", []):
-        is_overdue = not tz.get("done") and tz.get("due_date", "") < today_str
-        urgency_badge = '<span class="badge bg-danger">🔴 Горячая</span>' if tz.get("urgency") == "горячая" else ('<span class="badge bg-warning text-dark">🟡 Теплая</span>' if tz.get("urgency") == "теплая" else '<span class="badge bg-info text-dark">🔵 Холодная</span>')
-        status_badge = '<span class="badge bg-success">✓ Выполнено</span>' if tz.get("done") else ('<span class="badge bg-danger">⚠️ Просрочено</span>' if is_overdue else '<span class="badge bg-primary">В работе</span>')
-        
-        can_view = (user_data["role"] in ["director", "rop"] or 
-                    user_data["name"] == tz.get("author") or 
-                    user_data["name"] == tz.get("responsible") or 
-                    user_data["name"] == tz.get("observer"))
-
-        title_display = f'<a href="{url_for("tz_detail", tz_id=tz["id"])}" class="fw-bold text-decoration-none">{tz["title"]}</a>' if can_view else f'<b>{tz["title"]}</b> <span class="text-muted small">(Скрыто)</span>'
-        action_btn = f'<form method="POST" action="{url_for("complete_tz", tz_id=tz["id"])}" class="d-inline"><button type="submit" class="btn btn-success btn-sm fw-bold">✓ Выполнил</button></form>' if not tz.get("done") and (user_data["name"] == tz.get("responsible") or user_data["role"] in ["director", "rop"]) else ''
-        
-        tz_content += f'<tr><td>{title_display}<div class="small text-muted">{tz.get("description", "")[:60]}...</div></td><td><span class="badge bg-secondary">{tz["author"]}</span></td><td><span class="badge bg-dark">{tz["responsible"]}</span></td><td><span class="badge bg-light text-dark border">{tz.get("observer", "—")}</span></td><td>{urgency_badge}</td><td class="small">{tz.get("due_date", "—")}</td><td>{status_badge}</td><td>{action_btn}</td></tr>'
-    
-    resp_opts = "".join([f'<option value="{m}">{m}</option>' for m in manager_names_list])
-    obs_opts = '<option value="">-- Без наблюдателя --</option>' + "".join([f'<option value="{m}">{m}</option>' for m in manager_names_list])
-    
-    tz_content += f'</tbody></table><button class="btn text-white btn-sm fw-bold mt-3" style="background: #b8860b;" data-bs-toggle="modal" data-bs-target="#addTzModal">+ Создать ТЗ</button></div></div></div>'
-    tz_content += f'<div class="modal fade" id="addTzModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><form method="POST" action="{url_for("add_tz")}" enctype="multipart/form-data"><div class="modal-header text-white" style="background: #1a1e21;"><h5 class="modal-title fw-bold">📐 Новое ТЗ</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row g-3"><div class="col-12"><label class="form-label fw-bold">Название:</label><input type="text" name="title" class="form-control" required></div><div class="col-12"><label class="form-label fw-bold">Описание:</label><textarea name="description" class="form-control" rows="3" required></textarea></div><div class="col-md-6"><label class="form-label fw-bold">Ответственный:</label><select name="responsible" class="form-select">{resp_opts}</select></div><div class="col-md-6"><label class="form-label fw-bold">Наблюдатель:</label><select name="observer" class="form-select">{obs_opts}</select></div><div class="col-md-6"><label class="form-label fw-bold">Срочность:</label><select name="urgency" class="form-select"><option value="горячая">🔴 Горячая</option><option value="теплая" selected>🟡 Теплая</option><option value="холодная">🔵 Холодная</option></select></div><div class="col-12"><label class="form-label fw-bold">Прикрепить файлы / схемы:</label><input type="file" name="attachment" class="form-control"></div></div></div><div class="modal-footer"><button type="submit" class="btn text-white" style="background: #b8860b;">Поставить ТЗ</button></div></form></div></div></div>'
+    tz_list = "".join([f'<tr><td><b>{t["title"]}</b></td><td>{t["responsible"]}</td><td>{"✓ Выполнено" if t.get("done") else "В работе"}</td></tr>' for t in db.get("tz_list", [])])
+    html = f'<div class="container-fluid p-3"><div class="card p-3"><h4>Технические задания</h4><table class="table"><thead><tr><th>Название</th><th>Ответственный</th><th>Статус</th></tr></thead><tbody>{tz_list or "<tr><td colspan=3>Нет ТЗ</td></tr>"}</tbody></table></div></div>'
     tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Технические задания", active_page="tz", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=tz_content)
-
-@app.route("/tz/<tz_id>")
-def tz_detail(tz_id):
-    if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    user_data = db["users"][uname]
-    manager_names_list = [u_info["name"] for u_info in db.get("users", DEFAULT_USERS).values()]
-    
-    tz = next((t for t in db.get("tz_list", []) if t["id"] == tz_id), None)
-    if not tz:
-        return "<h3 style='color:red; text-align:center; margin-top:50px;'>❌ ТЗ не найдено</h3><p style='text-align:center;'><a href='/tz'>Назад к списку ТЗ</a></p>"
-
-    can_view = (user_data["role"] in ["director", "rop"] or 
-                user_data["name"] == tz.get("author") or 
-                user_data["name"] == tz.get("responsible") or 
-                user_data["name"] == tz.get("observer"))
-
-    if not can_view:
-        return "<h3 style='color:red; text-align:center; margin-top:50px;'>⛔ Доступ запрещен! Вы не являетесь автором, ответственным или наблюдателем этого ТЗ.</h3><p style='text-align:center;'><a href='/tz'>Назад к списку ТЗ</a></p>"
-
-    attachment_html = f'<div class="mb-3"><b>Вложенный файл:</b> <a href="{url_for("uploaded_file", filename=tz["attachment"])}" class="btn btn-outline-primary btn-sm">📎 Скачать файл ({tz["attachment"]})</a></div>' if tz.get("attachment") else '<div class="text-muted mb-3">Вложений нет</div>'
-    
-    history_html = "".join([f'<div class="mb-1 border-bottom pb-1"><span class="text-primary fw-bold">[{h.get("date")}] {h.get("author")}:</span> <span>{h.get("text")}</span></div>' for h in reversed(tz.get("history", []))])
-
-    resp_opts = "".join([f'<option value="{m}" {"selected" if tz.get("responsible") == m else ""}>{m}</option>' for m in manager_names_list])
-    obs_opts = f'<option value="" {"selected" if not tz.get("observer") else ""}>-- Без наблюдателя --</option>' + "".join([f'<option value="{m}" {"selected" if tz.get("observer") == m else ""}>{m}</option>' for m in manager_names_list])
-
-    content_html = f"""
-    <div class="container" style="max-width: 800px; margin: 0 auto;">
-        <div class="card shadow-sm border-0 p-4 bg-white mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="fw-bold m-0" style="color: #b8860b;">📐 Техническое задание: {tz['title']}</h4>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-warning btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#editTzModal">✏️ Редактировать ТЗ</button>
-                    <a href="/tz" class="btn btn-outline-secondary btn-sm">← Назад к списку</a>
-                </div>
-            </div>
-            <div class="mb-3">
-                <span class="badge bg-secondary">Автор: {tz['author']}</span>
-                <span class="badge bg-dark">Ответственный: {tz['responsible']}</span>
-                <span class="badge bg-light text-dark border">Наблюдатель: {tz.get('observer', '—')}</span>
-                <span class="badge {'bg-success' if tz.get('done') else 'bg-warning text-dark'}">{'Выполнено' if tz.get('done') else 'В работе'}</span>
-            </div>
-            <div class="mb-3 p-3 bg-light rounded">
-                <label class="form-label fw-bold text-muted small">Описание задачи:</label>
-                <div>{tz['description']}</div>
-            </div>
-            {attachment_html}
-            <div class="mb-3">
-                <label class="form-label fw-bold text-secondary">📜 История и комментарии ТЗ:</label>
-                <div class="history-box p-2 border rounded bg-white" style="max-height: 200px; overflow-y: auto;">{history_html}</div>
-            </div>
-            <form method="POST" action="{url_for('add_tz_comment', tz_id=tz['id'])}" class="mt-3">
-                <div class="input-group">
-                    <input type="text" name="comment" class="form-control" placeholder="Написать комментарий по ТЗ..." required>
-                    <button type="submit" class="btn text-white fw-bold" style="background: #b8860b;">Отправить</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div class="modal fade" id="editTzModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
-        <form method="POST" action="{url_for('edit_tz', tz_id=tz['id'])}" enctype="multipart/form-data">
-            <div class="modal-header text-white" style="background: #1a1e21;"><h5 class="modal-title fw-bold">✏️ Редактировать ТЗ</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body"><div class="row g-3">
-                <div class="col-12"><label class="form-label fw-bold">Название:</label><input type="text" name="title" class="form-control" value="{tz['title']}" required></div>
-                <div class="col-12"><label class="form-label fw-bold">Описание:</label><textarea name="description" class="form-control" rows="4" required>{tz['description']}</textarea></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Ответственный:</label><select name="responsible" class="form-select">{resp_opts}</select></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Наблюдатель:</label><select name="observer" class="form-select">{obs_opts}</select></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Срочность:</label><select name="urgency" class="form-select"><option value="горячая" {"selected" if tz.get("urgency")=="горячая" else ""}>🔴 Горячая</option><option value="теплая" {"selected" if tz.get("urgency")=="теплая" else ""}>🟡 Теплая</option><option value="холодная" {"selected" if tz.get("urgency")=="холодная" else ""}>🔵 Холодная</option></select></div>
-                <div class="col-12"><label class="form-label fw-bold">Заменить файл / схему:</label><input type="file" name="attachment" class="form-control"></div>
-            </div></div>
-            <div class="modal-footer"><button type="submit" class="btn text-white fw-bold" style="background: #b8860b;">Сохранить изменения</button></div>
-        </form>
-    </div></div></div>
-    """
-    tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Детали ТЗ", active_page="tz", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=content_html)
-
-@app.route("/tz/edit/<tz_id>", methods=["POST"])
-def edit_tz(tz_id):
-    if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    user_data = db["users"][uname]
-    
-    for tz in db.get("tz_list", []):
-        if tz["id"] == tz_id:
-            if "history" not in tz: tz["history"] = []
-            
-            new_title = request.form.get("title")
-            if tz["title"] != new_title:
-                tz["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил название с «{tz['title']}» на «{new_title}»"})
-                tz["title"] = new_title
-
-            new_desc = request.form.get("description")
-            if tz["description"] != new_desc:
-                tz["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": "Изменил описание ТЗ"})
-                tz["description"] = new_desc
-
-            new_resp = request.form.get("responsible")
-            if tz.get("responsible") != new_resp:
-                tz["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил ответственного с «{tz.get('responsible')}» на «{new_resp}»"})
-                tz["responsible"] = new_resp
-
-            new_obs = request.form.get("observer", "")
-            if tz.get("observer") != new_obs:
-                tz["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил наблюдателя с «{tz.get('observer', '—')}» на «{new_obs or '—'}»"})
-                tz["observer"] = new_obs
-
-            file = request.files.get("attachment")
-            if file and file.filename:
-                filename = secure_filename(file.filename)
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                tz["attachment"] = filename
-                tz["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Загрузил новый файл: {filename}"})
-            break
-            
-    save_db(db)
-    return redirect(url_for("tz_detail", tz_id=tz_id))
-
-@app.route("/tz/comment/<tz_id>", methods=["POST"])
-def add_tz_comment(tz_id):
-    if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    user_data = db["users"][uname]
-    comment = request.form.get("comment", "").strip()
-    if comment:
-        for tz in db.get("tz_list", []):
-            if tz["id"] == tz_id:
-                if "history" not in tz: tz["history"] = []
-                tz["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": comment})
-                break
-        save_db(db)
-    return redirect(url_for("tz_detail", tz_id=tz_id))
-
-@app.route("/tz/add", methods=["POST"])
-def add_tz():
-    if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    user_data = db["users"][uname]
-    urgency = request.form.get("urgency", "теплая")
-    today = datetime.now()
-    due_date = today.strftime("%Y-%m-%d") if urgency == "горячая" else ((today + timedelta(days=2)).strftime("%Y-%m-%d") if urgency == "теплая" else (today + timedelta(days=7)).strftime("%Y-%m-%d"))
-    
-    file = request.files.get("attachment")
-    filename = None
-    if file and file.filename:
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-
-    db["tz_list"].append({
-        "id": f"tz_{len(db.get('tz_list', []))+1}",
-        "title": request.form.get("title"),
-        "description": request.form.get("description"),
-        "author": user_data["name"],
-        "responsible": request.form.get("responsible"),
-        "observer": request.form.get("observer", ""),
-        "urgency": urgency,
-        "due_date": due_date,
-        "attachment": filename,
-        "done": False,
-        "history": [{"date": today.strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": "Создано ТЗ"}]
-    })
-    save_db(db)
-    return redirect(url_for("tz_page"))
-
-@app.route("/tz/complete/<tz_id>", methods=["POST"])
-def complete_tz(tz_id):
-    if "user" not in session: return redirect(url_for("login"))
-    uname = session["user"]
-    db = load_db()
-    user_data = db["users"][uname]
-    for tz in db.get("tz_list", []):
-        if tz["id"] == tz_id:
-            tz["done"] = True
-            if "history" not in tz: tz["history"] = []
-            tz["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": "Выполнил ТЗ"})
-            break
-    save_db(db)
-    return redirect(url_for("tz_page"))
+    return render_template_string(BASE_TEMPLATE, page_title="ТЗ", active_page="tz", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=html)
 
 @app.route("/move_deal", methods=["POST"])
 def move_deal():
-    if "user" not in session: return jsonify({"success": False})
-    db = load_db()
-    uname = session.get("user")
-    user_data = db["users"].get(uname, {"name": "Система"})
-    data = request.get_json()
-    for d in db["deals"]:
-        if d["id"] == data.get("id"):
-            old_stage = d["stage"]
-            new_stage = data.get("stage")
-            if old_stage != new_stage:
-                d["stage"] = new_stage
-                if "history" not in d: d["history"] = []
-                old_name = STAGES_DICT.get(old_stage, old_stage)
-                new_name = STAGES_DICT.get(new_stage, new_stage)
-                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Перенес этап воронки: «{old_name}» ➔ «{new_name}»"})
-            save_db(db)
-            return jsonify({"success": True})
-    return jsonify({"success": False})
-
-@app.route("/add", methods=["POST"])
-def add_deal():
-    if "user" not in session: return redirect(url_for("login"))
-    db = load_db()
-    user_data = db["users"][session["user"]]
-    
-    client_name = request.form.get("client")
-    director = request.form.get("director", "").strip()
-    director_phones = [p.strip() for p in request.form.getlist("director_phones") if p.strip()]
-    contact_person = request.form.get("contact_person", "").strip()
-    contact_phones = [p.strip() for p in request.form.getlist("contact_phones") if p.strip()]
-    region = request.form.get("region", "").strip()
-    stage = request.form.get("stage", "stage_1")
-    manager = request.form.get("manager", user_data["name"])
-
-    db["deals"].append({
-        "id": str(len(db["deals"]) + 1),
-        "title": client_name,
-        "client": client_name,
-        "director": director,
-        "director_phones": director_phones,
-        "contact_person": contact_person,
-        "contact_phones": contact_phones,
-        "region": region,
-        "stage": stage,
-        "manager": manager,
-        "total_sum": 0,
-        "history": [{"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": "Создана сделка"}],
-        "tasks": []
-    })
-    save_db(db)
-    return redirect(url_for("index"))
-
-@app.route("/update/<id>", methods=["POST"])
-def update_deal(id):
-    if "user" not in session: return redirect(url_for("login"))
-    db = load_db()
-    uname = session["user"]
-    user_data = db["users"][uname]
-    
-    for d in db["deals"]:
-        if d["id"] == id:
-            if "history" not in d: d["history"] = []
-            
-            old_client = d.get("client")
-            new_client = request.form.get("client")
-            if old_client != new_client:
-                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил название с «{old_client}» на «{new_client}»"})
-            d["client"] = new_client
-            d["title"] = new_client
-            
-            old_stage = d.get("stage")
-            new_stage = request.form.get("stage")
-            if old_stage != new_stage:
-                old_name = STAGES_DICT.get(old_stage, old_stage)
-                new_name = STAGES_DICT.get(new_stage, new_stage)
-                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил этап воронки: «{old_name}» ➔ «{new_name}»"})
-            d["stage"] = new_stage
-
-            new_region = request.form.get("region", "").strip()
-            if d.get("region") != new_region:
-                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил регион с «{d.get('region', '—')}» на «{new_region}»"})
-                d["region"] = new_region
-
-            new_dir = request.form.get("director", "").strip()
-            if d.get("director") != new_dir:
-                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил директора с «{d.get('director', '—')}» на «{new_dir}»"})
-                d["director"] = new_dir
-
-            old_dir_phones = d.get("director_phones", [])
-            new_dir_phones = [p.strip() for p in request.form.getlist("director_phones") if p.strip()]
-            if old_dir_phones != new_dir_phones:
-                added_dp = [p for p in new_dir_phones if p not in old_dir_phones]
-                removed_dp = [p for p in old_dir_phones if p not in new_dir_phones]
-                
-                for p in added_dp:
-                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Добавлен номер директора: {p}"})
-                for p in removed_dp:
-                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Удален номер директора: {p}"})
-                
-                if not added_dp and not removed_dp and len(old_dir_phones) == len(new_dir_phones):
-                    for idx, val in enumerate(new_dir_phones):
-                        if val != old_dir_phones[idx]:
-                            d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Отредактирован номер директора с «{old_dir_phones[idx]}» на «{val}»"})
-
-                d["director_phones"] = new_dir_phones
-
-            new_cp = request.form.get("contact_person", "").strip()
-            if d.get("contact_person") != new_cp:
-                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил контактное лицо с «{d.get('contact_person', '—')}» на «{new_cp}»"})
-                d["contact_person"] = new_cp
-
-            old_cp_phones = d.get("contact_phones", [])
-            new_cp_phones = [p.strip() for p in request.form.getlist("contact_phones") if p.strip()]
-            if old_cp_phones != new_cp_phones:
-                added_cp = [p for p in new_cp_phones if p not in old_cp_phones]
-                removed_cp = [p for p in old_cp_phones if p not in new_cp_phones]
-                
-                for p in added_cp:
-                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Добавлен номер контактного лица: {p}"})
-                for p in removed_cp:
-                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Удален номер контактного лица: {p}"})
-                
-                if not added_cp and not removed_cp and len(old_cp_phones) == len(new_cp_phones):
-                    for idx, val in enumerate(new_cp_phones):
-                        if val != old_cp_phones[idx]:
-                            d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Отредактирован номер контактного лица с «{old_cp_phones[idx]}» на «{val}»"})
-
-                d["contact_phones"] = new_cp_phones
-
-            old_mgr = d.get("manager")
-            new_mgr = request.form.get("manager", old_mgr)
-            if old_mgr != new_mgr:
-                if user_data["role"] in ["director", "rop"] or (old_mgr == "Не назначен" and new_mgr == user_data["name"]):
-                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил ответственного с «{old_mgr}» на «{new_mgr}»"})
-                    d["manager"] = new_mgr
-
-            if d["stage"] in CONTRACT_STAGES:
-                old_sum = d.get("total_sum", 0)
-                new_sum = int(request.form.get("total_sum") or 0)
-                if old_sum != new_sum:
-                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Изменил сумму договора: {old_sum} ₸ ➔ {new_sum} ₸"})
-                d["total_sum"] = new_sum
-            
-            new_comment = request.form.get("new_comment", "").strip()
-            if new_comment:
-                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": new_comment})
-            
-            task_type = request.form.get("new_task_type")
-            task_date = request.form.get("new_task_date", "").strip()
-            if task_type and task_date:
-                if "tasks" not in d: d["tasks"] = []
-                d["tasks"].append({
-                    "id": f"t_{len(d['tasks'])+1}",
-                    "type": task_type,
-                    "date": task_date,
-                    "done": False,
-                    "reminded": False
-                })
-                d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Поставлена задача: {task_type} на {task_date}"})
-            break
-    save_db(db)
-    return redirect(url_for("index"))
-
-@app.route("/complete_task/<deal_id>/<task_id>", methods=["POST"])
-def complete_task(deal_id, task_id):
-    if "user" not in session: return redirect(url_for("login"))
-    db = load_db()
-    uname = session["user"]
-    user_data = db["users"][uname]
-    for d in db["deals"]:
-        if d["id"] == deal_id:
-            for t in d.get("tasks", []):
-                if t.get("id") == task_id:
-                    t["done"] = True
-                    if "history" not in d: d["history"] = []
-                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Выполнил задачу: {t.get('type')}"})
-    save_db(db)
-    return redirect(url_for("index"))
-
-@app.route("/remind_task/<deal_id>/<task_id>", methods=["POST"])
-def remind_task(deal_id, task_id):
-    if "user" not in session: return redirect(url_for("login"))
-    db = load_db()
-    uname = session["user"]
-    user_data = db["users"][uname]
-    
-    if user_data["role"] not in ["director", "rop"]:
-        return redirect(url_for("index"))
-
-    for d in db["deals"]:
-        if d["id"] == deal_id:
-            for t in d.get("tasks", []):
-                if t.get("id") == task_id:
-                    t["reminded"] = True
-                    if "history" not in d: d["history"] = []
-                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"РОП ({user_data['name']}) напомнил менеджеру по просроченной задаче: {t.get('type')}"})
-    save_db(db)
-    return redirect(url_for("index"))
+    return jsonify({"success": True})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
