@@ -81,9 +81,7 @@ def save_db(data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 def get_counters(db, uname, user_data):
-    # Неоткрытые / невыполненные ТЗ для пользователя
     unread_tz_count = sum(1 for tz in db.get("tz_list", []) if not tz.get("done", False) and (tz.get("responsible") == user_data["name"] or user_data["role"] in ["director", "rop"]))
-    # Непрочитанные сообщения в чатах
     user_chats = [c for c in db.get("chats", []) if uname in c.get("members", [])]
     unread_msgs_count = sum(max(0, len(c.get("messages", [])) - c.get(f"read_{uname}", 0)) for c in user_chats)
     return unread_tz_count, unread_msgs_count
@@ -169,9 +167,15 @@ BASE_TEMPLATE = """
         .wrapper { display: flex; width: 100%; height: 100vh; overflow: hidden; }
         
         /* Мобильная адаптация боковой панели */
-        .sidebar { width: 55px; background: #1a1e21; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.25s ease-in-out; overflow: hidden; white-space: nowrap; z-index: 1000; border-right: 2px solid #b8860b; }
-        .sidebar:hover, .sidebar:focus-within { width: 220px; }
-        .sidebar .brand { padding: 12px; font-size: 14px; font-weight: bold; background: #111; border-bottom: 1px solid #373b3e; text-align: left; color: #b8860b; display: flex; align-items: center; gap: 10px; }
+        .sidebar { width: 55px; background: #1a1e21; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.25s ease-in-out; overflow: hidden; white-space: nowrap; z-index: 1050; border-right: 2px solid #b8860b; }
+        
+        /* На ПК раздвигаем при наведении, на смартфонах — только кликом по бренду */
+        @media (min-width: 769px) {
+            .sidebar:hover, .sidebar:focus-within { width: 220px; }
+        }
+        .sidebar.expanded { width: 220px !important; }
+
+        .sidebar .brand { padding: 12px; font-size: 14px; font-weight: bold; background: #111; border-bottom: 1px solid #373b3e; text-align: left; color: #b8860b; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
         .sidebar .brand img { width: 32px; height: 32px; object-fit: contain; }
         .sidebar .menu { padding: 15px 5px; display: flex; flex-direction: column; gap: 8px; flex-grow: 1; overflow-y: auto; }
         .sidebar .menu a { color: #adb5bd; text-decoration: none; padding: 10px 12px; border-radius: 4px; font-size: 13px; display: flex; align-items: center; gap: 12px; transition: 0.2s; position: relative; }
@@ -202,7 +206,6 @@ BASE_TEMPLATE = """
 
         @media (max-width: 768px) {
             .sidebar { width: 55px; }
-            .sidebar:hover, .sidebar:focus-within { width: 220px; }
             .top-bar h5 { font-size: 13px !important; }
             .top-bar { padding: 8px 10px; height: auto; }
         }
@@ -215,8 +218,8 @@ BASE_TEMPLATE = """
 <audio id="tzSound" src="{{ url_for('static', filename='ding.mp3') }}" preload="auto"></audio>
 
 <div class="wrapper">
-    <div class="sidebar">
-        <div class="brand">
+    <div class="sidebar" id="mainSidebar">
+        <div class="brand" onclick="toggleSidebar()">
             <img src="{{ url_for('uploaded_file', filename='1000100784.jpg') }}" onerror="this.style.display='none'">
             <span><b>M-CONSTRUCTION</b></span>
         </div>
@@ -287,6 +290,9 @@ BASE_TEMPLATE = """
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+function toggleSidebar() {
+    document.getElementById('mainSidebar').classList.toggle('expanded');
+}
 function addPhoneField(containerId, inputName, val="") {
     var c = document.getElementById(containerId);
     var d = document.createElement('div');
