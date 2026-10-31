@@ -81,25 +81,17 @@ def save_db(data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 def send_sms_code(code, req_phone):
-    """Отправка SMS с кодом на телефон РОПа через Mobizon или вывод в логи Render"""
     text = f"M-CONSTRUCTION: Запрос доступа от {req_phone}. Код: {code}"
-    
     print(f"\n==========================================", flush=True)
     print(f"[SMS SECURITY VERIFICATION] {text}", flush=True)
     print(f"==========================================\n", flush=True)
-
     if MOBIZON_API_KEY == "YOUR_MOBIZON_API_KEY" or not MOBIZON_API_KEY:
         print(f"[ТЕСТОВЫЙ РЕЖИМ SMS] {text}")
         return True
     try:
         url = "https://api.mobizon.kz/service/message/sendSmsMessage"
-        params = {
-            "recipient": ROP_PHONE.replace("+", ""),
-            "text": text,
-            "apiKey": MOBIZON_API_KEY
-        }
+        params = {"recipient": ROP_PHONE.replace("+", ""), "text": text, "apiKey": MOBIZON_API_KEY}
         res = requests.get(url, params=params, timeout=5)
-        print(f"[MOBIZON RESPONSE] {res.text}", flush=True)
         return res.status_code == 200
     except Exception as e:
         print(f"[MOBIZON ERROR] Ошибка отправки SMS: {e}", flush=True)
@@ -117,10 +109,8 @@ REQUEST_ACCESS_HTML = """
 <div class="card p-4 shadow border-0 bg-white" style="width: 380px;">
     <h3 class="mb-1 text-center fw-bold" style="color: #b8860b;">M-CONSTRUCTION</h3>
     <div class="text-center text-muted small mb-3">Защищенная корпоративная CRM</div>
-
     {% if error %}<div class="alert alert-danger py-2 small">{{ error }}</div>{% endif %}
     {% if success %}<div class="alert alert-success py-2 small">{{ success }}</div>{% endif %}
-
     {% if step == 'phone' %}
     <form method="POST" action="/request_access">
         <div class="mb-3">
@@ -173,6 +163,13 @@ BASE_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <title>{{ page_title }} - M-CONSTRUCTION CRM</title>
+    <!-- PWA Мета-теги -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1a365d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Мамыр CRM">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background: #f8f9fa; font-family: Arial, sans-serif; overflow: hidden; height: 100vh; }
@@ -182,9 +179,10 @@ BASE_TEMPLATE = """
         .sidebar .brand { padding: 12px; font-size: 14px; font-weight: bold; background: #111; border-bottom: 1px solid #373b3e; text-align: left; color: #b8860b; display: flex; align-items: center; gap: 10px; }
         .sidebar .brand img { width: 32px; height: 32px; object-fit: contain; }
         .sidebar .menu { padding: 15px 5px; display: flex; flex-direction: column; gap: 8px; flex-grow: 1; overflow-y: auto; }
-        .sidebar .menu a { color: #adb5bd; text-decoration: none; padding: 10px 12px; border-radius: 4px; font-size: 13px; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
+        .sidebar .menu a { color: #adb5bd; text-decoration: none; padding: 10px 12px; border-radius: 4px; font-size: 13px; display: flex; align-items: center; gap: 12px; transition: 0.2s; position: relative; }
         .sidebar .menu a:hover, .sidebar .menu a.active { background: #b8860b; color: #fff; }
         .sidebar .menu a i { font-size: 16px; min-width: 24px; text-align: center; font-style: normal; }
+        .nav-badge { background: #e53e3e; color: #fff; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 10px; line-height: 1; margin-left: auto; }
         
         .main-content { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         .top-bar { background: #ffffff; border-bottom: 1px solid #dee2e6; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; height: 60px; flex-shrink: 0; }
@@ -218,13 +216,13 @@ BASE_TEMPLATE = """
         </div>
         <div class="menu">
             <a href="/" class="{% if active_page == 'kanban' %}active{% endif %}"><i>📊</i> <span>Канбан CRM</span></a>
-            <a href="/tz" class="{% if active_page == 'tz' %}active{% endif %}"><i>📐</i> <span>Тех. задания</span></a>
+            <a href="/tz" class="{% if active_page == 'tz' %}active{% endif %}"><i>📋</i> <span>Тех. задания</span><span class="nav-badge" id="tzBadge" style="display:none;">0</span></a>
             <a href="/generator" class="{% if active_page == 'generator' %}active{% endif %}"><i>📄</i> <span>Генератор КП</span></a>
             {% if current_user_data.role in ['director', 'rop'] %}
-            <a href="/registry" class="{% if active_page == 'registry' %}active{% endif %}"><i>📋</i> <span>Реестр КП</span></a>
+            <a href="/registry" class="{% if active_page == 'registry' %}active{% endif %}"><i>🗂️</i> <span>Реестр КП</span></a>
             <a href="/analytics" class="{% if active_page == 'analytics' %}active{% endif %}"><i>📈</i> <span>Воронка (Отчеты)</span></a>
             {% endif %}
-            <a href="/chat" class="{% if active_page == 'chat' %}active{% endif %}"><i>💬</i> <span>Чат сотрудников</span></a>
+            <a href="/chat" class="{% if active_page == 'chat' %}active{% endif %}"><i>💬</i> <span>Чат сотрудников</span><span class="nav-badge" id="chatBadge">3</span></a>
         </div>
         
         <div class="p-2 bg-dark border-top border-secondary text-muted small flex-shrink-0">
@@ -246,15 +244,15 @@ BASE_TEMPLATE = """
         <div class="top-bar">
             <div class="d-flex align-items-center gap-3">
                 {% if active_page == 'kanban' %}
-                <h5 class="m-0 fw-bold text-secondary">🗂️ Воронка продаж</h5>
+                <h5 class="m-0 fw-bold text-secondary">📊 Канбан CRM</h5>
                 <button class="btn btn-success btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addModal">+ Добавить сделку</button>
                 {% elif active_page == 'tz' %}
-                <h5 class="m-0 fw-bold text-secondary">📐 Технические задания</h5>
+                <h5 class="m-0 fw-bold text-secondary">📋 Технические задания</h5>
                 <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addTzModal">+ Создать ТЗ</button>
                 {% elif active_page == 'generator' %}
                 <h5 class="m-0 fw-bold text-secondary">📄 Генератор коммерческих предложений M-CONSTRUCTION</h5>
                 {% elif active_page == 'registry' %}
-                <h5 class="m-0 fw-bold text-secondary">📋 Общий реестр коммерческих предложений</h5>
+                <h5 class="m-0 fw-bold text-secondary">🗂️ Общий реестр коммерческих предложений</h5>
                 {% elif active_page == 'chat' %}
                 <h5 class="m-0 fw-bold text-secondary">💬 Внутренний чат сотрудников</h5>
                 {% elif active_page == 'profile' %}
@@ -283,6 +281,10 @@ BASE_TEMPLATE = """
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js');
+    }
+
 function addPhoneField(containerId, inputName, val="") {
     var c = document.getElementById(containerId);
     var d = document.createElement('div');
@@ -311,6 +313,47 @@ def check_phone_approved():
 @app.route('/static/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+
+# --- Маршруты для мобильного PWA-приложения ---
+@app.route('/manifest.json')
+def manifest():
+    manifest_data = {
+        "name": "M-CONSTRUCTION CRM",
+        "short_name": "Мамыр CRM",
+        "description": "Корпоративная CRM-система ТОО «Мамыр»",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#eaeff5",
+        "theme_color": "#1a365d",
+        "orientation": "portrait-primary",
+        "icons": [
+            {
+                "src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+                "sizes": "192x192",
+                "type": "image/png"
+            },
+            {
+                "src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+                "sizes": "512x512",
+                "type": "image/png"
+            }
+        ]
+    }
+    return jsonify(manifest_data)
+
+@app.route('/sw.js')
+def service_worker():
+    sw_code = """
+    const CACHE_NAME = 'mamyr-crm-v1';
+    self.addEventListener('install', (event) => { self.skipWaiting(); });
+    self.addEventListener('activate', (event) => { event.waitUntil(clients.claim()); });
+    self.addEventListener('fetch', (event) => {
+      event.respondWith(
+        fetch(event.request).catch(() => caches.match(event.request))
+      );
+    });
+    """
+    return app.response_class(sw_code, mimetype='application/javascript')
 
 @app.route("/request_access", methods=["GET", "POST"])
 def request_access():
