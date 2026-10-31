@@ -102,11 +102,12 @@ REQUEST_ACCESS_HTML = """
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Запрос доступа - M-CONSTRUCTION CRM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="bg-dark d-flex align-items-center justify-content-center vh-100">
-<div class="card p-4 shadow border-0 bg-white" style="width: 380px;">
+<body class="bg-dark d-flex align-items-center justify-content-center vh-100 p-3">
+<div class="card p-4 shadow border-0 bg-white" style="width: 100%; max-width: 380px;">
     <h3 class="mb-1 text-center fw-bold" style="color: #b8860b;">M-CONSTRUCTION</h3>
     <div class="text-center text-muted small mb-3">Защищенная корпоративная CRM</div>
     {% if error %}<div class="alert alert-danger py-2 small">{{ error }}</div>{% endif %}
@@ -141,11 +142,12 @@ LOGIN_HTML = """
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вход в M-CONSTRUCTION CRM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="bg-dark d-flex align-items-center justify-content-center vh-100">
-<form method="POST" action="/login" class="card p-4 shadow border-0 bg-white" style="width: 340px;">
+<body class="bg-dark d-flex align-items-center justify-content-center vh-100 p-3">
+<form method="POST" action="/login" class="card p-4 shadow border-0 bg-white" style="width: 100%; max-width: 340px;">
     <h3 class="mb-1 text-center fw-bold" style="color: #b8860b;">M-CONSTRUCTION</h3>
     <div class="text-center text-muted small mb-3">Авторизация сотрудника</div>
     {% if error %}<div class="alert alert-danger py-1 small">{{ error }}</div>{% endif %}
@@ -162,6 +164,7 @@ BASE_TEMPLATE = """
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ page_title }} - M-CONSTRUCTION CRM</title>
     <!-- PWA Мета-теги -->
     <link rel="manifest" href="/manifest.json">
@@ -172,8 +175,10 @@ BASE_TEMPLATE = """
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; font-family: Arial, sans-serif; overflow: hidden; height: 100vh; }
+        body { background: #f8f9fa; font-family: Arial, sans-serif; overflow: hidden; height: 100vh; margin: 0; }
         .wrapper { display: flex; width: 100%; height: 100vh; overflow: hidden; }
+        
+        /* Мобильная адаптивность меню */
         .sidebar { width: 60px; background: #1a1e21; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.25s ease-in-out; overflow: hidden; white-space: nowrap; z-index: 1000; border-right: 2px solid #b8860b; }
         .sidebar:hover { width: 250px; }
         .sidebar .brand { padding: 12px; font-size: 14px; font-weight: bold; background: #111; border-bottom: 1px solid #373b3e; text-align: left; color: #b8860b; display: flex; align-items: center; gap: 10px; }
@@ -185,12 +190,12 @@ BASE_TEMPLATE = """
         .nav-badge { background: #e53e3e; color: #fff; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 10px; line-height: 1; margin-left: auto; }
         
         .main-content { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        .top-bar { background: #ffffff; border-bottom: 1px solid #dee2e6; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; height: 60px; flex-shrink: 0; }
-        .content-body { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 15px; background: #f8f9fa; }
+        .top-bar { background: #ffffff; border-bottom: 1px solid #dee2e6; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; min-height: 60px; flex-shrink: 0; flex-wrap: wrap; gap: 10px; }
+        .content-body { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 12px; background: #f8f9fa; }
         
         .kanban-outer { flex-grow: 1; overflow-x: auto; overflow-y: hidden; white-space: nowrap; padding-bottom: 10px; }
         .kanban { display: inline-flex; gap: 12px; height: 100%; align-items: flex-start; }
-        .kanban-outer::-webkit-scrollbar { height: 12px; }
+        .kanban-outer::-webkit-scrollbar { height: 10px; }
         .kanban-outer::-webkit-scrollbar-track { background: #dee2e6; border-radius: 6px; }
         .kanban-outer::-webkit-scrollbar-thumb { background: #b8860b; border-radius: 6px; }
 
@@ -204,6 +209,13 @@ BASE_TEMPLATE = """
         .drag-over { background-color: #fdf3d0 !important; border: 2px dashed #b8860b; }
         .blink-remind { animation: blinker 1.2s linear infinite; }
         @keyframes blinker { 50% { opacity: 0.3; } }
+
+        /* Автоматическое развертывание сайдбара на узких экранах смартфонов */
+        @media (max-width: 768px) {
+            .sidebar { width: 220px; }
+            .top-bar h5 { font-size: 14px !important; }
+            .top-bar { padding: 8px 10px; height: auto; }
+        }
     </style>
 </head>
 <body>
@@ -242,34 +254,34 @@ BASE_TEMPLATE = """
 
     <div class="main-content">
         <div class="top-bar">
-            <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
                 {% if active_page == 'kanban' %}
-                <h5 class="m-0 fw-bold text-secondary">📊 Канбан CRM</h5>
-                <button class="btn btn-success btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addModal">+ Добавить сделку</button>
+                <h5 class="m-0 fw-bold text-secondary">📊 Канбан</h5>
+                <button class="btn btn-success btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addModal">+ Сделка</button>
                 {% elif active_page == 'tz' %}
-                <h5 class="m-0 fw-bold text-secondary">📋 Технические задания</h5>
-                <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addTzModal">+ Создать ТЗ</button>
+                <h5 class="m-0 fw-bold text-secondary">📋 Тех. задания</h5>
+                <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addTzModal">+ ТЗ</button>
                 {% elif active_page == 'generator' %}
-                <h5 class="m-0 fw-bold text-secondary">📄 Генератор коммерческих предложений M-CONSTRUCTION</h5>
+                <h5 class="m-0 fw-bold text-secondary">📄 Генератор КП</h5>
                 {% elif active_page == 'registry' %}
-                <h5 class="m-0 fw-bold text-secondary">🗂️ Общий реестр коммерческих предложений</h5>
+                <h5 class="m-0 fw-bold text-secondary">🗂️ Реестр КП</h5>
                 {% elif active_page == 'chat' %}
-                <h5 class="m-0 fw-bold text-secondary">💬 Внутренний чат сотрудников</h5>
+                <h5 class="m-0 fw-bold text-secondary">💬 Чат</h5>
                 {% elif active_page == 'profile' %}
-                <h5 class="m-0 fw-bold text-secondary">👤 Настройки профиля</h5>
+                <h5 class="m-0 fw-bold text-secondary">👤 Профиль</h5>
                 {% else %}
-                <h5 class="m-0 fw-bold text-secondary">📈 Полная аналитика и воронка продаж</h5>
+                <h5 class="m-0 fw-bold text-secondary">📈 Аналитика</h5>
                 {% endif %}
             </div>
-            <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2">
                 {% if active_page == 'kanban' %}
                 <button class="btn btn-warning btn-sm fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#tasksListModal">
                     🔔 Задачи <span class="badge bg-primary ms-1">{{ total_tasks_count }}</span>
-                    {% if overdue_count > 0 %}<span class="badge bg-danger ms-1">⚠️ Просрочено: {{ overdue_count }}</span>{% endif %}
-                    {% if has_reminders %}<span class="badge bg-danger ms-1 blink-remind">⚡ РОП Напоминает!</span>{% endif %}
+                    {% if overdue_count > 0 %}<span class="badge bg-danger ms-1">⚠️ {{ overdue_count }}</span>{% endif %}
+                    {% if has_reminders %}<span class="badge bg-danger ms-1 blink-remind">⚡ РОП!</span>{% endif %}
                 </button>
                 {% endif %}
-                <span class="badge" style="background: #b8860b;">M-CONSTRUCTION CRM Активна</span>
+                <span class="badge d-none d-md-inline-block" style="background: #b8860b;">M-CONSTRUCTION CRM</span>
             </div>
         </div>
 
@@ -314,7 +326,6 @@ def check_phone_approved():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
 
-# --- Маршруты для мобильного PWA-приложения ---
 @app.route('/manifest.json')
 def manifest():
     manifest_data = {
@@ -356,12 +367,21 @@ def service_worker():
     return app.response_class(sw_code, mimetype='application/javascript')
 
 def get_counters(db, uname, user_data):
-    # Реальное количество невыполненных ТЗ для сотрудника
+    # ТОЛЬКО невыполненные ТЗ, где сотрудник является ответственным (или РОП/Директор видит все открытые)
     unread_tz_count = sum(1 for tz in db.get("tz_list", []) if not tz.get("done", False) and (tz.get("responsible") == user_data["name"] or user_data["role"] in ["director", "rop"]))
     
-    # Реальное количество сообщений в доступных пользователю чатах
+    # ТОЛЬКО количество непрочитанных сообщений (сообщений, отправленных другими участниками в чаты пользователя)
     user_chats = [c for c in db.get("chats", []) if uname in c.get("members", [])]
-    unread_msgs_count = sum(len(c.get("messages", [])) for c in user_chats)
+    unread_msgs_count = 0
+    for c in user_chats:
+        read_key = f"read_{uname}"
+        last_read_idx = c.get(read_key, 0)
+        msgs = c.get("messages", [])
+        # Считаем сообщения после последнего прочитанного индекса
+        unread_in_chat = len(msgs) - last_read_idx
+        if unread_in_chat > 0:
+            unread_msgs_count += unread_in_chat
+            
     return unread_tz_count, unread_msgs_count
 
 @app.route("/request_access", methods=["GET", "POST"])
@@ -811,9 +831,9 @@ def generator_page():
     </style>
 
     <div class="gen-container">
-        <div class="alert alert-secondary py-2 mb-3 d-flex justify-content-between align-items-center">
+        <div class="alert alert-secondary py-2 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>💻 Вы вошли как: <b><span id="sessionAuthorName"></span></b></div>
-            <div style="width: 320px;">
+            <div style="width: 280px;">
                 <label style="margin:0; font-size:11px;">Чью подпись использовать в КП?</label>
                 <select id="kpSignerSelect" class="form-select form-select-sm"></select>
             </div>
@@ -1457,9 +1477,19 @@ def chat_page(chat_id=None):
                 for c in db["chats"]:
                     if c["id"] == chat_id:
                         c["messages"].append({"author_key": uname, "author_name": user_data["name"], "text": msg_text, "time": datetime.now().strftime("%d.%m %H:%M")})
+                        # Обновляем указатель прочтения для отправителя
+                        c[f"read_{uname}"] = len(c["messages"])
                         break
                 save_db(db)
                 return redirect(url_for("chat_page", chat_id=chat_id))
+
+    # Если открыт конкретный чат, сразу помечаем все сообщения в нем как прочитанные для текущего пользователя
+    if chat_id:
+        for c in db.get("chats", []):
+            if c["id"] == chat_id and uname in c.get("members", []):
+                c[f"read_{uname}"] = len(c.get("messages", []))
+                save_db(db)
+                break
 
     user_chats = [c for c in db.get("chats", []) if uname in c.get("members", [])]
     active_chat = next((c for c in user_chats if c["id"] == chat_id), None)
