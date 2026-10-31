@@ -3,40 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <title>Реестр коммерческих предложений — ТОО «Мамыр»</title>
-    <!-- Библиотека SheetJS для генерации Excel -->
+    <!-- PWA Мета-теги -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1a365d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Calibri', 'Arial', sans-serif; }
-        body { background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1400px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        body { background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; display: flex; gap: 20px; }
         
+        .sidebar-menu { width: 240px; background: #1a365d; min-height: 100vh; padding: 15px 0; color: #fff; border-radius: 12px; flex-shrink: 0; }
+        .menu-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; color: #cbd5e0; text-decoration: none; font-size: 14px; font-weight: 500; transition: 0.2s; }
+        .menu-item:hover, .menu-item.active { background: #2b6cb0; color: #fff; }
+        .menu-link-content { display: flex; align-items: center; gap: 12px; }
+        .menu-icon { font-size: 18px; width: 24px; text-align: center; }
+        .nav-badge { background: #e53e3e; color: #fff; font-size: 11px; font-weight: bold; padding: 2px 7px; border-radius: 10px; line-height: 1; min-width: 18px; text-align: center; }
+
+        .container { flex: 1; max-width: 1400px; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2b6cb0; padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
         .header h1 { color: #1a365d; font-size: 22px; margin: 0; }
         .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-        
         .toolbar { display: flex; justify-content: space-between; align-items: center; background: #edf2f7; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
         .filter-group { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
         .filter-item { display: flex; align-items: center; gap: 8px; }
         .filter-item label { font-weight: bold; color: #2d3748; font-size: 14px; }
         .filter-item select, .filter-item input { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e0; font-size: 14px; font-weight: bold; background: #fff; }
-
         .stats-info { font-size: 14px; color: #4a5568; }
         .stats-info b { color: #2b6cb0; font-size: 16px; }
-
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #cbd5e0; padding: 10px 12px; text-align: left; font-size: 13px; vertical-align: middle; }
         th { background: #1a365d; color: #fff; font-weight: bold; font-size: 12px; text-transform: uppercase; }
         tr:nth-child(even) { background: #f8fafc; }
-
-        /* Стиль для зависших сделок (> 4 дней без изменения статуса) */
         tr.stale-deal { background-color: #fff5f5 !important; border-left: 4px solid #e53e3e; }
         .stale-badge { display: inline-block; background: #fed7d7; color: #9b2c2c; font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-top: 4px; }
-
         .client-link { color: #2b6cb0; text-decoration: underline; cursor: pointer; font-weight: bold; }
-        .client-link:hover { color: #1a365d; }
-
         .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; text-align: center; width: 100%; }
-        
         .status-sent, .status-new { background: #e2e8f0; color: #2d3748; }
         .status-talks { background: #ebf8ff; color: #2b6cb0; }
         .status-pause { background: #edf2f7; color: #4a5568; }
@@ -44,11 +47,9 @@
         .status-expensive { background: #feebc8; color: #c05621; }
         .status-discount { background: #fed7d7; color: #9b2c2c; }
         .status-competitor { background: #742a2a; color: #ffffff; }
-        
         .status-ready { background: #d4edda; color: #155724; }
         .status-contract { background: #28a745; color: #ffffff; }
         .status-success { background: #155724; color: #ffffff; }
-
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
         .modal-card { background: #fff; border-radius: 10px; padding: 25px; width: 500px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; }
@@ -60,13 +61,24 @@
 </head>
 <body>
 
+<!-- Боковая панель без квадратиков -->
+<div class="sidebar-menu">
+    <div style="padding: 0 18px 15px 18px; font-weight: bold; font-size: 16px; border-bottom: 1px solid #2b6cb0; color: #fff;">M-CONSTRUCTION</div>
+    <a href="/kanban" class="menu-item"><div class="menu-link-content"><span class="menu-icon">📊</span><span>Канбан CRM</span></div></a>
+    <a href="/tz" class="menu-item"><div class="menu-link-content"><span class="menu-icon">📋</span><span>Тех. задания</span></div><span class="nav-badge" id="tzBadge" style="display:none;">0</span></a>
+    <a href="/generator" class="menu-item"><div class="menu-link-content"><span class="menu-icon">📄</span><span>Генератор КП</span></div></a>
+    <a href="/registry" class="menu-item active"><div class="menu-link-content"><span class="menu-icon">🗂️</span><span>Реестр КП</span></div></a>
+    <a href="/reports" class="menu-item"><div class="menu-link-content"><span class="menu-icon">📈</span><span>Воронка (Отчеты)</span></div></a>
+    <a href="/chat" class="menu-item"><div class="menu-link-content"><span class="menu-icon">💬</span><span>Чат сотрудников</span></div><span class="nav-badge" id="chatBadge">3</span></a>
+</div>
+
 <div class="container">
     <div class="header">
         <h1>Общий реестр коммерческих предложений</h1>
         <div class="header-actions">
             <button onclick="exportToExcel()" style="background: #276749; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">📊 Выгрузить в Excel</button>
             <button onclick="loadRegistry()" style="background: #2b6cb0; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">Обновить</button>
-            <button onclick="clearAllData()" style="background: #e53e3e; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">🗑️ Очистить всю базу</button>
+            <button onclick="clearAllData()" style="background: #e53e3e; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">🗑️ Очистить базу</button>
         </div>
     </div>
 
@@ -89,7 +101,7 @@
                     <option value="ALL">-- Все статусы --</option>
                     <option value="sent">Создано КП</option>
                     <option value="talks">Веду переговоры</option>
-                    <option value="nosignal">Нет обратной связи / Не берет трубку</option>
+                    <option value="nosignal">Нет обратной связи</option>
                     <option value="pause">Клиент взял паузу</option>
                     <option value="expensive">Дорого</option>
                     <option value="discount">Просит скидку</option>
@@ -123,60 +135,30 @@
 </div>
 
 <script>
-    var currentFilteredDeals = [];
+    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }
 
-    var statusNames = {
-        'sent': 'Создано КП',
-        'new': 'Создано КП',
-        'talks': 'Веду переговоры',
-        'pause': 'Клиент взял паузу',
-        'nosignal': 'Нет обратной связи / Не берет трубку',
-        'expensive': 'Дорого',
-        'discount': 'Просит скидку',
-        'competitor': 'У конкурентов дешевле',
-        'ready': 'Готов контрактоваться',
-        'contract': 'Делаем договор',
-        'success': 'Внес предоплату'
-    };
+    var currentFilteredDeals = [];
+    var statusNames = { 'sent': 'Создано КП', 'new': 'Создано КП', 'talks': 'Веду переговоры', 'pause': 'Клиент взял паузу', 'nosignal': 'Нет обратной связи', 'expensive': 'Дорого', 'discount': 'Просит скидку', 'competitor': 'У конкурентов дешевле', 'ready': 'Готов контрактоваться', 'contract': 'Делаем договор', 'success': 'Внес предоплату' };
 
     function getObjectDescription(deal) {
         var parts = [];
         if (deal.purpose) parts.push(deal.purpose);
         if (deal.dimensions) parts.push(deal.dimensions);
         if (parts.length > 0) return parts.join(' — ');
-
-        if (deal.object && deal.object !== 'Ангар') {
-            return deal.object;
-        }
-        return 'Размеры и назначение не указаны';
+        return (deal.object && deal.object !== 'Ангар') ? deal.object : 'Размеры не указаны';
     }
 
-    // Проверка: прошло ли больше 4 дней с момента последнего изменения статуса
     function checkIsStale(deal) {
         var currentStatus = deal.status || 'sent';
-        // Финальные успешные статусы не считаем зависшими
         if (currentStatus === 'success' || currentStatus === 'contract' || currentStatus === 'ready') return false;
-        
-        // Берем дату последнего обновления статуса, либо дату создания, если статус еще не менялся
         var lastDateStr = deal.lastStatusDate || deal.date;
         if (!lastDateStr) return false;
-
         try {
-            var datePart = lastDateStr.split(' ')[0];
-            var parts = datePart.split('.');
+            var parts = lastDateStr.split(' ')[0].split('.');
             if (parts.length < 3) return false;
-            
-            var statusDate = new Date(parts[2], parts[1] - 1, parts[0]);
-            var today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            var diffTime = today - statusDate;
-            var diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            
-            return diffDays > 4;
-        } catch(e) {
-            return false;
-        }
+            var diffTime = new Date() - new Date(parts[2], parts[1] - 1, parts[0]);
+            return Math.floor(diffTime / (1000 * 60 * 60 * 24)) > 4;
+        } catch(e) { return false; }
     }
 
     function loadRegistry() {
@@ -196,7 +178,6 @@
         var container = document.getElementById('tableContainer');
         var totalCount = currentFilteredDeals.length;
         var totalSumNumber = 0;
-
         currentFilteredDeals.forEach(function(deal) {
             if (deal.price) {
                 var cleanNum = parseInt(String(deal.price).replace(/\D/g, ''));
@@ -212,155 +193,50 @@
             return;
         }
 
-        var html = '<table><thead><tr>' +
-            '<th>Дата / Менеджер</th>' +
-            '<th>Заказчик</th>' +
-            '<th>Телефон</th>' +
-            '<th>WhatsApp</th>' +
-            '<th>Назначение / Габариты объекта</th>' +
-            '<th>Сумма КП</th>' +
-            '<th>Статус</th>' +
-            '</tr></thead><tbody>';
-
+        var html = '<table><thead><tr><th>Дата / Менеджер</th><th>Заказчик</th><th>Телефон</th><th>WhatsApp</th><th>Назначение / Габариты</th><th>Сумма КП</th><th>Статус</th></tr></thead><tbody>';
         currentFilteredDeals.forEach(function(deal) {
             var currentStatus = deal.status || 'sent';
-            var statusLabel = statusNames[currentStatus] || 'Создано КП';
-            var waDisplay = deal.whatsapp || deal.phone || '-';
-            var objectText = getObjectDescription(deal);
-
-            // Проверяем, завис ли статус (> 4 дней без смены)
             var isStale = checkIsStale(deal);
-            var rowClass = isStale ? 'stale-deal' : '';
-
-            html += '<tr class="' + rowClass + '">' +
+            html += '<tr class="' + (isStale ? 'stale-deal' : '') + '">' +
                 '<td><b>' + (deal.manager || 'Не указан') + '</b><br><span style="font-size: 11px; color: #718096;">' + (deal.date || '-') + '</span></td>' +
                 '<td><span class="client-link" onclick="openHistory(' + deal.id + ')">' + (deal.client || 'Заказчик') + ' ℹ️</span>' + (isStale ? '<br><span class="stale-badge">⚠️ Зависло (> 4 дней)</span>' : '') + '</td>' +
-                '<td>' + (deal.phone || '-') + '</td>' +
-                '<td>' + waDisplay + '</td>' +
-                '<td>' + objectText + '</td>' +
-                '<td><b>' + (deal.price || '-') + '</b></td>' +
-                '<td><span class="status-badge ' + getStatusClass(currentStatus) + '">' + statusLabel + '</span></td>' +
-            '</tr>';
+                '<td>' + (deal.phone || '-') + '</td><td>' + (deal.whatsapp || deal.phone || '-') + '</td>' +
+                '<td>' + getObjectDescription(deal) + '</td><td><b>' + (deal.price || '-') + '</b></td>' +
+                '<td><span class="status-badge status-' + currentStatus + '">' + (statusNames[currentStatus] || 'Создано КП') + '</span></td></tr>';
         });
         html += '</tbody></table>';
         container.innerHTML = html;
     }
 
     function openHistory(dealId) {
-        var allDeals = JSON.parse(localStorage.getItem('mamyr_kp_history')) || [];
-        var deal = allDeals.find(function(d) { return d.id === dealId; });
+        var deal = (JSON.parse(localStorage.getItem('mamyr_kp_history')) || []).find(d => d.id === dealId);
         if (!deal) return;
-
         document.getElementById('modalClientTitle').innerText = deal.client || 'Заказчик';
-        
         var historyHtml = '<div style="margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #edf2f7;"><b>1. ' + (deal.date || '-') + '</b> — Создано КП</div>';
-        
         if (deal.history && deal.history.length > 0) {
-            deal.history.forEach(function(step, index) {
-                historyHtml += '<div style="margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #edf2f7;"><b>' + (index + 2) + '.</b> ' + step + '</div>';
-            });
+            deal.history.forEach((step, i) => historyHtml += '<div style="margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #edf2f7;"><b>' + (i + 2) + '.</b> ' + step + '</div>');
         } else {
-            historyHtml += '<div style="color: #718096; font-style: italic; margin-top: 5px;">Других изменений статуса пока не зафиксировано.</div>';
+            historyHtml += '<div style="color: #718096; font-style: italic; margin-top: 5px;">Нет других изменений.</div>';
         }
-
         document.getElementById('modalHistoryContent').innerHTML = historyHtml;
         document.getElementById('historyModal').style.display = 'flex';
     }
 
-    function closeModal() {
-        document.getElementById('historyModal').style.display = 'none';
-    }
-
-    function clearAllData() {
-        if (confirm('Внимание! Вы действительно хотите удалить все сохраненные сделки, статусы и историю? Это действие нельзя отменить.')) {
-            localStorage.removeItem('mamyr_kp_history');
-            loadRegistry();
-            alert('База данных успешно очищена.');
-        }
-    }
+    function closeModal() { document.getElementById('historyModal').style.display = 'none'; }
+    function clearAllData() { if (confirm('Удалить всю историю сделок?')) { localStorage.removeItem('mamyr_kp_history'); loadRegistry(); } }
 
     function exportToExcel() {
-        if (!currentFilteredDeals || currentFilteredDeals.length === 0) {
-            alert('Нет данных для выгрузки!');
-            return;
-        }
-
-        var exportData = [];
-        var totalSumNumber = 0;
-
-        currentFilteredDeals.forEach(function(deal, index) {
-            var currentStatus = deal.status || 'sent';
-            var statusLabel = statusNames[currentStatus] || 'Создано КП';
-            var priceNum = 0;
-
-            if (deal.price) {
-                var cleanNum = parseInt(String(deal.price).replace(/\D/g, ''));
-                if (!isNaN(cleanNum)) {
-                    priceNum = cleanNum;
-                    totalSumNumber += cleanNum;
-                }
-            }
-
-            exportData.push({
-                "№": index + 1,
-                "Дата": deal.date || "-",
-                "Менеджер": deal.manager || "Не указан",
-                "Заказчик": deal.client || "Заказчик",
-                "Телефон": deal.phone || "-",
-                "WhatsApp": deal.whatsapp || deal.phone || "-",
-                "Назначение и Габариты": getObjectDescription(deal),
-                "Сумма КП (₸)": priceNum || deal.price,
-                "Текущий статус": statusLabel
-            });
+        if (!currentFilteredDeals.length) return alert('Нет данных!');
+        var exportData = [], totalSumNumber = 0;
+        currentFilteredDeals.forEach((deal, i) => {
+            var priceNum = parseInt(String(deal.price).replace(/\D/g, '')) || 0;
+            totalSumNumber += priceNum;
+            exportData.push({ "№": i + 1, "Дата": deal.date || "-", "Менеджер": deal.manager || "-", "Заказчик": deal.client || "-", "Телефон": deal.phone || "-", "WhatsApp": deal.whatsapp || "-", "Объект": getObjectDescription(deal), "Сумма (₸)": priceNum, "Статус": statusNames[deal.status || 'sent'] });
         });
-
-        exportData.push({
-            "№": "",
-            "Дата": "",
-            "Менеджер": "",
-            "Заказчик": "ИТОГО СДЕЛОК:",
-            "Телефон": currentFilteredDeals.length + " шт.",
-            "WhatsApp": "",
-            "Назначение и Габариты": "ОБЩАЯ СУММА:",
-            "Сумма КП (₸)": totalSumNumber,
-            "Текущий статус": ""
-        });
-
-        var worksheet = XLSX.utils.json_to_sheet(exportData);
-        
-        worksheet['!cols'] = [
-            { wch: 5 },  
-            { wch: 12 }, 
-            { wch: 25 }, 
-            { wch: 25 }, 
-            { wch: 18 }, 
-            { wch: 18 }, 
-            { wch: 35 }, 
-            { wch: 18 }, 
-            { wch: 30 }  
-        ];
-
-        var workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Реестр КП");
-
-        var dateStr = new Date().toLocaleDateString('ru-RU').replace(/\./g, '-');
-        XLSX.writeFile(workbook, "Реестр_КП_ТОО_Мамыр_" + dateStr + ".xlsx");
-    }
-
-    function getStatusClass(status) {
-        switch(status) {
-            case 'sent': case 'new': return 'status-sent';
-            case 'talks': return 'status-talks';
-            case 'pause': return 'status-pause';
-            case 'nosignal': return 'status-nosignal';
-            case 'expensive': return 'status-expensive';
-            case 'discount': return 'status-discount';
-            case 'competitor': return 'status-competitor';
-            case 'ready': return 'status-ready';
-            case 'contract': return 'status-contract';
-            case 'success': return 'status-success';
-            default: return 'status-sent';
-        }
+        exportData.push({ "№": "", "Дата": "", "Менеджер": "", "Заказчик": "ИТОГО:", "Телефон": currentFilteredDeals.length + " шт.", "WhatsApp": "", "Объект": "ОБЩАЯ СУММА:", "Сумма (₸)": totalSumNumber, "Статус": "" });
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData), "Реестр КП");
+        XLSX.writeFile(wb, "Реестр_КП_" + new Date().toLocaleDateString().replace(/\./g, '-') + ".xlsx");
     }
 
     window.onload = loadRegistry;
