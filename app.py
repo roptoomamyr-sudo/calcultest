@@ -181,7 +181,7 @@ BASE_TEMPLATE = """
         .sidebar .menu { padding: 15px 5px; display: flex; flex-direction: column; gap: 8px; flex-grow: 1; overflow-y: auto; }
         .sidebar .menu a { color: #adb5bd; text-decoration: none; padding: 10px 12px; border-radius: 4px; font-size: 13px; display: flex; align-items: center; gap: 12px; transition: 0.2s; position: relative; }
         .sidebar .menu a:hover, .sidebar .menu a.active { background: #b8860b; color: #fff; }
-        .sidebar .menu a i { font-size: 16px; min-width: 24px; text-align: center; font-style: normal; }
+        .sidebar .menu a span.icon-sym { font-size: 16px; min-width: 24px; text-align: center; display: inline-block; }
         .nav-badge { background: #e53e3e; color: #fff; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 10px; line-height: 1; margin-left: auto; }
         
         .main-content { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -215,14 +215,14 @@ BASE_TEMPLATE = """
             <span><b>M-CONSTRUCTION</b></span>
         </div>
         <div class="menu">
-            <a href="/" class="{% if active_page == 'kanban' %}active{% endif %}"><i>📊</i> <span>Канбан CRM</span></a>
-            <a href="/tz" class="{% if active_page == 'tz' %}active{% endif %}"><i>📋</i> <span>Тех. задания</span><span class="nav-badge" id="tzBadge" style="display:none;">0</span></a>
-            <a href="/generator" class="{% if active_page == 'generator' %}active{% endif %}"><i>📄</i> <span>Генератор КП</span></a>
+            <a href="/" class="{% if active_page == 'kanban' %}active{% endif %}"><span class="icon-sym">&#128202;</span> <span>Канбан CRM</span></a>
+            <a href="/tz" class="{% if active_page == 'tz' %}active{% endif %}"><span class="icon-sym">&#128221;</span> <span>Тех. задания</span><span class="nav-badge" id="tzBadge" {% if unread_tz_count == 0 %}style="display:none;"{% endif %}>{{ unread_tz_count }}</span></a>
+            <a href="/generator" class="{% if active_page == 'generator' %}active{% endif %}"><span class="icon-sym">&#128196;</span> <span>Генератор КП</span></a>
             {% if current_user_data.role in ['director', 'rop'] %}
-            <a href="/registry" class="{% if active_page == 'registry' %}active{% endif %}"><i>🗂️</i> <span>Реестр КП</span></a>
-            <a href="/analytics" class="{% if active_page == 'analytics' %}active{% endif %}"><i>📈</i> <span>Воронка (Отчеты)</span></a>
+            <a href="/registry" class="{% if active_page == 'registry' %}active{% endif %}"><span class="icon-sym">&#128198;</span> <span>Реестр КП</span></a>
+            <a href="/analytics" class="{% if active_page == 'analytics' %}active{% endif %}"><span class="icon-sym">&#128200;</span> <span>Воронка (Отчеты)</span></a>
             {% endif %}
-            <a href="/chat" class="{% if active_page == 'chat' %}active{% endif %}"><i>💬</i> <span>Чат сотрудников</span><span class="nav-badge" id="chatBadge">3</span></a>
+            <a href="/chat" class="{% if active_page == 'chat' %}active{% endif %}"><span class="icon-sym">&#128172;</span> <span>Чат сотрудников</span><span class="nav-badge" id="chatBadge" {% if unread_msgs_count == 0 %}style="display:none;"{% endif %}>{{ unread_msgs_count }}</span></a>
         </div>
         
         <div class="p-2 bg-dark border-top border-secondary text-muted small flex-shrink-0">
@@ -230,12 +230,12 @@ BASE_TEMPLATE = """
                 {% if current_user_data.get('avatar') %}
                 <img src="{{ url_for('uploaded_file', filename=current_user_data['avatar']) }}" style="width:28px; height:28px; border-radius:50%; object-fit:cover;">
                 {% else %}
-                <i>👤</i>
+                <span class="icon-sym">&#128100;</span>
                 {% endif %}
                 <span class="text-truncate"><b>{{ current_user_data.name }}</b></span>
             </a>
             <a href="/logout" class="text-danger text-decoration-none d-flex align-items-center gap-2 p-2 mt-1">
-                <i>🚪</i> <span>Выйти</span>
+                <span class="icon-sym">&#128682;</span> <span>Выйти</span>
             </a>
         </div>
     </div>
@@ -354,6 +354,15 @@ def service_worker():
     });
     """
     return app.response_class(sw_code, mimetype='application/javascript')
+
+def get_counters(db, uname, user_data):
+    # Реальное количество невыполненных ТЗ для сотрудника
+    unread_tz_count = sum(1 for tz in db.get("tz_list", []) if not tz.get("done", False) and (tz.get("responsible") == user_data["name"] or user_data["role"] in ["director", "rop"]))
+    
+    # Реальное количество сообщений в доступных пользователю чатах
+    user_chats = [c for c in db.get("chats", []) if uname in c.get("members", [])]
+    unread_msgs_count = sum(len(c.get("messages", [])) for c in user_chats)
+    return unread_tz_count, unread_msgs_count
 
 @app.route("/request_access", methods=["GET", "POST"])
 def request_access():
@@ -474,7 +483,8 @@ def profile_page():
         </div>
     </div>
     """
-    return render_template_string(BASE_TEMPLATE, page_title="Профиль", active_page="profile", current_user_data=user_data, content=profile_html)
+    tz_c, msg_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Профиль", active_page="profile", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=profile_html)
 
 @app.route("/analytics")
 def analytics_page():
@@ -740,7 +750,8 @@ def analytics_page():
     </script>
     """
 
-    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", current_user_data=user_data, content=analytics_html)
+    tz_c, msg_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=analytics_html)
 
 @app.route("/generator")
 def generator_page():
@@ -1263,7 +1274,8 @@ def generator_page():
     </script>
     """
     
-    return render_template_string(BASE_TEMPLATE, page_title="Генератор КП", active_page="generator", current_user_data=user_data, content=gen_html)
+    tz_c, msg_c = get_counters(load_db(), uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Генератор КП", active_page="generator", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=gen_html)
 
 @app.route("/save_kp", methods=["POST"])
 def save_kp():
@@ -1408,7 +1420,8 @@ def registry_page():
     </script>
     """
     
-    return render_template_string(BASE_TEMPLATE, page_title="Реестр КП", active_page="registry", current_user_data=user_data, content=reg_html)
+    tz_c, msg_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Реестр КП", active_page="registry", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=reg_html)
 
 @app.route("/clear_registry", methods=["POST"])
 def clear_registry():
@@ -1469,7 +1482,8 @@ def chat_page(chat_id=None):
     </div>
     <div class="modal fade" id="newChatModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form method="POST"><input type="hidden" name="action" value="create_chat"><div class="modal-header text-white" style="background: #1a1e21;"><h5 class="modal-title fw-bold">👥 Создать чат</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label fw-bold">Название чата:</label><input type="text" name="title" class="form-control" placeholder="Обсуждение объекта..."></div><label class="form-label fw-bold">Выберите сотрудников:</label><div class="p-2 border rounded bg-light" style="max-height: 200px; overflow-y: auto;">{members_checkboxes}</div></div><div class="modal-footer"><button type="submit" class="btn text-white fw-bold" style="background: #b8860b;">Создать чат</button></div></form></div></div></div>
     """
-    return render_template_string(BASE_TEMPLATE, page_title="Чат сотрудников", active_page="chat", current_user_data=user_data, content=content_html)
+    tz_c, msg_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Чат сотрудников", active_page="chat", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=content_html)
 
 @app.route("/")
 def index():
@@ -1656,7 +1670,8 @@ def index():
         </form>
     </div></div></div>
     """
-    return render_template_string(BASE_TEMPLATE, page_title="Воронка продаж", active_page="kanban", current_user_data=user_data, total_tasks_count=total_tasks, overdue_count=overdue_count, has_reminders=has_reminders, content=kanban_content)
+    tz_c, msg_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Воронка продаж", active_page="kanban", current_user_data=user_data, total_tasks_count=total_tasks, overdue_count=overdue_count, has_reminders=has_reminders, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=kanban_content)
 
 @app.route("/tz")
 def tz_page():
@@ -1689,7 +1704,8 @@ def tz_page():
     
     tz_content += f'</tbody></table><button class="btn text-white btn-sm fw-bold mt-3" style="background: #b8860b;" data-bs-toggle="modal" data-bs-target="#addTzModal">+ Создать ТЗ</button></div></div></div>'
     tz_content += f'<div class="modal fade" id="addTzModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><form method="POST" action="{url_for("add_tz")}" enctype="multipart/form-data"><div class="modal-header text-white" style="background: #1a1e21;"><h5 class="modal-title fw-bold">📐 Новое ТЗ</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row g-3"><div class="col-12"><label class="form-label fw-bold">Название:</label><input type="text" name="title" class="form-control" required></div><div class="col-12"><label class="form-label fw-bold">Описание:</label><textarea name="description" class="form-control" rows="3" required></textarea></div><div class="col-md-6"><label class="form-label fw-bold">Ответственный:</label><select name="responsible" class="form-select">{resp_opts}</select></div><div class="col-md-6"><label class="form-label fw-bold">Наблюдатель:</label><select name="observer" class="form-select">{obs_opts}</select></div><div class="col-md-6"><label class="form-label fw-bold">Срочность:</label><select name="urgency" class="form-select"><option value="горячая">🔴 Горячая</option><option value="теплая" selected>🟡 Теплая</option><option value="холодная">🔵 Холодная</option></select></div><div class="col-12"><label class="form-label fw-bold">Прикрепить файлы / схемы:</label><input type="file" name="attachment" class="form-control"></div></div></div><div class="modal-footer"><button type="submit" class="btn text-white" style="background: #b8860b;">Поставить ТЗ</button></div></form></div></div></div>'
-    return render_template_string(BASE_TEMPLATE, page_title="Технические задания", active_page="tz", current_user_data=user_data, content=tz_content)
+    tz_c, msg_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Технические задания", active_page="tz", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=tz_content)
 
 @app.route("/tz/<tz_id>")
 def tz_detail(tz_id):
@@ -1767,7 +1783,8 @@ def tz_detail(tz_id):
         </form>
     </div></div></div>
     """
-    return render_template_string(BASE_TEMPLATE, page_title="Детали ТЗ", active_page="tz", current_user_data=user_data, content=content_html)
+    tz_c, msg_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Детали ТЗ", active_page="tz", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=content_html)
 
 @app.route("/tz/edit/<tz_id>", methods=["POST"])
 def edit_tz(tz_id):
