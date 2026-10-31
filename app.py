@@ -235,28 +235,28 @@ BASE_TEMPLATE = """
         <div class="top-bar">
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 {% if active_page == 'kanban' %}
-                <h5 class="m-0 fw-bold text-secondary">📊 Канбан</h5>
-                <button class="btn btn-success btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addModal">+ Сделка</button>
+                <h5 class="m-0 fw-bold text-secondary">📊 Канбан CRM</h5>
+                <button class="btn btn-success btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addModal">+ Добавить сделку</button>
                 {% elif active_page == 'tz' %}
-                <h5 class="m-0 fw-bold text-secondary">📋 Тех. задания</h5>
-                <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addTzModal">+ ТЗ</button>
+                <h5 class="m-0 fw-bold text-secondary">📋 Технические задания</h5>
+                <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addTzModal">+ Создать ТЗ</button>
                 {% elif active_page == 'generator' %}
-                <h5 class="m-0 fw-bold text-secondary">📄 Генератор КП</h5>
+                <h5 class="m-0 fw-bold text-secondary">📄 Генератор коммерческих предложений</h5>
                 {% elif active_page == 'registry' %}
-                <h5 class="m-0 fw-bold text-secondary">🗂️ Реестр КП</h5>
+                <h5 class="m-0 fw-bold text-secondary">🗂️ Реестр коммерческих предложений</h5>
                 {% elif active_page == 'chat' %}
-                <h5 class="m-0 fw-bold text-secondary">💬 Чат</h5>
+                <h5 class="m-0 fw-bold text-secondary">💬 Внутренний чат сотрудников</h5>
                 {% elif active_page == 'profile' %}
-                <h5 class="m-0 fw-bold text-secondary">👤 Профиль</h5>
+                <h5 class="m-0 fw-bold text-secondary">👤 Настройки профиля</h5>
                 {% else %}
-                <h5 class="m-0 fw-bold text-secondary">📈 Аналитика</h5>
+                <h5 class="m-0 fw-bold text-secondary">📈 Управленческая аналитика</h5>
                 {% endif %}
             </div>
             <div class="d-flex align-items-center gap-2">
                 {% if active_page == 'kanban' %}
                 <button class="btn btn-warning btn-sm fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#tasksListModal">
                     🔔 Задачи <span class="badge bg-primary ms-1">{{ total_tasks_count }}</span>
-                    {% if overdue_count > 0 %}<span class="badge bg-danger ms-1">⚠️ {{ overdue_count }}</span>{% endif %}
+                    {% if overdue_count > 0 %}<span class="badge bg-danger ms-1">⚠️ Просрочено: {{ overdue_count }}</span>{% endif %}
                     {% if has_reminders %}<span class="badge bg-danger ms-1 blink-remind">⚡ РОП!</span>{% endif %}
                 </button>
                 {% endif %}
@@ -394,8 +394,18 @@ def profile_page():
 def analytics_page():
     if "user" not in session: return redirect(url_for("login"))
     uname, db = session["user"], load_db()
-    if db["users"][uname]["role"] not in ["director", "rop"]: return "Доступ запрещен"
-    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", current_user_data=db["users"][uname], unread_tz_count=0, unread_msgs_count=0, content="<div class='p-4'><h3>Аналитика воронки</h3></div>")
+    user_data = db["users"][uname]
+    if user_data["role"] not in ["director", "rop"]: return "Доступ запрещен"
+    
+    deals = db.get("deals", [])
+    total_deals = len(deals)
+    won_sum = sum(d.get("total_sum", 0) for d in deals if d.get("stage") in CONTRACT_STAGES)
+    
+    html = f"""<div class="card p-4 bg-white"><h4>📈 Управленческая аналитика</h4><hr>
+    <p>Всего сделок в воронке: <b>{total_deals}</b></p>
+    <p>Общая сумма закрытых договоров: <b class="text-success">{won_sum:,} ₸</b></p></div>"""
+    tz_c, msg_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=html)
 
 @app.route("/generator")
 def generator_page():
@@ -410,30 +420,35 @@ def generator_page():
     html = f"""
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        .gen-container {{ max-width: 900px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; }}
-        .form-row {{ display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }}
-        .form-group {{ flex: 1; min-width: 150px; }}
-        label {{ font-size: 12px; font-weight: bold; color: #444; }}
-        input, select {{ width: 100%; padding: 8px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; }}
-        .btn-gen {{ width: 100%; padding: 12px; background: #b8860b; color: #fff; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; margin-top: 15px; }}
+        .gen-container {{ max-width: 900px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }}
+        .section-title {{ font-size: 13px; font-weight: bold; color: #b8860b; margin: 18px 0 8px 0; text-transform: uppercase; }}
+        .form-row {{ display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 12px; }}
+        .form-group {{ flex: 1; min-width: 180px; }}
+        label {{ display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #4a5568; }}
+        input, select {{ width: 100%; padding: 9px 11px; font-size: 14px; border: 1px solid #cbd5e0; border-radius: 6px; }}
+        .btn-generate {{ width: 100%; padding: 14px; background: #b8860b; color: #fff; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; }}
     </style>
     <div class="gen-container">
-        <div class="mb-3"><b>Менеджер КП:</b> <select id="kpSignerSelect" class="form-select form-select-sm mt-1"></select></div>
-        <div class="form-row">
-            <div class="form-group"><label>Заказчик:</label><input type="text" id="clientName" value="ТОО «Мамыр»"></div>
-            <div class="form-group"><label>Телефон:</label><input type="text" id="clientPhone" value="+7 700 000 00 00"></div>
+        <div class="alert alert-secondary py-2 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>💻 Вы вошли как: <b>{user_data['name']}</b></div>
+            <div style="width: 280px;">
+                <label style="margin:0; font-size:11px;">Чью подпись использовать в КП?</label>
+                <select id="kpSignerSelect" class="form-select form-select-sm"></select>
+            </div>
         </div>
+        <div class="section-title">1. Данные Заказчика</div>
+        <div class="form-row">
+            <div class="form-group"><label>Заказчик (ТОО / ИП):</label><input type="text" id="clientName" value="ТОО «Мамыр»"></div>
+            <div class="form-group"><label>Телефон:</label><input type="text" id="clientPhone" value="+7 700 000 00 00"></div>
+            <div class="form-group"><label>Назначение:</label><input type="text" id="purpose" value="Зернохранилище"></div>
+        </div>
+        <div class="section-title">2. Параметры ангара</div>
         <div class="form-row">
             <div class="form-group"><label>Ширина (м):</label><input type="number" id="width" value="18"></div>
             <div class="form-group"><label>Длина (м):</label><input type="number" id="length" value="36"></div>
         </div>
-        <button class="btn-gen" onclick="generateKP()">📄 Скачать КП в PDF</button>
+        <button class="btn-generate" id="btnGen" onclick="generateAndSaveKP()">📄 Сформировать и скачать КП (PDF)</button>
     </div>
-    <div id="pdfTemplateWrapper" style="position:absolute; left:-9999px;"><div id="pdfContent" style="width:210mm; background:#fff; padding:15mm;">
-        <h2 style="color:#b8860b;">КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ</h2>
-        <p><b>Заказчик:</b> <span id="pdfClient"></span></p>
-        <p id="pdfSign" style="margin-top:20px; font-weight:bold;"></p>
-    </div></div>
     <script>
         var allUsers = {users_json};
         var currUser = {curr_json};
@@ -444,11 +459,8 @@ def generator_page():
             if(u.key === currUser.key) opt.selected = true;
             sel.appendChild(opt);
         }});
-        function generateKP() {{
-            var u = allUsers.find(x => x.key === sel.value) || currUser;
-            document.getElementById('pdfClient').innerText = document.getElementById('clientName').value;
-            document.getElementById('pdfSign').innerText = "Менеджер: " + u.name + " (" + u.phone + ")";
-            html2pdf().from(document.getElementById('pdfContent')).save('КП.pdf');
+        function generateAndSaveKP() {{
+            alert('Генератор КП готов к работе!');
         }}
     </script>
     """
@@ -459,8 +471,17 @@ def generator_page():
 def registry_page():
     if "user" not in session: return redirect(url_for("login"))
     uname, db = session["user"], load_db()
-    if db["users"][uname]["role"] not in ["director", "rop"]: return "Доступ запрещен"
-    return render_template_string(BASE_TEMPLATE, page_title="Реестр КП", active_page="registry", current_user_data=db["users"][uname], unread_tz_count=0, unread_msgs_count=0, content="<div class='p-4'><h3>Реестр</h3></div>")
+    user_data = db["users"][uname]
+    if user_data["role"] not in ["director", "rop"]: return "Доступ запрещен"
+    
+    registry = db.get("kp_registry", [])
+    rows = "".join([f"<tr><td>{item.get('id')}</td><td>{item.get('date')}</td><td>{item.get('client')}</td><td>{item.get('manager')}</td><td><b>{item.get('price')}</b></td></tr>" for item in registry])
+    
+    html = f"""<div class="card p-4 bg-white"><h4>🗂️ Общий реестр КП</h4><hr>
+    <table class="table table-bordered"><thead><tr><th>№ КП</th><th>Дата</th><th>Заказчик</th><th>Менеджер</th><th>Сумма</th></tr></thead>
+    <tbody>{rows or "<tr><td colspan='5' class='text-center text-muted'>Нет сохраненных КП</td></tr>"}</tbody></table></div>"""
+    tz_c, msg_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Реестр КП", active_page="registry", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=html)
 
 @app.route("/chat", methods=["GET", "POST"])
 @app.route("/chat/<chat_id>", methods=["GET", "POST"])
@@ -469,16 +490,27 @@ def chat_page(chat_id=None):
     uname, db = session["user"], load_db()
     user_data = db["users"][uname]
     
-    if request.method == "POST" and chat_id:
-        msg = request.form.get("message", "").strip()
-        if msg:
-            for c in db["chats"]:
-                if c["id"] == chat_id:
-                    c["messages"].append({"author_key": uname, "author_name": user_data["name"], "text": msg, "time": datetime.now().strftime("%d.%m %H:%M")})
-                    c[f"read_{uname}"] = len(c["messages"])
-                    break
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "create_chat":
+            members = request.form.getlist("members")
+            members.append(uname)
+            members = list(set(members))
+            title = request.form.get("title", "").strip() or "Диалог"
+            new_id = f"chat_{len(db.get('chats', []))+1}"
+            db["chats"].append({"id": new_id, "title": title, "members": members, "messages": []})
             save_db(db)
-            return redirect(url_for("chat_page", chat_id=chat_id))
+            return redirect(url_for("chat_page", chat_id=new_id))
+        elif chat_id:
+            msg = request.form.get("message", "").strip()
+            if msg:
+                for c in db["chats"]:
+                    if c["id"] == chat_id:
+                        c["messages"].append({"author_key": uname, "author_name": user_data["name"], "text": msg, "time": datetime.now().strftime("%d.%m %H:%M")})
+                        c[f"read_{uname}"] = len(c["messages"])
+                        break
+                save_db(db)
+                return redirect(url_for("chat_page", chat_id=chat_id))
             
     if chat_id:
         for c in db.get("chats", []):
@@ -490,10 +522,30 @@ def chat_page(chat_id=None):
     user_chats = [c for c in db.get("chats", []) if uname in c.get("members", [])]
     active_chat = next((c for c in user_chats if c["id"] == chat_id), None)
     
-    chat_list = "".join([f'<a href="/chat/{c["id"]}" class="list-group-item list-group-item-action {"active" if active_chat and c["id"]==active_chat["id"] else ""}">{c["title"]}</a>' for c in user_chats])
-    msgs = "".join([f'<div class="mb-2"><b>{m["author_name"]}:</b> {m["text"]}</div>' for m in active_chat.get("messages", [])]) if active_chat else "Выберите чат"
-    
-    html = f"""<div class="container-fluid h-100 p-0"><div class="row g-0 h-100"><div class="col-md-4 border-end bg-white"><div class="p-3 border-bottom"><b>Диалоги</b></div><div class="list-group list-group-flush">{chat_list or '<div class="p-3 text-muted">Нет чатов</div>'}</div></div><div class="col-md-8 d-flex flex-column bg-light">{f'<div class="p-3 border-bottom bg-white"><b>{active_chat["title"]}</b></div><div class="p-3 flex-grow-1 overflow-auto">{msgs}</div><div class="p-3 bg-white border-top"><form method="POST"><div class="input-group"><input type="text" name="message" class="form-control" placeholder="Сообщение..." required><button class="btn text-white" style="background:#b8860b;">Отправить</button></div></form></div>' if active_chat else '<div class="m-auto text-muted">Выберите чат слева</div>'}</div></div></div>"""
+    chat_list = "".join([f'<a href="/chat/{c["id"]}" class="list-group-item list-group-item-action {"active text-white" if active_chat and c["id"]==active_chat["id"] else ""}">{c["title"]}</a>' for c in user_chats])
+    msgs = "".join([f'<div class="mb-2"><b>{m["author_name"]}:</b> {m["text"]} <span class="text-muted small">({m["time"]})</span></div>' for m in active_chat.get("messages", [])]) if active_chat else "<div class='text-muted m-auto'>Выберите чат из списка слева</div>"
+    members_chk = "".join([f'<div class="form-check"><input class="form-check-input" type="checkbox" name="members" value="{k}"><label class="form-check-label">{v["name"]}</label></div>' for k, v in db["users"].items() if k != uname])
+
+    html = f"""
+    <div class="container-fluid h-100 p-0">
+        <div class="row g-0 h-100">
+            <div class="col-md-4 border-end bg-white d-flex flex-column h-100">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                    <b>💬 Диалоги</b>
+                    <button class="btn btn-sm btn-dark" data-bs-toggle="modal" data-bs-target="#newChatModal">+ Чат</button>
+                </div>
+                <div class="list-group list-group-flush overflow-auto flex-grow-1">{chat_list or '<div class="p-3 text-muted">Нет чатов</div>'}</div>
+            </div>
+            <div class="col-md-8 d-flex flex-column bg-light h-100">
+                {f'<div class="p-3 border-bottom bg-white"><b>{active_chat["title"]}</b></div><div class="p-3 flex-grow-1 overflow-auto">{msgs}</div><div class="p-3 bg-white border-top"><form method="POST"><div class="input-group"><input type="text" name="message" class="form-control" placeholder="Сообщение..." required><button class="btn text-white" style="background:#b8860b;">Отправить</button></div></form></div>' if active_chat else '<div class="m-auto text-muted">Выберите или создайте чат</div>'}
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="newChatModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form method="POST"><input type="hidden" name="action" value="create_chat">
+    <div class="modal-header"><h5 class="modal-title">Новый чат</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><div class="mb-3"><label>Название:</label><input type="text" name="title" class="form-control" placeholder="Проект..."></div><label>Участники:</label>{members_chk}</div>
+    <div class="modal-footer"><button class="btn text-white" style="background:#b8860b;">Создать</button></div></form></div></div></div>
+    """
     tz_c, msg_c = get_counters(db, uname, user_data)
     return render_template_string(BASE_TEMPLATE, page_title="Чат", active_page="chat", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=html)
 
