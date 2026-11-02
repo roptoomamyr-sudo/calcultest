@@ -19,11 +19,11 @@ MOBIZON_API_KEY = os.environ.get("MOBIZON_API_KEY", "YOUR_MOBIZON_API_KEY")
 ROP_PHONE = "+77764777278"  # Номер телефона РОПа для получения SMS-кодов
 
 DEFAULT_USERS = {
-    "director": {"pass": "dir123", "name": "Уралбаев Жанайдар Абишевич", "role": "director", "position": "Генеральный директор", "phone": "+7 771 054 77 66", "whatsapp": "+7 771 054 77 66", "email": "too.mamyr@mail.ru", "avatar": ""},
-    "rop": {"pass": "rop123", "name": "Лемперт Александр Сергеевич", "role": "rop", "position": "Руководитель отдела продаж", "phone": "+7 776 477 72 78", "whatsapp": "+7 776 477 72 78", "email": "too.mamyr@mail.ru", "avatar": ""},
-    "manager1": {"pass": "man123", "name": "Менеджер 1", "role": "manager", "position": "Менеджер по продажам", "phone": "+7 700 111 11 11", "whatsapp": "+7 700 111 11 11", "email": "", "avatar": ""},
-    "manager2": {"pass": "man223", "name": "Менеджер 2", "role": "manager", "position": "Менеджер по продажам", "phone": "+7 700 222 22 22", "whatsapp": "+7 700 222 22 22", "email": "", "avatar": ""},
-    "manager3": {"pass": "man323", "name": "Менеджер 3", "role": "manager", "position": "Менеджер по продажам", "phone": "+7 700 333 33 33", "whatsapp": "+7 700 333 33 33", "email": "", "avatar": ""}
+    "director": {"pass": "dir123", "name": "Уралбаев Жанайдар Абишевич", "role": "director", "position": "Генеральный директор", "phone": "+7 771 054 77 66", "whatsapp": "+7 771 054 77 66", "email": "too.mamyr@mail.ru", "birthday": "1980-05-15", "avatar": ""},
+    "rop": {"pass": "rop123", "name": "Лемперт Александр Сергеевич", "role": "rop", "position": "Руководитель отдела продаж", "phone": "+7 776 477 72 78", "whatsapp": "+7 776 477 72 78", "email": "too.mamyr@mail.ru", "birthday": "1991-11-08", "avatar": ""},
+    "manager1": {"pass": "man123", "name": "Менеджер 1", "role": "manager", "position": "Менеджер по продажам", "phone": "+7 700 111 11 11", "whatsapp": "+7 700 111 11 11", "email": "", "birthday": "1995-07-20", "avatar": ""},
+    "manager2": {"pass": "man223", "name": "Менеджер 2", "role": "manager", "position": "Менеджер по продажам", "phone": "+7 700 222 22 22", "whatsapp": "+7 700 222 22 22", "email": "", "birthday": "1993-03-10", "avatar": ""},
+    "manager3": {"pass": "man323", "name": "Менеджер 3", "role": "manager", "position": "Менеджер по продажам", "phone": "+7 700 333 33 33", "whatsapp": "+7 700 333 33 33", "email": "", "birthday": "1997-12-05", "avatar": ""}
 }
 
 STAGES = [
@@ -55,6 +55,8 @@ def load_db():
         "users": DEFAULT_USERS,
         "chats": [],
         "kp_registry": [],
+        "system_notifications": [],
+        "online_users": {},
         "pending_codes": {}
     }
     if not os.path.exists(DB_FILE):
@@ -67,9 +69,14 @@ def load_db():
                 save_db(default_data)
                 return default_data
             if "users" not in data: data["users"] = DEFAULT_USERS
+            for u_key, u_val in data["users"].items():
+                if "birthday" not in u_val:
+                    u_val["birthday"] = DEFAULT_USERS.get(u_key, {}).get("birthday", "1990-01-01")
             if "tz_list" not in data: data["tz_list"] = []
             if "chats" not in data: data["chats"] = []
             if "kp_registry" not in data: data["kp_registry"] = []
+            if "system_notifications" not in data: data["system_notifications"] = []
+            if "online_users" not in data: data["online_users"] = {}
             if "pending_codes" not in data: data["pending_codes"] = {}
             return data
     except:
@@ -80,11 +87,60 @@ def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
+def update_user_activity(uname):
+    db = load_db()
+    if "online_users" not in db: db["online_users"] = {}
+    db["online_users"][uname] = datetime.now().timestamp()
+    save_db(db)
+
+def check_birthday_notifications(db):
+    today = datetime.now().date()
+    notifs = db.get("system_notifications", [])
+    existing_texts = {n.get("text") for n in notifs if n.get("type") == "birthday"}
+
+    for u_key, u_val in db.get("users", DEFAULT_USERS).items():
+        bday_str = u_val.get("birthday")
+        if not bday_str: continue
+        try:
+            bday_date = datetime.strptime(bday_str, "%Y-%m-%d").date()
+            bday_this_year = datetime(today.year, bday_date.month, bday_date.day).date()
+        except:
+            continue
+
+        delta_days = (bday_this_year - today).days
+
+        msg = ""
+        if delta_days == 3:
+            msg = f"🎉 Через 3 дня ({bday_this_year.strftime('%d.%m.%Y')}) день рождения у сотрудника: {u_val['name']}!"
+        elif delta_days == 1:
+            msg = f"🎂 Завтра день рождения у сотрудника: {u_val['name']}!"
+        elif delta_days == 0:
+            msg = f"🎈 СЕГОДНЯ день рождения у сотрудника: {u_val['name']}! Поздравляем!"
+
+        if msg and msg not in existing_texts:
+            notifs.insert(0, {
+                "id": f"notif_{len(notifs)+1}_{int(datetime.now().timestamp())}",
+                "type": "birthday",
+                "text": msg,
+                "date": datetime.now().strftime("%d.%m.%Y %H:%M"),
+                "read": False
+            })
+            db["system_notifications"] = notifs
+            save_db(db)
+
 def get_counters(db, uname, user_data):
+    check_birthday_notifications(db)
     unread_tz_count = sum(1 for tz in db.get("tz_list", []) if not tz.get("done", False) and (tz.get("responsible") == user_data["name"] or user_data["role"] in ["director", "rop"]))
     user_chats = [c for c in db.get("chats", []) if uname in c.get("members", [])]
     unread_msgs_count = sum(max(0, len(c.get("messages", [])) - c.get(f"read_{uname}", 0)) for c in user_chats)
-    return unread_tz_count, unread_msgs_count
+    unread_system_notifs = sum(1 for n in db.get("system_notifications", []) if not n.get("read", False))
+    return unread_tz_count, unread_msgs_count, unread_system_notifs
+
+def is_user_online(db, uname):
+    online_dict = db.get("online_users", {})
+    last_seen = online_dict.get(uname)
+    if not last_seen: return False
+    return (datetime.now().timestamp() - last_seen) < 60
 
 def send_sms_code(code, req_phone):
     text = f"M-CONSTRUCTION: Запрос доступа от {req_phone}. Код: {code}"
@@ -166,10 +222,7 @@ BASE_TEMPLATE = """
         body { background: #f8f9fa; font-family: Arial, sans-serif; overflow: hidden; height: 100vh; margin: 0; }
         .wrapper { display: flex; width: 100%; height: 100vh; overflow: hidden; }
         
-        /* Мобильная адаптация боковой панели */
         .sidebar { width: 55px; background: #1a1e21; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.25s ease-in-out; overflow: hidden; white-space: nowrap; z-index: 1050; border-right: 2px solid #b8860b; }
-        
-        /* На ПК раздвигаем при наведении, на смартфонах — только кликом по бренду */
         @media (min-width: 769px) {
             .sidebar:hover, .sidebar:focus-within { width: 220px; }
         }
@@ -204,6 +257,9 @@ BASE_TEMPLATE = """
         .blink-remind { animation: blinker 1.2s linear infinite; }
         @keyframes blinker { 50% { opacity: 0.3; } }
 
+        .online-dot { width: 10px; height: 10px; background-color: #28a745; border-radius: 50%; display: inline-block; box-shadow: 0 0 4px #28a745; }
+        .offline-dot { width: 10px; height: 10px; background-color: #6c757d; border-radius: 50%; display: inline-block; }
+
         @media (max-width: 768px) {
             .sidebar { width: 55px; }
             .top-bar h5 { font-size: 13px !important; }
@@ -213,7 +269,6 @@ BASE_TEMPLATE = """
 </head>
 <body>
 
-<!-- Аудио уведомления -->
 <audio id="msgSound" src="{{ url_for('static', filename='beep.mp3') }}" preload="auto"></audio>
 <audio id="tzSound" src="{{ url_for('static', filename='ding.mp3') }}" preload="auto"></audio>
 
@@ -270,7 +325,17 @@ BASE_TEMPLATE = """
                 <h5 class="m-0 fw-bold text-secondary">📈 Аналитика</h5>
                 {% endif %}
             </div>
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-3">
+                <!-- Кнопка Уведомления в правой колонке верхней панели -->
+                <button class="btn btn-outline-dark btn-sm position-relative fw-bold" data-bs-toggle="modal" data-bs-target="#systemNotifModal" onclick="markNotifsRead()">
+                    🔔 Уведомления <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifBadge" {% if unread_system_notifs == 0 %}style="display:none;"{% endif %}>{{ unread_system_notifs }}</span>
+                </button>
+
+                <!-- Статус онлайн сотрудников -->
+                <button class="btn btn-outline-secondary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#teamOnlineModal">
+                    🟢 Сотрудники
+                </button>
+
                 {% if active_page == 'kanban' %}
                 <button class="btn btn-warning btn-sm fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#tasksListModal">
                     🔔 Задачи <span class="badge bg-primary ms-1">{{ total_tasks_count }}</span>
@@ -278,12 +343,77 @@ BASE_TEMPLATE = """
                     {% if has_reminders %}<span class="badge bg-danger ms-1 blink-remind">⚡ РОП!</span>{% endif %}
                 </button>
                 {% endif %}
-                <span class="badge d-none d-md-inline-block" style="background: #b8860b;">M-CONSTRUCTION CRM</span>
             </div>
         </div>
 
         <div class="content-body">
             {{ content|safe }}
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно: Системные уведомления (дни рождения и смена контактов) -->
+<div class="modal fade" id="systemNotifModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background: #1a1e21;">
+                <h5 class="modal-title fw-bold">🔔 Центр уведомлений компании</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
+                <div class="list-group" id="notifListContainer">
+                    {% if system_notifications %}
+                        {% for n in system_notifications %}
+                        <div class="list-group-item list-group-item-action mb-2 rounded border {% if not n.read %}border-warning bg-light{% endif %}">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1 fw-bold text-dark">{% if n.type == 'birthday' %}🎂 День рождения{% else %}🔄 Изменение данных{% endif %}</h6>
+                                <small class="text-muted">{{ n.date }}</small>
+                            </div>
+                            <p class="mb-1 text-secondary">{{ n.text }}</p>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted py-4">Уведомлений пока нет</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно: Статус сотрудников (Онлайн / Оффлайн) -->
+<div class="modal fade" id="teamOnlineModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background: #1a1e21;">
+                <h5 class="modal-title fw-bold">👥 Статус сотрудников в системе</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="list-group" id="teamOnlineList">
+                    {% for u_k, u_v in all_users_status.items() %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <b>{{ u_v.name }}</b> 
+                            <span class="text-muted small d-block">({{ u_v.position }})</span>
+                        </div>
+                        <div>
+                            {% if u_v.is_online %}
+                                <span class="online-dot me-1"></span> <span class="text-success small fw-bold">Онлайн</span>
+                            {% else %}
+                                <span class="offline-dot me-1"></span> <span class="text-muted small">Оффлайн</span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Закрыть</button>
+            </div>
         </div>
     </div>
 </div>
@@ -311,7 +441,15 @@ function dropDeal(ev, stage) {
     .then(res => res.json()).then(data => { if(data.success) location.reload(); });
 }
 
-// Фоновая проверка счетчиков и звуковых уведомлений
+function markNotifsRead() {
+    fetch('/mark_notifs_read', {method: 'POST'}).then(res => res.json()).then(data => {
+        if(data.success) {
+            let badge = document.getElementById('notifBadge');
+            if(badge) badge.style.display = 'none';
+        }
+    });
+}
+
 let lastTzCount = {{ unread_tz_count }};
 let lastMsgCount = {{ unread_msgs_count }};
 
@@ -343,6 +481,14 @@ setInterval(function() {
         } else {
             chatBadge.style.display = 'none';
         }
+
+        let notifBadge = document.getElementById('notifBadge');
+        if (data.notif_count > 0) {
+            notifBadge.style.display = 'inline-block';
+            notifBadge.innerText = data.notif_count;
+        } else {
+            notifBadge.style.display = 'none';
+        }
     }).catch(e => {});
 }, 10000);
 </script>
@@ -363,13 +509,22 @@ def uploaded_file(filename):
 
 @app.route('/check_updates')
 def check_updates():
-    if "user" not in session: return jsonify({"tz_count": 0, "msg_count": 0})
+    if "user" not in session: return jsonify({"tz_count": 0, "msg_count": 0, "notif_count": 0})
     uname = session["user"]
+    update_user_activity(uname)
     db = load_db()
     users = db.get("users", DEFAULT_USERS)
     user_data = users.get(uname, {"role": "manager", "name": ""})
-    tz_c, msg_c = get_counters(db, uname, user_data)
-    return jsonify({"tz_count": tz_c, "msg_count": msg_c})
+    tz_c, msg_c, notif_c = get_counters(db, uname, user_data)
+    return jsonify({"tz_count": tz_c, "msg_count": msg_c, "notif_count": notif_c})
+
+@app.route("/mark_notifs_read", methods=["POST"])
+def mark_notifs_read():
+    db = load_db()
+    for n in db.get("system_notifications", []):
+        n["read"] = True
+    save_db(db)
+    return jsonify({"success": True})
 
 @app.route("/request_access", methods=["GET", "POST"])
 def request_access():
@@ -430,6 +585,7 @@ def login():
         p = request.form.get("password")
         if u in users and users[u]["pass"] == p:
             session["user"] = u
+            update_user_activity(u)
             return redirect(url_for("index"))
         error = "Неверный логин или пароль"
     return render_template_string(LOGIN_HTML, error=error)
@@ -443,18 +599,49 @@ def logout():
 def profile_page():
     if "user" not in session: return redirect(url_for("login"))
     uname = session["user"]
+    update_user_activity(uname)
     db = load_db()
     users = db.get("users", DEFAULT_USERS)
     user_data = users[uname]
     
     message = None
     if request.method == "POST":
-        user_data["name"] = request.form.get("name", user_data["name"])
-        user_data["position"] = request.form.get("position", user_data.get("position", ""))
-        user_data["phone"] = request.form.get("phone", user_data.get("phone", ""))
-        user_data["whatsapp"] = request.form.get("whatsapp", user_data.get("whatsapp", ""))
-        user_data["email"] = request.form.get("email", user_data.get("email", ""))
-        
+        old_phone = user_data.get("phone", "")
+        old_wa = user_data.get("whatsapp", "")
+        old_email = user_data.get("email", "")
+
+        new_name = request.form.get("name", user_data["name"])
+        new_position = request.form.get("position", user_data.get("position", ""))
+        new_phone = request.form.get("phone", user_data.get("phone", ""))
+        new_whatsapp = request.form.get("whatsapp", user_data.get("whatsapp", ""))
+        new_email = request.form.get("email", user_data.get("email", ""))
+        new_bday = request.form.get("birthday", user_data.get("birthday", "1990-01-01"))
+
+        user_data["name"] = new_name
+        user_data["position"] = new_position
+        user_data["phone"] = new_phone
+        user_data["whatsapp"] = new_whatsapp
+        user_data["email"] = new_email
+        user_data["birthday"] = new_bday
+
+        # Проверяем изменение личных данных (телефон или почта) для уведомлений
+        changes = []
+        if old_phone != new_phone:
+            changes.append(f"номер телефона с '{old_phone}' на '{new_phone}'")
+        if old_email != new_email:
+            changes.append(f"email с '{old_email}' на '{new_email}'")
+
+        if changes:
+            change_text = f"🔄 Сотрудник {new_name} изменил(а) " + " и ".join(changes) + "."
+            if "system_notifications" not in db: db["system_notifications"] = []
+            db["system_notifications"].insert(0, {
+                "id": f"notif_change_{int(datetime.now().timestamp())}",
+                "type": "change_data",
+                "text": change_text,
+                "date": datetime.now().strftime("%d.%m.%Y %H:%M"),
+                "read": False
+            })
+
         file = request.files.get("avatar")
         if file and file.filename:
             filename = secure_filename(f"avatar_{uname}_{file.filename}")
@@ -469,6 +656,14 @@ def profile_page():
 
     avatar_preview = f'<img src="{url_for("uploaded_file", filename=user_data["avatar"])}" style="width:80px; height:80px; border-radius:50%; object-fit:cover;" class="mb-2">' if user_data.get('avatar') else '<div class="text-muted mb-2">Фото не установлено</div>'
 
+    all_users_status = {}
+    for u_k, u_v in users.items():
+        all_users_status[u_k] = {
+            "name": u_v["name"],
+            "position": u_v.get("position", ""),
+            "is_online": is_user_online(db, u_k)
+        }
+
     profile_html = f"""
     <div class="container" style="max-width: 600px; margin: 0 auto;">
         <div class="card shadow-sm border-0 p-4 bg-white">
@@ -481,6 +676,7 @@ def profile_page():
                 </div>
                 <div class="mb-3"><label class="form-label fw-bold">ФИО:</label><input type="text" name="name" class="form-control" value="{user_data['name']}" required></div>
                 <div class="mb-3"><label class="form-label fw-bold">Должность:</label><input type="text" name="position" class="form-control" value="{user_data.get('position', '')}"></div>
+                <div class="mb-3"><label class="form-label fw-bold">Дата рождения:</label><input type="date" name="birthday" class="form-control" value="{user_data.get('birthday', '1990-01-01')}"></div>
                 <div class="mb-3"><label class="form-label fw-bold">Телефон:</label><input type="text" name="phone" class="form-control" value="{user_data.get('phone', '')}"></div>
                 <div class="mb-3"><label class="form-label fw-bold">WhatsApp:</label><input type="text" name="whatsapp" class="form-control" value="{user_data.get('whatsapp', '')}"></div>
                 <div class="mb-3"><label class="form-label fw-bold">Email:</label><input type="email" name="email" class="form-control" value="{user_data.get('email', '')}"></div>
@@ -490,13 +686,14 @@ def profile_page():
         </div>
     </div>
     """
-    tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Профиль", active_page="profile", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=profile_html)
+    tz_c, msg_c, notif_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Профиль", active_page="profile", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, unread_system_notifs=notif_c, system_notifications=db.get("system_notifications", []), all_users_status=all_users_status, content=profile_html)
 
 @app.route("/analytics")
 def analytics_page():
     if "user" not in session: return redirect(url_for("login"))
     uname = session["user"]
+    update_user_activity(uname)
     db = load_db()
     users = db.get("users", DEFAULT_USERS)
     user_data = users[uname]
@@ -757,13 +954,22 @@ def analytics_page():
     </script>
     """
 
-    tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=analytics_html)
+    all_users_status = {}
+    for u_k, u_v in users.items():
+        all_users_status[u_k] = {
+            "name": u_v["name"],
+            "position": u_v.get("position", ""),
+            "is_online": is_user_online(db, u_k)
+        }
+
+    tz_c, msg_c, notif_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Аналитика", active_page="analytics", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, unread_system_notifs=notif_c, system_notifications=db.get("system_notifications", []), all_users_status=all_users_status, content=analytics_html)
 
 @app.route("/generator")
 def generator_page():
     if "user" not in session: return redirect(url_for("login"))
     uname = session["user"]
+    update_user_activity(uname)
     db = load_db()
     users = db.get("users", DEFAULT_USERS)
     user_data = users[uname]
@@ -1281,8 +1487,16 @@ def generator_page():
     </script>
     """
     
-    tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Генератор КП", active_page="generator", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=gen_html)
+    all_users_status = {}
+    for u_k, u_v in users.items():
+        all_users_status[u_k] = {
+            "name": u_v["name"],
+            "position": u_v.get("position", ""),
+            "is_online": is_user_online(db, u_k)
+        }
+
+    tz_c, msg_c, notif_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Генератор КП", active_page="generator", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, unread_system_notifs=notif_c, system_notifications=db.get("system_notifications", []), all_users_status=all_users_status, content=gen_html)
 
 @app.route("/save_kp", methods=["POST"])
 def save_kp():
@@ -1300,6 +1514,7 @@ def save_kp():
 def registry_page():
     if "user" not in session: return redirect(url_for("login"))
     uname = session["user"]
+    update_user_activity(uname)
     db = load_db()
     users = db.get("users", DEFAULT_USERS)
     user_data = users[uname]
@@ -1427,8 +1642,16 @@ def registry_page():
     </script>
     """
     
-    tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Реестр КП", active_page="registry", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=reg_html)
+    all_users_status = {}
+    for u_k, u_v in users.items():
+        all_users_status[u_k] = {
+            "name": u_v["name"],
+            "position": u_v.get("position", ""),
+            "is_online": is_user_online(db, u_k)
+        }
+
+    tz_c, msg_c, notif_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Реестр КП", active_page="registry", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, unread_system_notifs=notif_c, system_notifications=db.get("system_notifications", []), all_users_status=all_users_status, content=reg_html)
 
 @app.route("/clear_registry", methods=["POST"])
 def clear_registry():
@@ -1443,6 +1666,7 @@ def clear_registry():
 def chat_page(chat_id=None):
     if "user" not in session: return redirect(url_for("login"))
     uname = session["user"]
+    update_user_activity(uname)
     db = load_db()
     users = db.get("users", DEFAULT_USERS)
     user_data = users[uname]
@@ -1497,13 +1721,22 @@ def chat_page(chat_id=None):
     </div>
     <div class="modal fade" id="newChatModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form method="POST"><input type="hidden" name="action" value="create_chat"><div class="modal-header text-white" style="background: #1a1e21;"><h5 class="modal-title fw-bold">👥 Создать чат</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label fw-bold">Название чата:</label><input type="text" name="title" class="form-control" placeholder="Обсуждение объекта..."></div><label class="form-label fw-bold">Выберите сотрудников:</label><div class="p-2 border rounded bg-light" style="max-height: 200px; overflow-y: auto;">{members_checkboxes}</div></div><div class="modal-footer"><button type="submit" class="btn text-white fw-bold" style="background: #b8860b;">Создать чат</button></div></form></div></div></div>
     """
-    tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Чат сотрудников", active_page="chat", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=content_html)
+    all_users_status = {}
+    for u_k, u_v in users.items():
+        all_users_status[u_k] = {
+            "name": u_v["name"],
+            "position": u_v.get("position", ""),
+            "is_online": is_user_online(db, u_k)
+        }
+
+    tz_c, msg_c, notif_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Чат сотрудников", active_page="chat", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, unread_system_notifs=notif_c, system_notifications=db.get("system_notifications", []), all_users_status=all_users_status, content=content_html)
 
 @app.route("/")
 def index():
     if "user" not in session: return redirect(url_for("login"))
     uname = session["user"]
+    update_user_activity(uname)
     db = load_db()
     users = db.get("users", DEFAULT_USERS)
     user_data = users[uname]
@@ -1685,13 +1918,22 @@ def index():
         </form>
     </div></div></div>
     """
-    tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Воронка продаж", active_page="kanban", current_user_data=user_data, total_tasks_count=total_tasks, overdue_count=overdue_count, has_reminders=has_reminders, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=kanban_content)
+    all_users_status = {}
+    for u_k, u_v in users.items():
+        all_users_status[u_k] = {
+            "name": u_v["name"],
+            "position": u_v.get("position", ""),
+            "is_online": is_user_online(db, u_k)
+        }
+
+    tz_c, msg_c, notif_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Воронка продаж", active_page="kanban", current_user_data=user_data, total_tasks_count=total_tasks, overdue_count=overdue_count, has_reminders=has_reminders, unread_tz_count=tz_c, unread_msgs_count=msg_c, unread_system_notifs=notif_c, system_notifications=db.get("system_notifications", []), all_users_status=all_users_status, content=kanban_content)
 
 @app.route("/tz")
 def tz_page():
     if "user" not in session: return redirect(url_for("login"))
     uname = session["user"]
+    update_user_activity(uname)
     db = load_db()
     users = db.get("users", DEFAULT_USERS)
     user_data = users[uname]
@@ -1720,13 +1962,22 @@ def tz_page():
     tz_content += f'</tbody></table><button class="btn text-white btn-sm fw-bold mt-3" style="background: #b8860b;" data-bs-toggle="modal" data-bs-target="#addTzModal">+ Создать ТЗ</button></div></div></div>'
     tz_content += f'<div class="modal fade" id="addTzModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><form method="POST" action="{url_for("add_tz")}" enctype="multipart/form-data"><div class="modal-header text-white" style="background: #1a1e21;"><h5 class="modal-title fw-bold">📐 Новое ТЗ</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row g-3"><div class="col-12"><label class="form-label fw-bold">Название:</label><input type="text" name="title" class="form-control" required></div><div class="col-12"><label class="form-label fw-bold">Описание:</label><textarea name="description" class="form-control" rows="3" required></textarea></div><div class="col-md-6"><label class="form-label fw-bold">Ответственный:</label><select name="responsible" class="form-select">{resp_opts}</select></div><div class="col-md-6"><label class="form-label fw-bold">Наблюдатель:</label><select name="observer" class="form-select">{obs_opts}</select></div><div class="col-md-6"><label class="form-label fw-bold">Срочность:</label><select name="urgency" class="form-select"><option value="горячая">🔴 Горячая</option><option value="теплая" selected>🟡 Теплая</option><option value="холодная">🔵 Холодная</option></select></div><div class="col-12"><label class="form-label fw-bold">Прикрепить файлы / схемы:</label><input type="file" name="attachment" class="form-control"></div></div></div><div class="modal-footer"><button type="submit" class="btn text-white" style="background: #b8860b;">Поставить ТЗ</button></div></form></div></div></div>'
     
-    tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Технические задания", active_page="tz", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=tz_content)
+    all_users_status = {}
+    for u_k, u_v in users.items():
+        all_users_status[u_k] = {
+            "name": u_v["name"],
+            "position": u_v.get("position", ""),
+            "is_online": is_user_online(db, u_k)
+        }
+
+    tz_c, msg_c, notif_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Технические задания", active_page="tz", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, unread_system_notifs=notif_c, system_notifications=db.get("system_notifications", []), all_users_status=all_users_status, content=tz_content)
 
 @app.route("/tz/<tz_id>")
 def tz_detail(tz_id):
     if "user" not in session: return redirect(url_for("login"))
     uname = session["user"]
+    update_user_activity(uname)
     db = load_db()
     user_data = db["users"][uname]
     manager_names_list = [u_info["name"] for u_info in db.get("users", DEFAULT_USERS).values()]
@@ -1799,8 +2050,16 @@ def tz_detail(tz_id):
         </form>
     </div></div></div>
     """
-    tz_c, msg_c = get_counters(db, uname, user_data)
-    return render_template_string(BASE_TEMPLATE, page_title="Детали ТЗ", active_page="tz", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, content=content_html)
+    all_users_status = {}
+    for u_k, u_v in db.get("users", DEFAULT_USERS).items():
+        all_users_status[u_k] = {
+            "name": u_v["name"],
+            "position": u_v.get("position", ""),
+            "is_online": is_user_online(db, u_k)
+        }
+
+    tz_c, msg_c, notif_c = get_counters(db, uname, user_data)
+    return render_template_string(BASE_TEMPLATE, page_title="Детали ТЗ", active_page="tz", current_user_data=user_data, unread_tz_count=tz_c, unread_msgs_count=msg_c, unread_system_notifs=notif_c, system_notifications=db.get("system_notifications", []), all_users_status=all_users_status, content=content_html)
 
 @app.route("/tz/edit/<tz_id>", methods=["POST"])
 def edit_tz(tz_id):
@@ -2075,38 +2334,3 @@ def update_deal(id):
 @app.route("/complete_task/<deal_id>/<task_id>", methods=["POST"])
 def complete_task(deal_id, task_id):
     if "user" not in session: return redirect(url_for("login"))
-    db = load_db()
-    uname = session["user"]
-    user_data = db["users"][uname]
-    for d in db["deals"]:
-        if d["id"] == deal_id:
-            for t in d.get("tasks", []):
-                if t.get("id") == task_id:
-                    t["done"] = True
-                    if "history" not in d: d["history"] = []
-                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"Выполнил задачу: {t.get('type')}"})
-    save_db(db)
-    return redirect(url_for("index"))
-
-@app.route("/remind_task/<deal_id>/<task_id>", methods=["POST"])
-def remind_task(deal_id, task_id):
-    if "user" not in session: return redirect(url_for("login"))
-    db = load_db()
-    uname = session["user"]
-    user_data = db["users"][uname]
-    
-    if user_data["role"] not in ["director", "rop"]:
-        return redirect(url_for("index"))
-
-    for d in db["deals"]:
-        if d["id"] == deal_id:
-            for t in d.get("tasks", []):
-                if t.get("id") == task_id:
-                    t["reminded"] = True
-                    if "history" not in d: d["history"] = []
-                    d["history"].append({"date": datetime.now().strftime("%d.%m.%Y %H:%M"), "author": user_data["name"], "text": f"РОП ({user_data['name']}) напомнил менеджеру по просроченной задаче: {t.get('type')}"})
-    save_db(db)
-    return redirect(url_for("index"))
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
